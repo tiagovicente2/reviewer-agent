@@ -59,7 +59,7 @@ PR Review Agent does not approve, request changes, merge, or submit full GitHub 
 ## Quick development start
 
 ```bash
-bun install
-bun run typecheck
-bun run dev
+pnpm install
+pnpm run typecheck
+pnpm run dev
 ```

@@ -4,7 +4,7 @@ import { getReviewCodeAgent } from './settings'
 
 type StoredJob = PiReviewGenerationJob & {
 	promise?: Promise<void>
-	progressTimer?: Timer
+	progressTimer?: NodeJS.Timeout
 }
 
 function getAgentLabel() {

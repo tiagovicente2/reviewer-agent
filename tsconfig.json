@@ -21,6 +21,6 @@
 			"styled-system/*": ["./styled-system/*"]
 		}
 	},
-	"include": ["src", "styled-system", "electrobun.config.ts", "vite.config.ts", "panda.config.ts"],
+	"include": ["src", "styled-system", "vite.config.ts", "panda.config.ts"],
 	"exclude": ["node_modules", "dist", "build", "artifacts"]
 }

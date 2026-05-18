@@ -2,21 +2,24 @@
 	"name": "pr-review-agent",
 	"version": "0.1.7",
 	"private": true,
-	"description": "Local-first Electrobun desktop app for AI-assisted GitHub pull request review drafts.",
+	"description": "Local-first Electron desktop app for AI-assisted GitHub pull request review drafts.",
 	"type": "module",
+	"packageManager": "pnpm@10.23.0",
+	"main": "build/electron/index.js",
 	"scripts": {
 		"panda:codegen": "panda codegen",
 		"panda:css": "panda cssgen",
 		"panda:build": "panda codegen && panda cssgen",
 		"panda:watch": "panda cssgen --watch",
-		"start": "bun run panda:build && vite build && bun scripts/run-electrobun.ts dev",
-		"dev": "bun run panda:build && bun scripts/run-electrobun.ts dev --watch",
-		"dev:hmr": "bun run panda:build && concurrently \"bun run panda:watch\" \"bun run hmr\" \"bun run start\"",
+		"build:electron": "esbuild src/electron/index.ts --bundle --platform=node --format=esm --external:electron --outfile=build/electron/index.js && esbuild src/electron/preload.ts --bundle --platform=node --format=cjs --external:electron --outfile=build/electron/preload.cjs",
+		"start": "pnpm run panda:build && vite build && pnpm run build:electron && electron .",
+		"dev": "pnpm run panda:build && pnpm run build:electron && electron .",
+		"dev:hmr": "pnpm run panda:build && concurrently \"pnpm run panda:watch\" \"pnpm run hmr\" \"pnpm run dev\"",
 		"hmr": "vite --port 5173",
-		"build": "bun run panda:build && vite build",
-		"build:app": "bun run panda:build && vite build && bun scripts/run-electrobun.ts build",
-		"build:canary": "bun run panda:build && vite build && bun scripts/run-electrobun.ts build --env=canary",
-		"typecheck": "bun run panda:build && tsc --noEmit",
+		"build": "pnpm run panda:build && vite build && pnpm run build:electron",
+		"build:app": "pnpm run build && electron-builder",
+		"build:canary": "pnpm run build && electron-builder --publish never",
+		"typecheck": "pnpm run panda:build && tsc --noEmit",
 		"lint": "biome lint .",
 		"format": "biome format --write .",
 		"check": "biome check ."
@@ -25,7 +28,6 @@
 		"@ark-ui/react": "^5.36.2",
 		"@pierre/diffs": "^1.1.20",
 		"@pierre/trees": "^1.0.0-beta.3",
-		"electrobun": "1.18.1",
 		"react": "^18.3.1",
 		"react-dom": "^18.3.1",
 		"react-markdown": "^10.1.0",
@@ -33,16 +35,51 @@
 		"remark-gfm": "^4.0.1"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.4.14",
+		"@biomejs/biome": "2.4.14",
 		"@pandacss/dev": "^1.11.0",
 		"@park-ui/cli": "^1.0.1",
-		"@types/bun": "latest",
+		"@types/node": "^22.10.2",
 		"@types/react": "^18.3.12",
 		"@types/react-dom": "^18.3.1",
 		"@types/three": "^0.184.0",
 		"@vitejs/plugin-react": "^4.3.4",
 		"concurrently": "^9.1.0",
+		"electron": "^33.2.1",
+		"electron-builder": "^25.1.8",
+		"esbuild": "^0.24.2",
 		"typescript": "^5.7.2",
 		"vite": "^6.0.3"
+	},
+	"pnpm": {
+		"onlyBuiltDependencies": [
+			"electron",
+			"esbuild"
+		]
+	},
+	"build": {
+		"appId": "dev.local.pr-review-agent",
+		"productName": "PR Review Agent",
+		"files": [
+			"build/electron/**/*",
+			"dist/**/*",
+			"package.json"
+		],
+		"directories": {
+			"output": "artifacts"
+		},
+		"mac": {
+			"icon": "icon.iconset"
+		},
+		"linux": {
+			"target": [
+				"AppImage",
+				"tar.gz"
+			],
+			"icon": "assets/icon.png",
+			"category": "Development"
+		},
+		"win": {
+			"icon": "assets/icon.ico"
+		}
 	}
 }

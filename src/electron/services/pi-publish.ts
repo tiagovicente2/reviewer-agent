@@ -4,6 +4,7 @@ import type {
 	PublishPiReviewCommentResult,
 	PublishPiReviewCommentsParams,
 } from '@/shared/review'
+import { runCommand } from '../process'
 
 const GH_PUBLISH_TIMEOUT_MS = 60 * 1000
 
@@ -36,7 +37,9 @@ export async function publishPiReviewComments(
 		const output = [result.stdout, result.stderr].filter(Boolean).join('\n').trim()
 
 		if (result.exitCode !== 0) {
-			throw new Error(output || `Failed to publish comment for ${finding.filePath}:${finding.lineStart}.`)
+			throw new Error(
+				output || `Failed to publish comment for ${finding.filePath}:${finding.lineStart}.`,
+			)
 		}
 
 		results.push(`Published comment for ${finding.filePath}:${finding.lineStart}`)
@@ -79,24 +82,8 @@ async function publishFinding(
 }
 
 async function runGh(args: string[]): Promise<CommandResult> {
-	const proc = Bun.spawn(['gh', ...args], {
-		stdout: 'pipe',
-		stderr: 'pipe',
-		env: Bun.env,
+	return runCommand('gh', args, {
+		env: process.env,
+		timeoutMs: GH_PUBLISH_TIMEOUT_MS,
 	})
-
-	const timeout = new Promise<never>((_, reject) => {
-		setTimeout(() => {
-			proc.kill()
-			reject(new Error('GitHub comment publish timed out.'))
-		}, GH_PUBLISH_TIMEOUT_MS)
-	})
-
-	const result = Promise.all([
-		new Response(proc.stdout).text(),
-		new Response(proc.stderr).text(),
-		proc.exited,
-	]).then(([stdout, stderr, exitCode]) => ({ exitCode, stdout, stderr }))
-
-	return Promise.race([result, timeout])
 }

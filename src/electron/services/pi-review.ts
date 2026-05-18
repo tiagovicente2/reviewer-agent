@@ -1,8 +1,9 @@
 import type { GeneratePiReviewParams, PiGeneratedReview, PiReviewFinding } from '@/shared/review'
+import { runCommand } from '../process'
 import { saveGeneratedReview } from './review-store'
 import {
-	getReviewerInstructions,
 	getReviewCodeAgent,
+	getReviewerInstructions,
 	getReviewLanguage,
 	getReviewModel,
 	listAgentAvailability,
@@ -25,13 +26,7 @@ async function runAgentReview(prompt: string): Promise<CommandResult> {
 	if (agent === 'claude') {
 		return runReviewCommand({
 			agentName: 'Claude',
-			args: [
-				'claude',
-				'-p',
-				...(model ? ['--model', model] : []),
-				'--system-prompt',
-				systemPrompt,
-			],
+			args: ['claude', '-p', ...(model ? ['--model', model] : []), '--system-prompt', systemPrompt],
 			env: {},
 			prompt,
 		})
@@ -95,43 +90,20 @@ async function runReviewCommand(params: {
 	env: Record<string, string>
 	prompt?: string
 }): Promise<CommandResult> {
-	const proc = Bun.spawn(params.args, {
-		stdin: params.prompt === undefined ? 'ignore' : 'pipe',
-		stdout: 'pipe',
-		stderr: 'pipe',
-		env: { ...Bun.env, ...params.env },
+	const [command, ...args] = params.args
+	if (!command) throw new Error(`${params.agentName} command is empty.`)
+
+	const result = await runCommand(command, args, {
+		input: params.prompt,
+		env: { ...process.env, ...params.env },
+		timeoutMs: REVIEW_TIMEOUT_MS,
 	})
 
-	if (params.prompt !== undefined && proc.stdin) {
-		proc.stdin.write(params.prompt)
-		proc.stdin.end()
+	return {
+		exitCode: result.exitCode,
+		stdout: cleanAgentOutput(result.stdout),
+		stderr: cleanAgentOutput(result.stderr),
 	}
-
-	let timedOut = false
-	let timeoutId: Timer | undefined
-	const timeout = new Promise<never>((_, reject) => {
-		timeoutId = setTimeout(() => {
-			timedOut = true
-			proc.kill()
-			reject(new Error(`${params.agentName} review generation timed out.`))
-		}, REVIEW_TIMEOUT_MS)
-	})
-
-	const result = Promise.all([
-		new Response(proc.stdout).text(),
-		new Response(proc.stderr).text(),
-		proc.exited,
-	]).then(([stdout, stderr, exitCode]) => {
-		if (timeoutId) clearTimeout(timeoutId)
-		if (timedOut) throw new Error(`${params.agentName} review generation timed out.`)
-		return {
-			exitCode,
-			stdout: cleanAgentOutput(stdout),
-			stderr: cleanAgentOutput(stderr),
-		}
-	})
-
-	return Promise.race([result, timeout])
 }
 
 function cleanAgentOutput(output: string) {
