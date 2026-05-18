@@ -1,6 +1,8 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync } from 'node:fs'
+import { writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import type { GitHubPullRequestDetails } from '@/shared/github'
+import { getUserDataPath } from '../paths'
 
 type DetailsEntry = {
 	repo: string
@@ -25,15 +27,17 @@ type PullRequestCache = {
 	diffs: Record<string, DiffEntry>
 }
 
-const cachePath = getCachePath()
+const cachePath = join(getUserDataPath(), 'pull-request-cache.json')
 mkdirSync(dirname(cachePath), { recursive: true })
+
+const cache = loadCache()
+let writeQueued = false
 
 export function getCachedPullRequestDetails(params: {
 	repo: string
 	pullRequestNumber: number
 	headSha?: string
 }): GitHubPullRequestDetails | null {
-	const cache = readCache()
 	if (params.headSha) {
 		return (
 			cache.details[getPullRequestCacheKey({ ...params, headSha: params.headSha })]?.details ?? null
@@ -49,7 +53,6 @@ export function getCachedPullRequestDetails(params: {
 }
 
 export function saveCachedPullRequestDetails(details: GitHubPullRequestDetails) {
-	const cache = readCache()
 	const metadata = { ...details, diff: '' }
 	const now = new Date().toISOString()
 	const id = getPullRequestCacheKey(details)
@@ -61,7 +64,7 @@ export function saveCachedPullRequestDetails(details: GitHubPullRequestDetails) 
 		createdAt: cache.details[id]?.createdAt ?? now,
 		updatedAt: now,
 	}
-	writeCache(cache)
+	queueWriteCache()
 }
 
 export function getCachedPullRequestDiff(params: {
@@ -69,7 +72,7 @@ export function getCachedPullRequestDiff(params: {
 	pullRequestNumber: number
 	headSha: string
 }): string | null {
-	return readCache().diffs[getPullRequestCacheKey(params)]?.diff ?? null
+	return cache.diffs[getPullRequestCacheKey(params)]?.diff ?? null
 }
 
 export function saveCachedPullRequestDiff(params: {
@@ -78,7 +81,6 @@ export function saveCachedPullRequestDiff(params: {
 	headSha: string
 	diff: string
 }) {
-	const cache = readCache()
 	const now = new Date().toISOString()
 	const id = getPullRequestCacheKey(params)
 	cache.diffs[id] = {
@@ -89,21 +91,27 @@ export function saveCachedPullRequestDiff(params: {
 		createdAt: cache.diffs[id]?.createdAt ?? now,
 		updatedAt: now,
 	}
-	writeCache(cache)
+	queueWriteCache()
 }
 
-function readCache(): PullRequestCache {
+function loadCache(): PullRequestCache {
 	try {
-		if (!existsSync(cachePath)) return { details: {}, diffs: {} }
-		const cache = JSON.parse(readFileSync(cachePath, 'utf8')) as Partial<PullRequestCache>
-		return { details: cache.details ?? {}, diffs: cache.diffs ?? {} }
+		const persisted = JSON.parse(readFileSync(cachePath, 'utf8')) as Partial<PullRequestCache>
+		return { details: persisted.details ?? {}, diffs: persisted.diffs ?? {} }
 	} catch {
 		return { details: {}, diffs: {} }
 	}
 }
 
-function writeCache(cache: PullRequestCache) {
-	writeFileSync(cachePath, `${JSON.stringify(cache, null, 2)}\n`)
+function queueWriteCache() {
+	if (writeQueued) return
+	writeQueued = true
+	queueMicrotask(() => {
+		writeQueued = false
+		void writeFile(cachePath, JSON.stringify(cache)).catch((error: unknown) => {
+			console.error('Could not persist pull request cache.', error)
+		})
+	})
 }
 
 function getPullRequestCacheKey(params: {
@@ -112,11 +120,4 @@ function getPullRequestCacheKey(params: {
 	headSha: string
 }) {
 	return `${params.repo}#${params.pullRequestNumber}:${params.headSha}`
-}
-
-function getCachePath() {
-	const baseDir =
-		process.env.XDG_DATA_HOME ??
-		(process.env.HOME ? join(process.env.HOME, '.local', 'share') : join(process.cwd(), '.data'))
-	return join(baseDir, 'pr-review-agent', 'pull-request-cache.json')
 }
