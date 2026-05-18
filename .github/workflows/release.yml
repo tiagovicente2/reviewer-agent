@@ -30,25 +30,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: oven-sh/setup-bun@v2
+      - uses: pnpm/action-setup@v4
         with:
-          bun-version: latest
+          version: 10.23.0
 
-      - run: bun install --frozen-lockfile
-      - run: bun run build:app
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build:app
 
       - name: Locate app bundle
         id: locate
         shell: bash
         run: |
           set -euo pipefail
-          app_dir="$(find build -mindepth 2 -maxdepth 2 -type d \( -name 'PRReviewAgent' -o -name 'PRReviewAgent-dev' -o -name 'PR Review Agent.app' -o -name 'PRReviewAgent.app' \) | head -n 1 || true)"
+          app_dir="$(find artifacts -mindepth 1 -maxdepth 3 -type d \( -name 'linux-unpacked' -o -name 'win-unpacked' -o -name 'PR Review Agent.app' -o -name 'PRReviewAgent.app' \) | head -n 1 || true)"
           if [[ -z "$app_dir" ]]; then
-            app_dir="$(find build -mindepth 2 -maxdepth 2 -type d | head -n 1 || true)"
+            app_dir="$(find artifacts -mindepth 1 -maxdepth 3 -type d | head -n 1 || true)"
           fi
           if [[ -z "$app_dir" ]]; then
-            echo "Could not locate built app under build/" >&2
-            find build -maxdepth 4 -print >&2
+            echo "Could not locate built app under artifacts/" >&2
+            find artifacts -maxdepth 4 -print >&2
             exit 1
           fi
           echo "app_dir=$app_dir" >> "$GITHUB_OUTPUT"

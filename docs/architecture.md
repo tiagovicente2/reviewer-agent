@@ -2,12 +2,12 @@
 
 ## App shape
 
-PR Review Agent is an Electrobun desktop app with a React renderer and Bun services.
+PR Review Agent is an Electron desktop app with a React renderer and Node.js main-process services.
 
 Important areas:
 
 - `src/app` — app shell, routing state, shared hooks, RPC client, toast provider.
-- `src/bun` — backend services exposed through RPC.
+- `src/electron` — Electron main/preload code and backend services exposed through IPC.
 - `src/features` — feature-focused UI and hooks.
 - `src/components` — shared UI and markdown components.
 - `src/shared` — types shared by frontend and backend.

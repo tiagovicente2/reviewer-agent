@@ -1,4 +1,4 @@
-import type { BrowserWindow } from 'electrobun/bun'
+import type { BrowserWindow } from 'electron'
 
 let mainWindow: BrowserWindow | null = null
 

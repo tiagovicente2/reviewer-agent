@@ -1,0 +1,154 @@
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { app, BrowserWindow, ipcMain, Menu, nativeTheme, shell } from 'electron'
+import type { AppRPCSchema } from '@/shared/rpc'
+import {
+	type MainRequestName,
+	messageChannel,
+	type RendererMessageName,
+	type RendererMessagePayload,
+	requestChannel,
+} from './ipc'
+import {
+	getGitHubAsset,
+	getGitHubAuthStatus,
+	getGitHubPullRequestDetails,
+	getGitHubPullRequestDiff,
+	getGitHubPullRequestForReview,
+	listGitHubReviewRequests,
+	searchGitHubPullRequests,
+	startGitHubLogin,
+} from './services/github'
+import { publishPiReviewComment, publishPiReviewComments } from './services/pi-publish'
+import { generateReviewWithPi } from './services/pi-review'
+import { getPiReviewGenerationJob, startPiReviewGeneration } from './services/pi-review-jobs'
+import { getSavedGeneratedReview } from './services/review-store'
+import {
+	completeOnboarding,
+	getAppSettings,
+	listAgentAvailability,
+	listAvailablePiModels,
+	saveAppSettings,
+} from './services/settings'
+import {
+	closeWindow,
+	minimizeWindow,
+	setMainWindow,
+	toggleMaximizeWindow,
+} from './services/window-controls'
+
+const DEV_SERVER_URL = 'http://localhost:5173'
+const isDev = !app.isPackaged
+const preloadPath = fileURLToPath(new URL('./preload.cjs', import.meta.url))
+
+type MainRequests = AppRPCSchema['main']['requests']
+type Handlers = {
+	[Name in keyof MainRequests]: (
+		params: MainRequests[Name]['params'],
+	) => Promise<MainRequests[Name]['response']> | MainRequests[Name]['response']
+}
+
+const handlers: Handlers = {
+	getAppSettings,
+	saveAppSettings,
+	completeOnboarding,
+	listAvailablePiModels,
+	listAgentAvailability,
+	getSystemColorMode,
+	getGitHubAuthStatus,
+	startGitHubLogin,
+	listGitHubReviewRequests,
+	searchGitHubPullRequests,
+	getGitHubPullRequestForReview,
+	getGitHubPullRequestDetails,
+	getGitHubPullRequestDiff,
+	getGitHubAsset,
+	generateReviewWithPi,
+	startPiReviewGeneration,
+	getPiReviewGenerationJob,
+	getSavedPiReview: getSavedGeneratedReview,
+	openExternalUrl,
+	minimizeWindow,
+	toggleMaximizeWindow,
+	closeWindow,
+	publishPiReviewComment,
+	publishPiReviewComments,
+}
+
+for (const [name, handler] of Object.entries(handlers) as [
+	MainRequestName,
+	Handlers[MainRequestName],
+][]) {
+	ipcMain.handle(requestChannel(name), (_event, params) => handler(params as never))
+}
+
+async function createWindow() {
+	const window = new BrowserWindow({
+		title: 'PR Review Agent',
+		width: 1280,
+		height: 820,
+		x: 120,
+		y: 80,
+		webPreferences: {
+			preload: preloadPath,
+			contextIsolation: true,
+			nodeIntegration: false,
+		},
+	})
+
+	setMainWindow(window)
+
+	if (isDev && (await canReachDevServer())) {
+		await window.loadURL(DEV_SERVER_URL)
+	} else {
+		await window.loadFile(join(app.getAppPath(), 'dist', 'index.html'))
+	}
+
+	return window
+}
+
+app.whenReady().then(async () => {
+	Menu.setApplicationMenu(null)
+	await createWindow()
+	nativeTheme.on('updated', () =>
+		sendToRenderers('systemColorModeChanged', { colorMode: getSystemColorMode() }),
+	)
+	app.on('activate', () => {
+		if (BrowserWindow.getAllWindows().length === 0) void createWindow()
+	})
+})
+
+app.on('window-all-closed', () => {
+	if (process.platform !== 'darwin') app.quit()
+})
+
+function getSystemColorMode(): 'dark' | 'light' {
+	return nativeTheme.shouldUseDarkColors ? 'dark' : 'light'
+}
+
+async function openExternalUrl(params: { url: string }): Promise<{ ok: true }> {
+	const url = new URL(params.url)
+	if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+		throw new Error('Only HTTP(S) URLs can be opened externally.')
+	}
+	await shell.openExternal(params.url)
+	return { ok: true }
+}
+
+async function canReachDevServer() {
+	try {
+		await fetch(DEV_SERVER_URL, { method: 'HEAD' })
+		return true
+	} catch {
+		return false
+	}
+}
+
+function sendToRenderers<Name extends RendererMessageName>(
+	name: Name,
+	payload: RendererMessagePayload<Name>,
+) {
+	for (const window of BrowserWindow.getAllWindows()) {
+		window.webContents.send(messageChannel(name), payload)
+	}
+}

@@ -5,6 +5,7 @@ import type {
 	GitHubPullRequestDetails,
 	GitHubReviewRequest,
 } from '@/shared/github'
+import { runCommand, runCommandBuffer } from '../process'
 import {
 	getCachedPullRequestDetails,
 	getCachedPullRequestDiff,
@@ -23,29 +24,14 @@ async function runGh(
 	input?: string,
 	options: { disablePrompt?: boolean } = {},
 ): Promise<CommandResult> {
-	const proc = Bun.spawn(['gh', ...args], {
-		cwd: Bun.env.HOME ?? '/tmp',
-		stdin: input === undefined ? 'ignore' : 'pipe',
-		stdout: 'pipe',
-		stderr: 'pipe',
+	return runCommand('gh', args, {
+		cwd: process.env.HOME ?? '/tmp',
+		input,
 		env: {
-			...Bun.env,
+			...process.env,
 			...(options.disablePrompt === false ? {} : { GH_PROMPT_DISABLED: '1' }),
 		},
 	})
-
-	if (input !== undefined && proc.stdin) {
-		proc.stdin.write(input)
-		proc.stdin.end()
-	}
-
-	const [stdout, stderr, exitCode] = await Promise.all([
-		new Response(proc.stdout).text(),
-		new Response(proc.stderr).text(),
-		proc.exited,
-	])
-
-	return { exitCode, stdout, stderr }
 }
 
 async function runGhBinary(args: string[]): Promise<{
@@ -53,19 +39,10 @@ async function runGhBinary(args: string[]): Promise<{
 	stdout: ArrayBuffer
 	stderr: string
 }> {
-	const proc = Bun.spawn(['gh', ...args], {
-		cwd: Bun.env.HOME ?? '/tmp',
-		stdin: 'ignore',
-		stdout: 'pipe',
-		stderr: 'pipe',
-		env: { ...Bun.env, GH_PROMPT_DISABLED: '1' },
+	return runCommandBuffer('gh', args, {
+		cwd: process.env.HOME ?? '/tmp',
+		env: { ...process.env, GH_PROMPT_DISABLED: '1' },
 	})
-	const [stdout, stderr, exitCode] = await Promise.all([
-		new Response(proc.stdout).arrayBuffer(),
-		new Response(proc.stderr).text(),
-		proc.exited,
-	])
-	return { exitCode, stdout, stderr }
 }
 
 function commandOutput(result: CommandResult) {
@@ -320,7 +297,9 @@ export async function searchGitHubPullRequests(params: {
 }): Promise<GitHubReviewRequest[]> {
 	const authStatus = await getGitHubAuthStatus()
 	if (!authStatus.authenticated) {
-		throw new Error(authStatus.error ?? authStatus.message ?? 'Connect GitHub before searching PRs.')
+		throw new Error(
+			authStatus.error ?? authStatus.message ?? 'Connect GitHub before searching PRs.',
+		)
 	}
 
 	const query = params.query.trim()
@@ -544,7 +523,13 @@ export async function getGitHubPullRequestDetails(params: {
 
 export async function getGitHubAsset(params: { url: string }): Promise<{ dataUrl: string }> {
 	const parsedUrl = new URL(params.url)
-	if (!['github.com', 'user-images.githubusercontent.com', 'private-user-images.githubusercontent.com'].includes(parsedUrl.hostname)) {
+	if (
+		![
+			'github.com',
+			'user-images.githubusercontent.com',
+			'private-user-images.githubusercontent.com',
+		].includes(parsedUrl.hostname)
+	) {
 		throw new Error('Only GitHub asset URLs can be loaded.')
 	}
 

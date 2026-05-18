@@ -8,6 +8,7 @@ import type {
 	ReviewLanguage,
 	SaveAppSettingsParams,
 } from '@/shared/settings'
+import { runCommand } from '../process'
 
 const settingsPath = getSettingsPath()
 const instructionsPath = getInstructionsPath()
@@ -52,7 +53,10 @@ export function saveAppSettings(params: SaveAppSettingsParams): AppSettings {
 export function completeOnboarding(): AppSettings {
 	ensureSettingsFiles()
 	const saved = readJsonSettings()
-	writeFileSync(settingsPath, `${JSON.stringify({ ...saved, onboardingComplete: true }, null, 2)}\n`)
+	writeFileSync(
+		settingsPath,
+		`${JSON.stringify({ ...saved, onboardingComplete: true }, null, 2)}\n`,
+	)
 	return getAppSettings()
 }
 
@@ -119,7 +123,12 @@ export async function listAvailablePiModels(params?: {
 async function listAvailableModelsForPi(): Promise<AvailablePiModel[]> {
 	const saved = readJsonSettings()
 	const piSettings = readPiAgentSettings()
-	const searches = uniqueValues(['', saved.model, piSettings.defaultModel, piSettings.defaultProvider])
+	const searches = uniqueValues([
+		'',
+		saved.model,
+		piSettings.defaultModel,
+		piSettings.defaultProvider,
+	])
 
 	for (const search of searches) {
 		const models = parseProviderModels(await listPiModelsBySearch(search))
@@ -136,12 +145,7 @@ async function listAvailableModelsForOpencode(): Promise<AvailablePiModel[]> {
 
 async function commandExists(command: string) {
 	try {
-		const proc = Bun.spawn(['which', command], {
-			stdin: 'ignore',
-			stdout: 'pipe',
-			stderr: 'pipe',
-		})
-		return (await proc.exited) === 0
+		return (await runCommand('which', [command])).exitCode === 0
 	} catch {
 		return false
 	}
@@ -158,44 +162,46 @@ async function checkAgentReady(agent: CodeAgent): Promise<{ ready: boolean; mess
 	}
 
 	if (agent === 'claude') {
-		const ready = Boolean(Bun.env.ANTHROPIC_API_KEY || Bun.env.ANTHROPIC_OAUTH_TOKEN) ||
+		const ready =
+			Boolean(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_OAUTH_TOKEN) ||
 			existsSync(join(getHomeDir(), '.claude', '.credentials.json'))
 		return ready
 			? { ready: true, message: 'Claude is installed and has local credentials.' }
-			: { ready: false, message: 'Claude is installed. Run `claude /login` in a terminal to authenticate.' }
+			: {
+					ready: false,
+					message: 'Claude is installed. Run `claude /login` in a terminal to authenticate.',
+				}
 	}
 
 	if (agent === 'opencode') {
-		const ready = Boolean(Bun.env.OPENCODE_API_KEY) || existsSync(join(getHomeDir(), '.config', 'opencode'))
+		const ready =
+			Boolean(process.env.OPENCODE_API_KEY) || existsSync(join(getHomeDir(), '.config', 'opencode'))
 		return ready
 			? { ready: true, message: 'opencode is installed and has local configuration.' }
-			: { ready: false, message: 'opencode is installed. Run `opencode providers` in a terminal to configure credentials.' }
+			: {
+					ready: false,
+					message:
+						'opencode is installed. Run `opencode providers` in a terminal to configure credentials.',
+				}
 	}
 
-	const ready = Boolean(Bun.env.OPENAI_API_KEY) || existsSync(join(getHomeDir(), '.codex', 'auth.json'))
+	const ready =
+		Boolean(process.env.OPENAI_API_KEY) || existsSync(join(getHomeDir(), '.codex', 'auth.json'))
 	return ready
 		? { ready: true, message: 'Codex is installed and has local credentials.' }
-		: { ready: false, message: 'Codex is installed. Run `codex login` in a terminal to authenticate.' }
+		: {
+				ready: false,
+				message: 'Codex is installed. Run `codex login` in a terminal to authenticate.',
+			}
 }
 
 async function listPiModelsBySearch(search: string) {
-	const proc = Bun.spawn(search ? ['pi', '--list-models', search] : ['pi', '--list-models'], {
-		stdin: 'ignore',
-		stdout: 'pipe',
-		stderr: 'pipe',
-		env: { ...Bun.env, PI_SKIP_VERSION_CHECK: '1' },
+	const args = search ? ['--list-models', search] : ['--list-models']
+	const { stdout, stderr, exitCode } = await runCommand('pi', args, {
+		env: { ...process.env, PI_SKIP_VERSION_CHECK: '1' },
+		timeoutMs: 8000,
 	})
-	const timeout = setTimeout(() => proc.kill(), 8000)
-	try {
-		const [stdout, stderr, exitCode] = await Promise.all([
-			new Response(proc.stdout).text(),
-			new Response(proc.stderr).text(),
-			proc.exited,
-		])
-		return exitCode === 0 ? `${stdout}\n${stderr}` : ''
-	} finally {
-		clearTimeout(timeout)
-	}
+	return exitCode === 0 ? `${stdout}\n${stderr}` : ''
 }
 
 export function getReviewLanguage(value?: unknown): ReviewLanguage {
@@ -230,23 +236,11 @@ function ensureSettingsFiles() {
 }
 
 async function listOpencodeModels() {
-	const proc = Bun.spawn(['opencode', 'models'], {
-		stdin: 'ignore',
-		stdout: 'pipe',
-		stderr: 'pipe',
-		env: { ...Bun.env },
+	const { stdout, stderr, exitCode } = await runCommand('opencode', ['models'], {
+		env: { ...process.env },
+		timeoutMs: 8000,
 	})
-	const timeout = setTimeout(() => proc.kill(), 8000)
-	try {
-		const [stdout, stderr, exitCode] = await Promise.all([
-			new Response(proc.stdout).text(),
-			new Response(proc.stderr).text(),
-			proc.exited,
-		])
-		return exitCode === 0 ? `${stdout}\n${stderr}` : ''
-	} finally {
-		clearTimeout(timeout)
-	}
+	return exitCode === 0 ? `${stdout}\n${stderr}` : ''
 }
 
 function parseProviderModels(output: string): AvailablePiModel[] {
@@ -285,7 +279,9 @@ function defaultClaudeModels(): AvailablePiModel[] {
 }
 
 function defaultOpencodeModels(): AvailablePiModel[] {
-	return [{ id: 'opencode/default', label: 'opencode/default', provider: 'opencode', model: 'default' }]
+	return [
+		{ id: 'opencode/default', label: 'opencode/default', provider: 'opencode', model: 'default' },
+	]
 }
 
 function listAvailableModelsForCodex(): AvailablePiModel[] {
@@ -294,13 +290,7 @@ function listAvailableModelsForCodex(): AvailablePiModel[] {
 }
 
 function defaultCodexModels(): AvailablePiModel[] {
-	return [
-		'gpt-5.5',
-		'gpt-5.4',
-		'gpt-5.4-mini',
-		'gpt-5.3-codex',
-		'gpt-5.2',
-	].map((model) => ({
+	return ['gpt-5.5', 'gpt-5.4', 'gpt-5.4-mini', 'gpt-5.3-codex', 'gpt-5.2'].map((model) => ({
 		id: model,
 		label: model,
 		provider: 'codex',
@@ -310,7 +300,9 @@ function defaultCodexModels(): AvailablePiModel[] {
 
 function readCodexModelsCache(): AvailablePiModel[] {
 	try {
-		const cache = JSON.parse(readFileSync(join(getHomeDir(), '.codex', 'models_cache.json'), 'utf8')) as {
+		const cache = JSON.parse(
+			readFileSync(join(getHomeDir(), '.codex', 'models_cache.json'), 'utf8'),
+		) as {
 			models?: Array<{
 				display_name?: unknown
 				slug?: unknown
@@ -407,15 +399,15 @@ function getInstructionsPath() {
 
 function getConfigDir() {
 	const baseDir =
-		Bun.env.XDG_CONFIG_HOME ??
-		(Bun.env.HOME ? join(Bun.env.HOME, '.config') : join(process.cwd(), '.config'))
+		process.env.XDG_CONFIG_HOME ??
+		(process.env.HOME ? join(process.env.HOME, '.config') : join(process.cwd(), '.config'))
 	return join(baseDir, 'pr-review-agent')
 }
 
 function getPiAgentDir() {
-	return Bun.env.PI_CODING_AGENT_DIR ?? (getHomeDir() ? join(getHomeDir(), '.pi', 'agent') : '')
+	return process.env.PI_CODING_AGENT_DIR ?? (getHomeDir() ? join(getHomeDir(), '.pi', 'agent') : '')
 }
 
 function getHomeDir() {
-	return Bun.env.HOME ?? ''
+	return process.env.HOME ?? ''
 }

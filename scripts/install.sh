@@ -58,7 +58,7 @@ Icon=$icon_path
 Terminal=false
 Type=Application
 Categories=Development;
-StartupWMClass=ElectrobunKitchenSink-dev
+StartupWMClass=PR Review Agent
 EOF
   command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$DESKTOP_DIR" >/dev/null 2>&1 || true
   log "installed launcher: $BIN_DIR/$APP_NAME"

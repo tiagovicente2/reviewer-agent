@@ -2,36 +2,36 @@
 
 ## Prerequisites
 
-- [Bun](https://bun.sh/)
+- [pnpm](https://pnpm.io/)
 - GitHub CLI (`gh`)
 - A supported review agent if you want to test generation locally: Pi, Claude, opencode, or Codex.
 
 ## Install dependencies
 
 ```bash
-bun install
+pnpm install
 ```
 
 ## Run locally
 
-Electrobun watch mode:
+Electron development mode:
 
 ```bash
-bun run dev
+pnpm run dev
 ```
 
-Vite HMR + Electrobun:
+Vite HMR + Electron:
 
 ```bash
-bun run dev:hmr
+pnpm run dev:hmr
 ```
 
 ## Checks
 
 ```bash
-bun run typecheck
-bun run lint
-bun run check
+pnpm run typecheck
+pnpm run lint
+pnpm run check
 ```
 
 ## Build
@@ -39,23 +39,23 @@ bun run check
 Renderer build:
 
 ```bash
-bun run build
+pnpm run build
 ```
 
 Desktop app build:
 
 ```bash
-bun run build:app
+pnpm run build:app
 ```
 
-The packaged app is written under `build/`.
+The packaged app is written under `artifacts/`.
 
 ## Scripts
 
-- `bun run panda:build` — generate Panda CSS system and styles.
-- `bun run typecheck` — generate Panda output and run TypeScript checks.
-- `bun run build` — generate Panda output and build the React renderer.
-- `bun run build:app` — generate Panda output and build the Electrobun app.
-- `bun run lint` — lint with Biome.
-- `bun run format` — format with Biome.
-- `bun run check` — run Biome lint and format checks.
+- `pnpm run panda:build` — generate Panda CSS system and styles.
+- `pnpm run typecheck` — generate Panda output and run TypeScript checks.
+- `pnpm run build` — generate Panda output and build the React renderer plus Electron entrypoints.
+- `pnpm run build:app` — generate Panda output and package the Electron app.
+- `pnpm run lint` — lint with Biome.
+- `pnpm run format` — format with Biome.
+- `pnpm run check` — run Biome lint and format checks.

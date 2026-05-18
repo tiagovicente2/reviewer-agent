@@ -22,7 +22,7 @@ import type {
 } from './settings'
 
 export type AppRPCSchema = {
-	bun: {
+	main: {
 		requests: {
 			getAppSettings: {
 				params: undefined
@@ -130,7 +130,7 @@ export type AppRPCSchema = {
 		}
 		messages: Record<never, never>
 	}
-	webview: {
+	renderer: {
 		requests: Record<never, never>
 		messages: {
 			systemColorModeChanged: { colorMode: 'dark' | 'light' }
