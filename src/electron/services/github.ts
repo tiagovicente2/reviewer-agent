@@ -5,6 +5,7 @@ import type {
 	GitHubPullRequestDetails,
 	GitHubReviewRequest,
 } from '@/shared/github'
+import { getHomePath } from '../paths'
 import { runCommand, runCommandBuffer } from '../process'
 import {
 	getCachedPullRequestDetails,
@@ -25,7 +26,7 @@ async function runGh(
 	options: { disablePrompt?: boolean } = {},
 ): Promise<CommandResult> {
 	return runCommand('gh', args, {
-		cwd: process.env.HOME ?? '/tmp',
+		cwd: getHomePath(),
 		input,
 		env: {
 			...process.env,
@@ -40,7 +41,7 @@ async function runGhBinary(args: string[]): Promise<{
 	stderr: string
 }> {
 	return runCommandBuffer('gh', args, {
-		cwd: process.env.HOME ?? '/tmp',
+		cwd: getHomePath(),
 		env: { ...process.env, GH_PROMPT_DISABLED: '1' },
 	})
 }

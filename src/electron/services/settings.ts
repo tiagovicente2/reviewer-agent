@@ -8,6 +8,7 @@ import type {
 	ReviewLanguage,
 	SaveAppSettingsParams,
 } from '@/shared/settings'
+import { getHomePath, getLegacyConfigDir } from '../paths'
 import { runCommand } from '../process'
 
 const settingsPath = getSettingsPath()
@@ -398,10 +399,7 @@ function getInstructionsPath() {
 }
 
 function getConfigDir() {
-	const baseDir =
-		process.env.XDG_CONFIG_HOME ??
-		(process.env.HOME ? join(process.env.HOME, '.config') : join(process.cwd(), '.config'))
-	return join(baseDir, 'pr-review-agent')
+	return getLegacyConfigDir()
 }
 
 function getPiAgentDir() {
@@ -409,5 +407,5 @@ function getPiAgentDir() {
 }
 
 function getHomeDir() {
-	return process.env.HOME ?? ''
+	return getHomePath()
 }

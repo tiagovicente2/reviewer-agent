@@ -108,7 +108,7 @@ async function createWindow() {
 }
 
 app.whenReady().then(async () => {
-	Menu.setApplicationMenu(null)
+	configureApplicationMenu()
 	await createWindow()
 	nativeTheme.on('updated', () =>
 		sendToRenderers('systemColorModeChanged', { colorMode: getSystemColorMode() }),
@@ -121,6 +121,34 @@ app.whenReady().then(async () => {
 app.on('window-all-closed', () => {
 	if (process.platform !== 'darwin') app.quit()
 })
+
+function configureApplicationMenu() {
+	if (process.platform !== 'darwin') {
+		Menu.setApplicationMenu(null)
+		return
+	}
+
+	Menu.setApplicationMenu(
+		Menu.buildFromTemplate([
+			{
+				label: app.name,
+				submenu: [{ role: 'about' }, { type: 'separator' }, { role: 'quit' }],
+			},
+			{
+				label: 'Edit',
+				submenu: [
+					{ role: 'undo' },
+					{ role: 'redo' },
+					{ type: 'separator' },
+					{ role: 'cut' },
+					{ role: 'copy' },
+					{ role: 'paste' },
+					{ role: 'selectAll' },
+				],
+			},
+		]),
+	)
+}
 
 function getSystemColorMode(): 'dark' | 'light' {
 	return nativeTheme.shouldUseDarkColors ? 'dark' : 'light'
