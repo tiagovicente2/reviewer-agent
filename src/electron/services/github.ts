@@ -20,6 +20,14 @@ type CommandResult = {
 	stderr: string
 }
 
+type CachedAuthStatus = {
+	status: GitHubAuthStatus
+	checkedAt: number
+}
+
+const AUTH_STATUS_CACHE_TTL_MS = 30_000
+let cachedAuthStatus: CachedAuthStatus | null = null
+
 async function runGh(
 	args: string[],
 	input?: string,
@@ -126,6 +134,16 @@ function getAuthorLogin(author: unknown): string {
 }
 
 export async function getGitHubAuthStatus(): Promise<GitHubAuthStatus> {
+	if (cachedAuthStatus && Date.now() - cachedAuthStatus.checkedAt < AUTH_STATUS_CACHE_TTL_MS) {
+		return cachedAuthStatus.status
+	}
+
+	const status = await readGitHubAuthStatus()
+	cachedAuthStatus = { status, checkedAt: Date.now() }
+	return status
+}
+
+async function readGitHubAuthStatus(): Promise<GitHubAuthStatus> {
 	const ghInstalled = await isGhInstalled()
 
 	if (!ghInstalled) {
@@ -163,6 +181,7 @@ export async function getGitHubAuthStatus(): Promise<GitHubAuthStatus> {
 }
 
 export async function startGitHubLogin(): Promise<GitHubLoginResult> {
+	cachedAuthStatus = null
 	const before = await getGitHubAuthStatus()
 	if (!before.ghInstalled) {
 		return {
@@ -195,6 +214,7 @@ export async function startGitHubLogin(): Promise<GitHubLoginResult> {
 		'\n',
 		{ disablePrompt: false },
 	)
+	cachedAuthStatus = null
 	const status = await getGitHubAuthStatus()
 
 	return {
