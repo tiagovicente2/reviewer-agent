@@ -5,6 +5,7 @@ import { useColorMode } from '@/app/hooks/useColorMode'
 import { useErrorLog } from '@/app/hooks/useErrorLog'
 import { usePullRequestDetails } from '@/app/hooks/usePullRequestDetails'
 import { isPullRequestQuery, useReviewRequests } from '@/app/hooks/useReviewRequests'
+import { useUpdateStatus } from '@/app/hooks/useUpdateStatus'
 import { OnboardingPage } from '@/features/auth/components/OnboardingPage'
 import { OpeningScreen } from '@/features/auth/components/OpeningScreen'
 import { ErrorLogPage } from '@/features/errors/components/ErrorLogPage'
@@ -43,6 +44,7 @@ function App() {
 	const { clearErrors, dismissError, errors: errorLogs, logError } = useErrorLog(openErrorLog)
 
 	const { agentAvailability, agentsState, refreshAgents } = useAgentAvailability()
+	const { updateStatus } = useUpdateStatus()
 	const {
 		activeSearchQuery,
 		loadReviewRequests,
@@ -125,7 +127,6 @@ function App() {
 		return () => window.clearTimeout(timeout)
 	}, [query])
 
-
 	const displayedReviews = useMemo(() => {
 		const normalizedQuery = debouncedQuery.trim().toLowerCase()
 		if (!normalizedQuery) return reviews
@@ -191,7 +192,8 @@ function App() {
 
 	const currentAuthStatus = authStatus ?? emptyAuthStatus
 	const setupLoading = settingsState === 'loading' || authState === 'loading'
-	const setupError = startupError || (settingsState === 'error' ? 'Could not load app settings.' : '')
+	const setupError =
+		startupError || (settingsState === 'error' ? 'Could not load app settings.' : '')
 	const shouldShowOpeningScreen =
 		!showErrorLog &&
 		!showSettings &&
@@ -269,6 +271,7 @@ function App() {
 					setSearchMode={setSearchMode}
 					setSelectedReviewId={setSelectedReviewId}
 					setSummary={setSummary}
+					updateStatus={updateStatus}
 				/>
 			)}
 		</Box>

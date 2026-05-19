@@ -20,6 +20,7 @@ import type {
 	CodeAgent,
 	SaveAppSettingsParams,
 } from './settings'
+import type { UpdateResult, UpdateStatus } from './update'
 
 export type AppRPCSchema = {
 	main: {
@@ -47,6 +48,14 @@ export type AppRPCSchema = {
 			getSystemColorMode: {
 				params: undefined
 				response: 'dark' | 'light'
+			}
+			getUpdateStatus: {
+				params: undefined
+				response: UpdateStatus
+			}
+			installUpdate: {
+				params: undefined
+				response: UpdateResult
 			}
 			getGitHubAuthStatus: {
 				params: undefined

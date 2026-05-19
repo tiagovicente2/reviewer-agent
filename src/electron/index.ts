@@ -30,6 +30,7 @@ import {
 	listAvailablePiModels,
 	saveAppSettings,
 } from './services/settings'
+import { getUpdateStatus, installUpdate } from './services/update'
 import {
 	closeWindow,
 	minimizeWindow,
@@ -58,6 +59,8 @@ const handlers: Handlers = {
 	listAvailablePiModels,
 	listAgentAvailability,
 	getSystemColorMode,
+	getUpdateStatus,
+	installUpdate,
 	getGitHubAuthStatus,
 	startGitHubLogin,
 	listGitHubReviewRequests,

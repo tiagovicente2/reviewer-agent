@@ -1,10 +1,12 @@
 import { Box, Stack } from 'styled-system/jsx'
 import type { AsyncState } from '@/app/types'
 import type { GitHubReviewRequest } from '@/shared/github'
+import type { UpdateStatus } from '@/shared/update'
 import { ReviewInboxHeader } from './inbox/ReviewInboxHeader'
 import { ReviewRequestList } from './inbox/ReviewRequestList'
 import { ReviewSearchBar } from './inbox/ReviewSearchBar'
 import type { SearchMode } from './inbox/types'
+import { UpdateHint } from './UpdateHint'
 
 export function ReviewInbox({
 	canReviewPrQuery,
@@ -23,6 +25,7 @@ export function ReviewInbox({
 	selectedReviewId,
 	setQuery,
 	setSearchMode,
+	updateStatus,
 	username,
 }: {
 	canReviewPrQuery: boolean
@@ -41,6 +44,7 @@ export function ReviewInbox({
 	selectedReviewId: string | null
 	setQuery: (query: string) => void
 	setSearchMode: (mode: SearchMode) => void
+	updateStatus: UpdateStatus | null
 	username?: string
 }) {
 	return (
@@ -53,6 +57,7 @@ export function ReviewInbox({
 			p="5"
 		>
 			<Stack gap="5">
+				<UpdateHint onOpenSettings={onOpenSettings} status={updateStatus} />
 				<ReviewInboxHeader
 					onOpenSettings={onOpenSettings}
 					onRefresh={onRefresh}

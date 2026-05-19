@@ -1,8 +1,13 @@
 import { Grid } from 'styled-system/jsx'
+import type { SearchMode } from '@/features/reviews/components/inbox/types'
 import { ReviewDetail } from '@/features/reviews/components/ReviewDetail'
 import { ReviewInbox } from '@/features/reviews/components/ReviewInbox'
-import type { SearchMode } from '@/features/reviews/components/inbox/types'
-import type { GitHubAuthStatus, GitHubPullRequestDetails, GitHubReviewRequest } from '@/shared/github'
+import type {
+	GitHubAuthStatus,
+	GitHubPullRequestDetails,
+	GitHubReviewRequest,
+} from '@/shared/github'
+import type { UpdateStatus } from '@/shared/update'
 import type { AsyncState, ColorMode } from './types'
 
 type MainReviewScreenProps = {
@@ -14,7 +19,7 @@ type MainReviewScreenProps = {
 	detailError: string
 	detailState: AsyncState
 	displayedReviews: GitHubReviewRequest[]
-	loadReviewRequests: () => void | Promise<void | boolean>
+	loadReviewRequests: () => undefined | Promise<undefined | boolean>
 	onClearSearch: () => void
 	onOpenSettings: () => void
 	onReviewPr: () => void | Promise<void>
@@ -30,6 +35,7 @@ type MainReviewScreenProps = {
 	setSearchMode: (mode: SearchMode) => void
 	setSelectedReviewId: (id: string) => void
 	setSummary: (summary: string) => void
+	updateStatus: UpdateStatus | null
 }
 
 export function MainReviewScreen({
@@ -57,6 +63,7 @@ export function MainReviewScreen({
 	setSearchMode,
 	setSelectedReviewId,
 	setSummary,
+	updateStatus,
 }: MainReviewScreenProps) {
 	return (
 		<Grid
@@ -84,6 +91,7 @@ export function MainReviewScreen({
 				selectedReviewId={selectedReviewId}
 				setQuery={setQuery}
 				setSearchMode={setSearchMode}
+				updateStatus={updateStatus}
 				username={currentAuthStatus.username}
 			/>
 			<ReviewDetail

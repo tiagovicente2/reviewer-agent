@@ -6,14 +6,11 @@ import type { AsyncState } from '@/app/types'
 import { getErrorMessage } from '@/app/utils'
 import { StatusCard } from '@/components/common'
 import { Button } from '@/components/ui'
-import type {
-	AgentAvailability,
-	AppSettings,
-	AvailablePiModel,
-} from '@/shared/settings'
+import type { AgentAvailability, AppSettings, AvailablePiModel } from '@/shared/settings'
 import { AgentStatusCard } from './AgentStatusCard'
 import { PreferencesCard } from './PreferencesCard'
 import { ReviewerInstructionsCard } from './ReviewerInstructionsCard'
+import { UpdateStatusCard } from './UpdateStatusCard'
 
 export function SettingsPage({
 	onBack,
@@ -170,6 +167,7 @@ export function SettingsPage({
 								agentsState={agentsState}
 								onRefresh={() => void refreshAgentAvailability()}
 							/>
+							<UpdateStatusCard />
 						</Stack>
 
 						<ReviewerInstructionsCard
