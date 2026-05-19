@@ -39,15 +39,21 @@ mkdir -p "$INSTALL_DIR"
 tar -xzf "$tmp_dir/$artifact" -C "$INSTALL_DIR" --strip-components=1
 
 if [[ "$platform" == "linux" ]]; then
-  launcher="$INSTALL_DIR/bin/launcher"
-  [[ -x "$launcher" ]] || fail "launcher not found at $launcher"
+  launcher="$INSTALL_DIR/$APP_NAME"
+  if [[ ! -x "$launcher" ]]; then
+    launcher="$(find "$INSTALL_DIR" -maxdepth 2 -type f -perm -111 \( -name "$APP_NAME" -o -name 'PR Review Agent' \) | head -n 1 || true)"
+  fi
+  [[ -n "$launcher" && -x "$launcher" ]] || fail "app executable not found under $INSTALL_DIR"
   mkdir -p "$BIN_DIR"
   ln -sfn "$launcher" "$BIN_DIR/$APP_NAME"
 
   mkdir -p "$DESKTOP_DIR"
-  icon_path="$INSTALL_DIR/Resources/appIcon.png"
+  icon_path="$INSTALL_DIR/resources/app/icon.png"
   if [[ ! -f "$icon_path" ]]; then
     icon_path="$INSTALL_DIR/Resources/app/icon.png"
+  fi
+  if [[ ! -f "$icon_path" ]]; then
+    icon_path="$APP_NAME"
   fi
   cat > "$DESKTOP_DIR/pr-review-agent.desktop" <<EOF
 [Desktop Entry]

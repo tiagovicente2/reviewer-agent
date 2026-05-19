@@ -19,13 +19,14 @@ try {
   Expand-Archive -Path $ZipPath -DestinationPath $InstallDir -Force
 
   $Nested = Get-ChildItem -Path $InstallDir -Directory | Select-Object -First 1
-  if ($Nested -and (Test-Path (Join-Path $Nested.FullName 'bin'))) {
+  if ($Nested -and -not (Get-ChildItem -Path $InstallDir -File | Select-Object -First 1)) {
     Get-ChildItem -Path $Nested.FullName -Force | Move-Item -Destination $InstallDir -Force
     Remove-Item -Recurse -Force $Nested.FullName
   }
 
-  $Launcher = Get-ChildItem -Path $InstallDir -Recurse -File -Filter 'launcher.exe' | Select-Object -First 1
-  if (-not $Launcher) { throw 'launcher.exe not found in release artifact' }
+  $Launcher = Get-ChildItem -Path $InstallDir -Recurse -File -Filter 'pr-review-agent.exe' | Select-Object -First 1
+  if (-not $Launcher) { $Launcher = Get-ChildItem -Path $InstallDir -Recurse -File -Filter 'PR Review Agent.exe' | Select-Object -First 1 }
+  if (-not $Launcher) { throw 'app executable not found in release artifact' }
 
   $StartMenu = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs'
   $ShortcutPath = Join-Path $StartMenu 'PR Review Agent.lnk'
