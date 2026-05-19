@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { css } from 'styled-system/css'
 import { Box, HStack, Stack } from 'styled-system/jsx'
 import { appRpc } from '@/app/rpc'
 import { useToast } from '@/app/toast'
@@ -10,7 +11,9 @@ import type { AgentAvailability, AppSettings, AvailablePiModel } from '@/shared/
 import { AgentStatusCard } from './AgentStatusCard'
 import { PreferencesCard } from './PreferencesCard'
 import { ReviewerInstructionsCard } from './ReviewerInstructionsCard'
-import { UpdateStatusCard } from './UpdateStatusCard'
+import { CacheModal } from './CacheModal'
+import { UpdateModal } from './UpdateModal'
+import type { UpdateStatus } from '@/shared/update'
 
 export function SettingsPage({
 	onBack,
@@ -101,6 +104,14 @@ export function SettingsPage({
 		? agentAvailability.find((agent) => agent.agent === settings.codeAgent)
 		: undefined
 
+	const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false)
+	const [isCacheModalOpen, setIsCacheModalOpen] = useState(false)
+	const [updateStatus, setUpdateStatus] = useState<UpdateStatus | null>(null)
+
+	useEffect(() => {
+		appRpc.request.getUpdateStatus().then(setUpdateStatus).catch(Object)
+	}, [])
+
 	const save = async () => {
 		if (!settings) return
 		setState('loading')
@@ -130,6 +141,28 @@ export function SettingsPage({
 						</Box>
 					</Box>
 					<HStack gap="2" flexShrink="0">
+						<IconButton ariaLabel="Local cache" onClick={() => setIsCacheModalOpen(true)}>
+							<CacheIcon />
+						</IconButton>
+						<Box position="relative">
+							<IconButton
+								ariaLabel="Check for updates"
+								onClick={() => setIsUpdateModalOpen(true)}
+							>
+								<UpdateIcon />
+							</IconButton>
+							{updateStatus?.available && (
+								<Box
+									bg="cyan.9"
+									borderRadius="full"
+									h="2.5"
+									position="absolute"
+									right="1"
+									top="1"
+									w="2.5"
+								/>
+							)}
+						</Box>
 						<Button variant="outline" onClick={onOpenErrorLog}>
 							Error log
 						</Button>
@@ -167,7 +200,6 @@ export function SettingsPage({
 								agentsState={agentsState}
 								onRefresh={() => void refreshAgentAvailability()}
 							/>
-							<UpdateStatusCard />
 						</Stack>
 
 						<ReviewerInstructionsCard
@@ -182,6 +214,87 @@ export function SettingsPage({
 					</Box>
 				) : null}
 			</Stack>
+
+			{isUpdateModalOpen && <UpdateModal onClose={() => setIsUpdateModalOpen(false)} />}
+			{isCacheModalOpen && <CacheModal onClose={() => setIsCacheModalOpen(false)} />}
 		</Box>
+	)
+}
+
+function IconButton({
+	ariaLabel,
+	children,
+	onClick,
+}: {
+	ariaLabel: string
+	children: React.ReactNode
+	onClick: () => void
+}) {
+	return (
+		<button
+			type="button"
+			aria-label={ariaLabel}
+			onClick={onClick}
+			className={css({
+				alignItems: 'center',
+				bg: 'transparent',
+				border: '1px solid',
+				borderColor: 'gray.7',
+				borderRadius: 'l2',
+				color: 'fg.muted',
+				cursor: 'pointer',
+				display: 'inline-flex',
+				h: '10',
+				justifyContent: 'center',
+				p: '0',
+				transition: 'all 120ms ease',
+				w: '10',
+				_hover: { bg: 'gray.3', color: 'fg.default' },
+			})}
+		>
+			{children}
+		</button>
+	)
+}
+
+function UpdateIcon() {
+	return (
+		<svg
+			aria-hidden="true"
+			fill="none"
+			height="20"
+			stroke="currentColor"
+			strokeLinecap="round"
+			strokeLinejoin="round"
+			strokeWidth="2"
+			viewBox="0 0 24 24"
+			width="20"
+		>
+			<circle cx="12" cy="12" r="10" />
+			<path d="m16 12-4-4-4 4" />
+			<path d="M12 16V8" />
+		</svg>
+	)
+}
+
+function CacheIcon() {
+	return (
+		<svg
+			aria-hidden="true"
+			fill="none"
+			height="20"
+			stroke="currentColor"
+			strokeLinecap="round"
+			strokeLinejoin="round"
+			strokeWidth="2"
+			viewBox="0 0 24 24"
+			width="20"
+		>
+			<path d="M3 6h18" />
+			<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+			<path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+			<line x1="10" x2="10" y1="11" y2="17" />
+			<line x1="14" x2="14" y1="11" y2="17" />
+		</svg>
 	)
 }

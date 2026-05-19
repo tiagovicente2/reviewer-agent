@@ -7,7 +7,11 @@ import { getErrorMessage } from '@/app/utils'
 import { Button } from '@/components/ui'
 import type { UpdateStatus } from '@/shared/update'
 
-export function UpdateStatusCard() {
+export function UpdateModal({
+	onClose,
+}: {
+	onClose: () => void
+}) {
 	const [status, setStatus] = useState<UpdateStatus | null>(null)
 	const [state, setState] = useState<AsyncState>('loading')
 	const [installing, setInstalling] = useState(false)
@@ -58,37 +62,66 @@ export function UpdateStatusCard() {
 				: 'Checking for updates...'
 
 	return (
-		<Stack bg="gray.2" borderRadius="l2" gap="3" p="4">
-			<HStack alignItems="flex-start" justify="space-between" gap="3">
-				<Box>
-					<Box fontWeight="semibold">{title}</Box>
-					<Box color={status?.error ? 'red.11' : 'fg.muted'} mt="1" textStyle="sm">
-						{body}
-					</Box>
-				</Box>
-				<Box
-					bg={status?.available ? 'cyan.3' : 'gray.3'}
-					borderRadius="full"
-					color={status?.available ? 'cyan.11' : 'fg.muted'}
-					fontWeight="medium"
-					px="2.5"
-					py="1"
-					textStyle="xs"
-					whiteSpace="nowrap"
-				>
-					{status?.available ? 'available' : state === 'loading' ? 'checking' : 'current'}
-				</Box>
-			</HStack>
-			<HStack gap="2">
-				<Button variant="outline" loading={state === 'loading'} onClick={() => void refresh()}>
-					Check again
-				</Button>
-				{status?.available ? (
-					<Button loading={installing} onClick={update}>
-						Install update
-					</Button>
-				) : null}
-			</HStack>
-		</Stack>
+		<Box
+			position="fixed"
+			inset="0"
+			bg="black/40"
+			display="flex"
+			alignItems="center"
+			justifyContent="center"
+			zIndex="modal"
+			onClick={onClose}
+		>
+			<Box
+				bg="gray.1"
+				borderRadius="l3"
+				borderWidth="1px"
+				borderColor="gray.4"
+				boxShadow="2xl"
+				maxW="24rem"
+				w="100%"
+				p="6"
+				onClick={(e) => e.stopPropagation()}
+			>
+				<Stack gap="4">
+					<HStack justify="space-between" alignItems="flex-start">
+						<Box>
+							<Box fontWeight="bold" textStyle="lg">
+								{title}
+							</Box>
+							<Box color={status?.error ? 'red.11' : 'fg.muted'} mt="1" textStyle="sm">
+								{body}
+							</Box>
+						</Box>
+						<Box
+							bg={status?.available ? 'cyan.3' : 'gray.3'}
+							borderRadius="full"
+							color={status?.available ? 'cyan.11' : 'fg.muted'}
+							fontWeight="medium"
+							px="2.5"
+							py="1"
+							textStyle="xs"
+							whiteSpace="nowrap"
+						>
+							{status?.available ? 'available' : state === 'loading' ? 'checking' : 'current'}
+						</Box>
+					</HStack>
+
+					<HStack gap="2" justify="flex-end" mt="2">
+						<Button variant="outline" onClick={onClose}>
+							Close
+						</Button>
+						<Button variant="outline" loading={state === 'loading'} onClick={() => void refresh()}>
+							Check again
+						</Button>
+						{status?.available ? (
+							<Button loading={installing} onClick={update}>
+								Install update
+							</Button>
+						) : null}
+					</HStack>
+				</Stack>
+			</Box>
+		</Box>
 	)
 }
