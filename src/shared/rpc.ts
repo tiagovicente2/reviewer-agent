@@ -1,3 +1,4 @@
+import type { CacheStats, ClearCacheResult } from './cache'
 import type {
 	GitHubAuthStatus,
 	GitHubLoginResult,
@@ -52,6 +53,14 @@ export type AppRPCSchema = {
 			getUpdateStatus: {
 				params: undefined
 				response: UpdateStatus
+			}
+			getCacheStats: {
+				params: undefined
+				response: CacheStats
+			}
+			clearAppCache: {
+				params: undefined
+				response: ClearCacheResult
 			}
 			installUpdate: {
 				params: undefined

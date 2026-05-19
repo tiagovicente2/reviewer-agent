@@ -1,10 +1,10 @@
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync } from 'node:fs'
-import { writeFile } from 'node:fs/promises'
+import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import type { GitHubPullRequestDetails } from '@/shared/github'
 import type { PiGeneratedReview } from '@/shared/review'
 import { getLegacyDataDir, getUserDataPath } from '../paths'
+import { pruneRecordByUpdatedAt, writeJsonFileAtomically } from './json-store'
 
 type StoredReview = {
 	repo: string
@@ -27,6 +27,8 @@ type LegacyReviewRow = {
 const storePath = join(getUserDataPath(), 'generated-reviews.json')
 mkdirSync(getUserDataPath(), { recursive: true })
 
+const MAX_GENERATED_REVIEWS = 200
+
 const store = loadStore()
 let writeQueued = false
 
@@ -44,6 +46,7 @@ export function saveGeneratedReview(params: {
 		createdAt: store[id]?.createdAt ?? now,
 		updatedAt: now,
 	}
+	pruneStore()
 	queueWriteStore()
 	return params.review
 }
@@ -62,7 +65,7 @@ function loadStore(): Record<string, StoredReview> {
 	} catch {
 		const migratedStore = migrateLegacyReviews()
 		if (Object.keys(migratedStore).length > 0) {
-			void writeFile(storePath, JSON.stringify(migratedStore)).catch((error: unknown) => {
+			void writeJsonFileAtomically(storePath, migratedStore).catch((error: unknown) => {
 				console.error('Could not persist migrated generated reviews.', error)
 			})
 		}
@@ -114,10 +117,28 @@ function queueWriteStore() {
 	writeQueued = true
 	queueMicrotask(() => {
 		writeQueued = false
-		void writeFile(storePath, JSON.stringify(store)).catch((error: unknown) => {
+		void writeJsonFileAtomically(storePath, store).catch((error: unknown) => {
 			console.error('Could not persist generated reviews.', error)
 		})
 	})
+}
+
+export function getGeneratedReviewStoreStats() {
+	return { generatedReviews: Object.keys(store).length }
+}
+
+export function clearGeneratedReviewStore(): { removed: number } {
+	const removed = Object.keys(store).length
+	for (const key of Object.keys(store)) delete store[key]
+	rmSync(storePath, { force: true })
+	return { removed }
+}
+
+function pruneStore() {
+	const pruned = pruneRecordByUpdatedAt(store, MAX_GENERATED_REVIEWS)
+	for (const key of Object.keys(store)) {
+		if (!pruned[key]) delete store[key]
+	}
 }
 
 function getReviewStoreKey(params: { repo: string; pullRequestNumber: number; headSha: string }) {

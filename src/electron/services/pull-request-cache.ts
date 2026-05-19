@@ -1,8 +1,8 @@
-import { mkdirSync, readFileSync } from 'node:fs'
-import { writeFile } from 'node:fs/promises'
+import { mkdirSync, readFileSync, rmSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import type { GitHubPullRequestDetails } from '@/shared/github'
 import { getUserDataPath } from '../paths'
+import { pruneRecordByUpdatedAt, writeJsonFileAtomically } from './json-store'
 
 type DetailsEntry = {
 	repo: string
@@ -29,6 +29,9 @@ type PullRequestCache = {
 
 const cachePath = join(getUserDataPath(), 'pull-request-cache.json')
 mkdirSync(dirname(cachePath), { recursive: true })
+
+const MAX_PULL_REQUEST_DETAILS = 300
+const MAX_PULL_REQUEST_DIFFS = 150
 
 const cache = loadCache()
 let writeQueued = false
@@ -64,6 +67,7 @@ export function saveCachedPullRequestDetails(details: GitHubPullRequestDetails) 
 		createdAt: cache.details[id]?.createdAt ?? now,
 		updatedAt: now,
 	}
+	pruneCache()
 	queueWriteCache()
 }
 
@@ -91,6 +95,7 @@ export function saveCachedPullRequestDiff(params: {
 		createdAt: cache.diffs[id]?.createdAt ?? now,
 		updatedAt: now,
 	}
+	pruneCache()
 	queueWriteCache()
 }
 
@@ -108,10 +113,31 @@ function queueWriteCache() {
 	writeQueued = true
 	queueMicrotask(() => {
 		writeQueued = false
-		void writeFile(cachePath, JSON.stringify(cache)).catch((error: unknown) => {
+		void writeJsonFileAtomically(cachePath, cache).catch((error: unknown) => {
 			console.error('Could not persist pull request cache.', error)
 		})
 	})
+}
+
+export function getPullRequestCacheStats() {
+	return {
+		pullRequestDetails: Object.keys(cache.details).length,
+		pullRequestDiffs: Object.keys(cache.diffs).length,
+	}
+}
+
+export function clearPullRequestCache(): { removedDetails: number; removedDiffs: number } {
+	const removedDetails = Object.keys(cache.details).length
+	const removedDiffs = Object.keys(cache.diffs).length
+	cache.details = {}
+	cache.diffs = {}
+	rmSync(cachePath, { force: true })
+	return { removedDetails, removedDiffs }
+}
+
+function pruneCache() {
+	cache.details = pruneRecordByUpdatedAt(cache.details, MAX_PULL_REQUEST_DETAILS)
+	cache.diffs = pruneRecordByUpdatedAt(cache.diffs, MAX_PULL_REQUEST_DIFFS)
 }
 
 function getPullRequestCacheKey(params: {
