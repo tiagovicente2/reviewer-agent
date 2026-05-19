@@ -40,7 +40,7 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
-      - run: pnpm run build:app
+      - run: pnpm run build:canary
 
       - name: Locate app bundle
         id: locate
