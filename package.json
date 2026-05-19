@@ -65,6 +65,12 @@
 			"dist/**/*",
 			"package.json"
 		],
+		"extraResources": [
+			{
+				"from": "assets/icon.png",
+				"to": "assets/icon.png"
+			}
+		],
 		"directories": {
 			"output": "artifacts"
 		},

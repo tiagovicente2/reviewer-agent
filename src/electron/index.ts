@@ -40,6 +40,9 @@ import {
 const DEV_SERVER_URL = 'http://localhost:5173'
 const isDev = !app.isPackaged
 const preloadPath = fileURLToPath(new URL('./preload.cjs', import.meta.url))
+const appIconPath = isDev
+	? join(process.cwd(), 'assets', 'icon.png')
+	: join(process.resourcesPath, 'assets', 'icon.png')
 
 type MainRequests = AppRPCSchema['main']['requests']
 type Handlers = {
@@ -85,6 +88,7 @@ for (const [name, handler] of Object.entries(handlers) as [
 async function createWindow() {
 	const window = new BrowserWindow({
 		title: 'PR Review Agent',
+		icon: appIconPath,
 		width: 1280,
 		height: 820,
 		x: 120,

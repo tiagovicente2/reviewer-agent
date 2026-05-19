@@ -48,7 +48,10 @@ if [[ "$platform" == "linux" ]]; then
   ln -sfn "$launcher" "$BIN_DIR/$APP_NAME"
 
   mkdir -p "$DESKTOP_DIR"
-  icon_path="$INSTALL_DIR/resources/app/icon.png"
+  icon_path="$INSTALL_DIR/resources/assets/icon.png"
+  if [[ ! -f "$icon_path" ]]; then
+    icon_path="$INSTALL_DIR/resources/app/icon.png"
+  fi
   if [[ ! -f "$icon_path" ]]; then
     icon_path="$INSTALL_DIR/Resources/app/icon.png"
   fi

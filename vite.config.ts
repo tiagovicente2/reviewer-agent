@@ -8,6 +8,7 @@ const projectRoot = fileURLToPath(new URL('.', import.meta.url))
 export default defineConfig({
 	plugins: [react()],
 	root: 'src/mainview',
+	base: './',
 	build: {
 		outDir: '../../dist',
 		emptyOutDir: true,
