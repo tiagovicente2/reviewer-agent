@@ -89,6 +89,8 @@ async function createWindow() {
 	const window = new BrowserWindow({
 		title: 'PR Review Agent',
 		icon: appIconPath,
+		backgroundColor: getWindowBackgroundColor(),
+		show: false,
 		width: 1280,
 		height: 820,
 		x: 120,
@@ -101,6 +103,7 @@ async function createWindow() {
 	})
 
 	setMainWindow(window)
+	window.once('ready-to-show', () => window.show())
 
 	if (isDev && (await canReachDevServer())) {
 		await window.loadURL(DEV_SERVER_URL)
@@ -156,6 +159,10 @@ function configureApplicationMenu() {
 
 function getSystemColorMode(): 'dark' | 'light' {
 	return nativeTheme.shouldUseDarkColors ? 'dark' : 'light'
+}
+
+function getWindowBackgroundColor() {
+	return nativeTheme.shouldUseDarkColors ? '#111113' : '#fcfcfd'
 }
 
 async function openExternalUrl(params: { url: string }): Promise<{ ok: true }> {

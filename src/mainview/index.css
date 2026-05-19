@@ -10,6 +10,13 @@ body,
 body {
 	margin: 0;
 	overflow: hidden;
+	background: #fcfcfd;
+}
+
+@media (prefers-color-scheme: dark) {
+	body {
+		background: #111113;
+	}
 }
 
 * {
