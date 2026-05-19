@@ -9,6 +9,7 @@ import {
 	type RendererMessagePayload,
 	requestChannel,
 } from './ipc'
+import { clearAppCache, getCacheStats } from './services/cache'
 import {
 	getGitHubAsset,
 	getGitHubAuthStatus,
@@ -60,6 +61,8 @@ const handlers: Handlers = {
 	listAgentAvailability,
 	getSystemColorMode,
 	getUpdateStatus,
+	getCacheStats,
+	clearAppCache,
 	installUpdate,
 	getGitHubAuthStatus,
 	startGitHubLogin,
@@ -107,6 +110,17 @@ async function createWindow() {
 
 	setMainWindow(window)
 	window.once('ready-to-show', () => window.show())
+	window.webContents.setWindowOpenHandler(({ url }) => {
+		void openExternalUrlIfSafe(url)
+		return { action: 'deny' }
+	})
+	window.webContents.on('will-navigate', (event, url) => {
+		const targetUrl = new URL(url)
+		if (targetUrl.protocol !== 'file:' && targetUrl.origin !== DEV_SERVER_URL) {
+			event.preventDefault()
+			void openExternalUrlIfSafe(url)
+		}
+	})
 
 	if (isDev && (await canReachDevServer())) {
 		await window.loadURL(DEV_SERVER_URL)
@@ -175,6 +189,14 @@ async function openExternalUrl(params: { url: string }): Promise<{ ok: true }> {
 	}
 	await shell.openExternal(params.url)
 	return { ok: true }
+}
+
+async function openExternalUrlIfSafe(url: string) {
+	try {
+		await openExternalUrl({ url })
+	} catch (error) {
+		console.error('Blocked external navigation.', error)
+	}
 }
 
 async function canReachDevServer() {
