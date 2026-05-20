@@ -290,11 +290,11 @@ function CacheIcon() {
 			viewBox="0 0 24 24"
 			width="20"
 		>
-			<path d="M3 6h18" />
-			<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-			<path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-			<line x1="10" x2="10" y1="11" y2="17" />
-			<line x1="14" x2="14" y1="11" y2="17" />
+			<ellipse cx="12" cy="5" rx="8" ry="3" />
+			<path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5" />
+			<path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" />
+			<circle cx="17" cy="11" r="1" fill="currentColor" stroke="none" />
+			<circle cx="17" cy="17" r="1" fill="currentColor" stroke="none" />
 		</svg>
 	)
 }
