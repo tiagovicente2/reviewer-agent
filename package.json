@@ -1,6 +1,6 @@
 {
 	"name": "pr-review-agent",
-	"version": "0.1.12",
+	"version": "0.1.13",
 	"private": true,
 	"description": "Local-first Electron desktop app for AI-assisted GitHub pull request review drafts.",
 	"type": "module",
