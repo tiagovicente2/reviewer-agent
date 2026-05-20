@@ -1,11 +1,16 @@
-import { parsePatchFiles } from '@pierre/diffs'
-import { FileDiff, type FileDiffMetadata } from '@pierre/diffs/react'
+import type { DiffLineAnnotation, FileDiffMetadata } from '@pierre/diffs/direct/types.js'
+import { parsePatchFiles } from '@pierre/diffs/direct/utils/parsePatchFiles.js'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { css } from 'styled-system/css'
 import { Box, HStack, Stack } from 'styled-system/jsx'
 import { Badge } from '@/components/ui'
 import type { PiInlineComment } from '@/shared/review'
-import { getFileDiffKey, getLineAnnotations, getScrollableParent, groupInlineCommentsByPath } from './diffViewerUtils'
+import {
+	getFileDiffKey,
+	getLineAnnotations,
+	getScrollableParent,
+	groupInlineCommentsByPath,
+} from './diffViewerUtils'
 import { ReviewCommentAnnotation } from './ReviewCommentAnnotation'
 
 type ParsedPatchState =
@@ -20,13 +25,15 @@ type DiffViewerProps = {
 }
 
 export const DiffViewer = memo(function DiffViewer({
-	colorMode,
 	inlineComments = [],
 	patch,
 	selectedFilePath,
 }: DiffViewerProps) {
 	const parsedPatch = useMemo(() => parsePatch(patch), [patch])
-	const inlineCommentsByPath = useMemo(() => groupInlineCommentsByPath(inlineComments), [inlineComments])
+	const inlineCommentsByPath = useMemo(
+		() => groupInlineCommentsByPath(inlineComments),
+		[inlineComments],
+	)
 	const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(() => new Set())
 	const [expandedFiles, setExpandedFiles] = useState<Set<string>>(() => new Set())
 	const fileRefs = useRef(new Map<string, HTMLDivElement>())
@@ -63,26 +70,6 @@ export const DiffViewer = memo(function DiffViewer({
 			}
 		})
 	}, [parsedPatch.files, selectedFilePath])
-	const options = useMemo(
-		() =>
-			({
-				theme: {
-					dark: 'pierre-dark',
-					light: 'pierre-light',
-				},
-				themeType: colorMode,
-				diffStyle: 'unified',
-				diffIndicators: 'bars',
-				hunkSeparators: 'line-info-basic',
-				lineDiffType: 'word',
-				overflow: 'scroll',
-				collapsedContextThreshold: 8,
-				expansionLineCount: 20,
-				tokenizeMaxLineLength: 500,
-			}) as const,
-		[colorMode],
-	)
-
 	if (!patch.trim()) {
 		return <DiffStatus title="No diff loaded" body="Select a PR to load its GitHub diff." />
 	}
@@ -99,7 +86,8 @@ export const DiffViewer = memo(function DiffViewer({
 		<Stack gap="4" pr="1">
 			{parsedPatch.files.map((fileDiff) => {
 				const fileKey = getFileDiffKey(fileDiff)
-				const selected = fileDiff.name === selectedFilePath || fileDiff.prevName === selectedFilePath
+				const selected =
+					fileDiff.name === selectedFilePath || fileDiff.prevName === selectedFilePath
 				const collapsed = collapsedFiles.has(fileKey) || (!selected && !expandedFiles.has(fileKey))
 
 				return (
@@ -136,12 +124,9 @@ export const DiffViewer = memo(function DiffViewer({
 							}}
 						/>
 						{collapsed ? null : (
-							<FileDiff
-								disableWorkerPool
+							<PlainFileDiff
 								fileDiff={fileDiff}
 								lineAnnotations={getLineAnnotations(fileDiff, inlineCommentsByPath)}
-								options={{ ...options, disableFileHeader: true }}
-								renderAnnotation={ReviewCommentAnnotation}
 							/>
 						)}
 					</Box>
@@ -204,6 +189,113 @@ function DiffFileHeader({
 	)
 }
 
+function PlainFileDiff({
+	fileDiff,
+	lineAnnotations,
+}: {
+	fileDiff: FileDiffMetadata
+	lineAnnotations: DiffLineAnnotation<{ body: string }>[]
+}) {
+	const annotationKey = (annotation: DiffLineAnnotation<{ body: string }>) =>
+		`${annotation.side}:${annotation.lineNumber}`
+	const annotationsByLine = new Map(
+		lineAnnotations.map((annotation) => [annotationKey(annotation), annotation]),
+	)
+
+	return (
+		<Box className={plainDiffClassName} overflowX="auto">
+			{fileDiff.hunks.map((hunk) => (
+				<Box key={`${hunk.deletionStart}:${hunk.additionStart}:${hunk.hunkSpecs ?? ''}`}>
+					<Box className="hunkHeader">{hunk.hunkSpecs ?? 'diff hunk'}</Box>
+					{hunk.hunkContent.flatMap((content) => {
+						if (content.type === 'context') {
+							return Array.from({ length: content.lines }, (_, index) => {
+								const oldLine = hunk.deletionStart + content.deletionLineIndex + index
+								const newLine = hunk.additionStart + content.additionLineIndex + index
+								return (
+									<DiffLine
+										key={`context:${oldLine}:${newLine}`}
+										newLine={newLine}
+										oldLine={oldLine}
+										text={fileDiff.additionLines[content.additionLineIndex + index] ?? ''}
+										type="context"
+									/>
+								)
+							})
+						}
+
+						const deletionRows = Array.from({ length: content.deletions }, (_, index) => {
+							const lineNumber = hunk.deletionStart + content.deletionLineIndex + index
+							const annotation = annotationsByLine.get(`deletions:${lineNumber}`)
+							return (
+								<DiffLineGroup key={`deletion:${lineNumber}`} annotation={annotation}>
+									<DiffLine
+										oldLine={lineNumber}
+										text={fileDiff.deletionLines[content.deletionLineIndex + index] ?? ''}
+										type="deletion"
+									/>
+								</DiffLineGroup>
+							)
+						})
+						const additionRows = Array.from({ length: content.additions }, (_, index) => {
+							const lineNumber = hunk.additionStart + content.additionLineIndex + index
+							const annotation = annotationsByLine.get(`additions:${lineNumber}`)
+							return (
+								<DiffLineGroup key={`addition:${lineNumber}`} annotation={annotation}>
+									<DiffLine
+										newLine={lineNumber}
+										text={fileDiff.additionLines[content.additionLineIndex + index] ?? ''}
+										type="addition"
+									/>
+								</DiffLineGroup>
+							)
+						})
+						return [...deletionRows, ...additionRows]
+					})}
+				</Box>
+			))}
+		</Box>
+	)
+}
+
+function DiffLineGroup({
+	annotation,
+	children,
+}: {
+	annotation?: DiffLineAnnotation<{ body: string }>
+	children: React.ReactNode
+}) {
+	return (
+		<>
+			{children}
+			{annotation ? <ReviewCommentAnnotation {...annotation} /> : null}
+		</>
+	)
+}
+
+function DiffLine({
+	newLine,
+	oldLine,
+	text,
+	type,
+}: {
+	newLine?: number
+	oldLine?: number
+	text: string
+	type: 'context' | 'addition' | 'deletion'
+}) {
+	return (
+		<Box className={`diffLine ${type}`}>
+			<Box className="lineNumber">{oldLine ?? ''}</Box>
+			<Box className="lineNumber">{newLine ?? ''}</Box>
+			<Box className="indicator">{type === 'addition' ? '+' : type === 'deletion' ? '-' : ' '}</Box>
+			<Box as="pre" className="lineText">
+				{text || ' '}
+			</Box>
+		</Box>
+	)
+}
+
 function parsePatch(patch: string): ParsedPatchState {
 	try {
 		return {
@@ -245,4 +337,47 @@ const diffClassName = css({
 	borderRadius: 'l2',
 	borderWidth: '1px',
 	overflow: 'hidden',
+})
+
+const plainDiffClassName = css({
+	fontFamily: 'mono',
+	fontSize: 'xs',
+	lineHeight: '1.5',
+	'& .hunkHeader': {
+		bg: 'cyan.2',
+		borderBottomWidth: '1px',
+		borderColor: 'border.default',
+		color: 'cyan.11',
+		px: '3',
+		py: '1.5',
+		whiteSpace: 'pre',
+	},
+	'& .diffLine': {
+		display: 'grid',
+		gridTemplateColumns: '4rem 4rem 1.5rem minmax(0, 1fr)',
+		minW: 'max-content',
+	},
+	'& .diffLine.context': { bg: 'gray.1' },
+	'& .diffLine.addition': { bg: 'green.2' },
+	'& .diffLine.deletion': { bg: 'red.2' },
+	'& .lineNumber': {
+		borderRightWidth: '1px',
+		borderColor: 'border.default',
+		color: 'fg.muted',
+		px: '2',
+		textAlign: 'right',
+		userSelect: 'none',
+	},
+	'& .indicator': {
+		color: 'fg.muted',
+		px: '1',
+		userSelect: 'none',
+	},
+	'& .lineText': {
+		fontFamily: 'mono',
+		m: '0',
+		overflow: 'visible',
+		px: '2',
+		whiteSpace: 'pre-wrap',
+	},
 })

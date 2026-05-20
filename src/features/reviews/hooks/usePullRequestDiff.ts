@@ -1,4 +1,3 @@
-import { parsePatchFiles } from '@pierre/diffs'
 import { useCallback, useEffect, useState } from 'react'
 import { appRpc } from '@/app/rpc'
 import type { AsyncState } from '@/app/types'
@@ -72,11 +71,9 @@ export function usePullRequestDiff(detail: GitHubPullRequestDetails | null) {
 }
 
 function getFirstDiffFilePath(diff: string) {
-	try {
-		const firstFile = parsePatchFiles(diff, 'github-pr-diff', true)[0]?.files[0]
-		return firstFile?.name ?? firstFile?.prevName ?? null
-	} catch {
-		const match = diff.match(/^diff --git a\/(.*?) b\/(.*?)$/m)
-		return match?.[2] ?? match?.[1] ?? null
-	}
+	const gitDiffMatch = diff.match(/^diff --git a\/(.*?) b\/(.*?)$/m)
+	if (gitDiffMatch) return gitDiffMatch[2] ?? gitDiffMatch[1] ?? null
+
+	const githubHeaderMatch = diff.match(/^--- (?:a\/)?(.+)\n\+\+\+ (?:b\/)?(.+)$/m)
+	return githubHeaderMatch?.[2] ?? githubHeaderMatch?.[1] ?? null
 }

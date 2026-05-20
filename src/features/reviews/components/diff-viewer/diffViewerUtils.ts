@@ -1,4 +1,4 @@
-import type { DiffLineAnnotation, FileDiffMetadata } from '@pierre/diffs/react'
+import type { DiffLineAnnotation, FileDiffMetadata } from '@pierre/diffs/direct/types.js'
 import type { PiInlineComment } from '@/shared/review'
 
 export type DiffAnnotation = {
@@ -20,14 +20,13 @@ export function getLineAnnotations(
 	return [
 		...(inlineCommentsByPath.get(fileDiff.name) ?? []),
 		...(fileDiff.prevName ? (inlineCommentsByPath.get(fileDiff.prevName) ?? []) : []),
-	]
-		.map((comment) => ({
-			lineNumber: comment.line,
-			metadata: {
-				body: comment.body,
-			},
-			side: comment.side === 'LEFT' ? 'deletions' : 'additions',
-		}))
+	].map((comment) => ({
+		lineNumber: comment.line,
+		metadata: {
+			body: comment.body,
+		},
+		side: comment.side === 'LEFT' ? 'deletions' : 'additions',
+	}))
 }
 
 export function getScrollableParent(node: HTMLElement) {

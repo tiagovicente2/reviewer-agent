@@ -16,6 +16,7 @@ export default defineConfig({
 	resolve: {
 		alias: {
 			'@': resolve(projectRoot, 'src'),
+			'@pierre/diffs/direct': resolve(projectRoot, 'node_modules/@pierre/diffs/dist'),
 			'styled-system': resolve(projectRoot, 'styled-system'),
 		},
 	},
