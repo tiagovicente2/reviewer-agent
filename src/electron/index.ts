@@ -9,6 +9,7 @@ import {
 	type RendererMessagePayload,
 	requestChannel,
 } from './ipc'
+import { validateMainRequest } from './ipc-validation'
 import { clearAppCache, getCacheStats } from './services/cache'
 import {
 	getGitHubAsset,
@@ -88,7 +89,10 @@ for (const [name, handler] of Object.entries(handlers) as [
 	MainRequestName,
 	Handlers[MainRequestName],
 ][]) {
-	ipcMain.handle(requestChannel(name), (_event, params) => handler(params as never))
+	ipcMain.handle(requestChannel(name), (_event, params) => {
+		validateMainRequest(name, params)
+		return handler(params as never)
+	})
 }
 
 async function createWindow() {

@@ -1,6 +1,7 @@
+import { lazy, Suspense } from 'react'
 import { Grid } from 'styled-system/jsx'
+import { StatusCard } from '@/components/common'
 import type { SearchMode } from '@/features/reviews/components/inbox/types'
-import { ReviewDetail } from '@/features/reviews/components/ReviewDetail'
 import { ReviewInbox } from '@/features/reviews/components/ReviewInbox'
 import type {
 	GitHubAuthStatus,
@@ -9,6 +10,12 @@ import type {
 } from '@/shared/github'
 import type { UpdateStatus } from '@/shared/update'
 import type { AsyncState, ColorMode } from './types'
+
+const ReviewDetail = lazy(() =>
+	import('@/features/reviews/components/ReviewDetail').then((module) => ({
+		default: module.ReviewDetail,
+	})),
+)
 
 type MainReviewScreenProps = {
 	activeSearchQuery: string
@@ -94,14 +101,20 @@ export function MainReviewScreen({
 				updateStatus={updateStatus}
 				username={currentAuthStatus.username}
 			/>
-			<ReviewDetail
-				colorMode={colorMode}
-				detail={detail}
-				detailError={detailError}
-				detailState={detailState}
-				review={selectedReview}
-				setSummary={setSummary}
-			/>
+			<Suspense
+				fallback={
+					<StatusCard title="Loading review panel" body="Preparing pull request details..." />
+				}
+			>
+				<ReviewDetail
+					colorMode={colorMode}
+					detail={detail}
+					detailError={detailError}
+					detailState={detailState}
+					review={selectedReview}
+					setSummary={setSummary}
+				/>
+			</Suspense>
 		</Grid>
 	)
 }

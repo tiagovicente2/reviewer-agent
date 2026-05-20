@@ -26,6 +26,9 @@ type CachedAuthStatus = {
 }
 
 const AUTH_STATUS_CACHE_TTL_MS = 30_000
+const DEFAULT_GH_TIMEOUT_MS = 20_000
+const ASSET_GH_TIMEOUT_MS = 45_000
+const matchingRepositoriesCache = new Map<string, string[]>()
 let cachedAuthStatus: CachedAuthStatus | null = null
 
 async function runGh(
@@ -36,6 +39,7 @@ async function runGh(
 	return runCommand('gh', args, {
 		cwd: getHomePath(),
 		input,
+		timeoutMs: options.disablePrompt === false ? 120_000 : DEFAULT_GH_TIMEOUT_MS,
 		env: {
 			...process.env,
 			...(options.disablePrompt === false ? {} : { GH_PROMPT_DISABLED: '1' }),
@@ -50,6 +54,7 @@ async function runGhBinary(args: string[]): Promise<{
 }> {
 	return runCommandBuffer('gh', args, {
 		cwd: getHomePath(),
+		timeoutMs: ASSET_GH_TIMEOUT_MS,
 		env: { ...process.env, GH_PROMPT_DISABLED: '1' },
 	})
 }
@@ -326,8 +331,12 @@ export async function searchGitHubPullRequests(params: {
 	const query = params.query.trim()
 	if (!query) return []
 
+	const searchQueries = (await getPullRequestSearchQueries(query, params.mode ?? 'smart')).slice(
+		0,
+		4,
+	)
 	const results = await Promise.all(
-		(await getPullRequestSearchQueries(query, params.mode ?? 'smart')).map(async (searchQuery) => {
+		searchQueries.map(async (searchQuery) => {
 			const result = await runGh([
 				'search',
 				'prs',
@@ -400,6 +409,10 @@ async function getPullRequestSearchQueries(
 }
 
 async function searchMatchingRepositories(query: string) {
+	const cacheKey = query.toLowerCase()
+	const cached = matchingRepositoriesCache.get(cacheKey)
+	if (cached) return cached
+
 	const result = await runGh([
 		'search',
 		'repos',
@@ -410,14 +423,17 @@ async function searchMatchingRepositories(query: string) {
 	])
 
 	if (result.exitCode !== 0) {
+		matchingRepositoriesCache.set(cacheKey, [])
 		return []
 	}
 
 	const parsed = JSON.parse(result.stdout) as Array<{ fullName?: string }>
-	return parsed
+	const repositories = parsed
 		.map((repo) => repo.fullName)
 		.filter((fullName): fullName is string => Boolean(fullName))
 		.sort((left, right) => scoreRepositoryMatch(query, right) - scoreRepositoryMatch(query, left))
+	matchingRepositoriesCache.set(cacheKey, repositories)
+	return repositories
 }
 
 function scoreRepositoryMatch(query: string, fullName: string) {

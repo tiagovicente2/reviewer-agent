@@ -4,8 +4,10 @@ $Repo = if ($env:PR_REVIEW_AGENT_REPO) { $env:PR_REVIEW_AGENT_REPO } else { 'tia
 $InstallDir = if ($env:PR_REVIEW_AGENT_INSTALL_DIR) { $env:PR_REVIEW_AGENT_INSTALL_DIR } else { Join-Path $env:LOCALAPPDATA 'PR Review Agent' }
 $Artifact = 'pr-review-agent-windows-x64.zip'
 $Url = "https://github.com/$Repo/releases/latest/download/$Artifact"
+$ChecksumUrl = "https://github.com/$Repo/releases/latest/download/SHA256SUMS"
 $TempDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.Guid]::NewGuid().ToString())
 $ZipPath = Join-Path $TempDir $Artifact
+$ChecksumPath = Join-Path $TempDir 'SHA256SUMS'
 
 function Log($Message) { Write-Host "[pr-review-agent] $Message" }
 
@@ -13,6 +15,19 @@ New-Item -ItemType Directory -Force -Path $TempDir | Out-Null
 try {
   Log "downloading $Url"
   Invoke-WebRequest -Uri $Url -OutFile $ZipPath
+  try {
+    Invoke-WebRequest -Uri $ChecksumUrl -OutFile $ChecksumPath
+    $ChecksumLine = Get-Content $ChecksumPath | Where-Object { $_ -match "\s$([regex]::Escape($Artifact))$" } | Select-Object -First 1
+    if ($ChecksumLine) {
+      $ExpectedChecksum = ($ChecksumLine -split '\s+')[0].ToLowerInvariant()
+      $ActualChecksum = (Get-FileHash -Algorithm SHA256 -Path $ZipPath).Hash.ToLowerInvariant()
+      if ($ActualChecksum -ne $ExpectedChecksum) { throw "checksum verification failed for $Artifact" }
+      Log "verified checksum for $Artifact"
+    }
+  }
+  catch {
+    Log "checksums unavailable; skipping verification"
+  }
 
   if (Test-Path $InstallDir) { Remove-Item -Recurse -Force $InstallDir }
   New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null

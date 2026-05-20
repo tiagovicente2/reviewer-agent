@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process'
 import { app } from 'electron'
 import type { UpdateResult, UpdateStatus } from '@/shared/update'
+import { compareVersions, normalizeVersion } from '@/shared/version'
 
 const REPO = 'tiagovicente2/pr-review-agent'
 const LATEST_RELEASE_API_URL = `https://api.github.com/repos/${REPO}/releases/latest`
@@ -84,26 +85,4 @@ function getUpdateCommand(): { command: string; args: string[] } | null {
 	}
 
 	return null
-}
-
-function normalizeVersion(version: string) {
-	return version.trim().replace(/^v/i, '')
-}
-
-function compareVersions(left: string, right: string) {
-	const leftParts = normalizeVersion(left).split('.').map(toNumber)
-	const rightParts = normalizeVersion(right).split('.').map(toNumber)
-	const length = Math.max(leftParts.length, rightParts.length)
-
-	for (let index = 0; index < length; index += 1) {
-		const difference = (leftParts[index] ?? 0) - (rightParts[index] ?? 0)
-		if (difference !== 0) return difference
-	}
-
-	return 0
-}
-
-function toNumber(part: string) {
-	const value = Number.parseInt(part, 10)
-	return Number.isFinite(value) ? value : 0
 }

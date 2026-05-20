@@ -31,8 +31,26 @@ url="https://github.com/${REPO}/releases/latest/download/${artifact}"
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
 
+checksum_url="https://github.com/${REPO}/releases/latest/download/SHA256SUMS"
+
 log "downloading ${url}"
 curl -fL "$url" -o "$tmp_dir/$artifact"
+if curl -fsL "$checksum_url" -o "$tmp_dir/SHA256SUMS"; then
+  expected_checksum="$(awk -v artifact="$artifact" '$2 == artifact { print $1 }' "$tmp_dir/SHA256SUMS")"
+  if [[ -n "$expected_checksum" ]]; then
+    if command -v sha256sum >/dev/null 2>&1; then
+      actual_checksum="$(sha256sum "$tmp_dir/$artifact" | awk '{ print $1 }')"
+    else
+      actual_checksum="$(shasum -a 256 "$tmp_dir/$artifact" | awk '{ print $1 }')"
+    fi
+    [[ "$actual_checksum" == "$expected_checksum" ]] || fail "checksum verification failed for $artifact"
+    log "verified checksum for $artifact"
+  else
+    log "checksum file did not include $artifact; skipping verification"
+  fi
+else
+  log "checksums unavailable; skipping verification"
+fi
 
 rm -rf "$INSTALL_DIR"
 mkdir -p "$INSTALL_DIR"

@@ -8,12 +8,12 @@ import { getErrorMessage } from '@/app/utils'
 import { StatusCard } from '@/components/common'
 import { Button } from '@/components/ui'
 import type { AgentAvailability, AppSettings, AvailablePiModel } from '@/shared/settings'
+import type { UpdateStatus } from '@/shared/update'
 import { AgentStatusCard } from './AgentStatusCard'
+import { CacheModal } from './CacheModal'
 import { PreferencesCard } from './PreferencesCard'
 import { ReviewerInstructionsCard } from './ReviewerInstructionsCard'
-import { CacheModal } from './CacheModal'
 import { UpdateModal } from './UpdateModal'
-import type { UpdateStatus } from '@/shared/update'
 
 export function SettingsPage({
 	onBack,
@@ -145,10 +145,7 @@ export function SettingsPage({
 							<CacheIcon />
 						</IconButton>
 						<Box position="relative">
-							<IconButton
-								ariaLabel="Check for updates"
-								onClick={() => setIsUpdateModalOpen(true)}
-							>
+							<IconButton ariaLabel="Check for updates" onClick={() => setIsUpdateModalOpen(true)}>
 								<UpdateIcon />
 							</IconButton>
 							{updateStatus?.available && (

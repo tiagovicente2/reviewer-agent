@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
-import rehypeRaw from 'rehype-raw'
 import remarkGfm from 'remark-gfm'
 import { css } from 'styled-system/css'
 import { Box } from 'styled-system/jsx'
@@ -143,7 +142,6 @@ export function MarkdownContent({ children }: { children: string }) {
 		<Box className={markdownContentClassName}>
 			<ReactMarkdown
 				components={{ img: ({ alt, src }) => <GitHubImage alt={alt} src={src} /> }}
-				rehypePlugins={[rehypeRaw]}
 				remarkPlugins={[remarkGfm]}
 			>
 				{children}
