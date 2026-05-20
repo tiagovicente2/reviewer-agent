@@ -44,7 +44,7 @@ export function OnboardingPage({
 					<Badge colorPalette="cyan" size="lg" width="fit-content">
 						Onboarding
 					</Badge>
-					<Card.Title>Set up PR Review Agent</Card.Title>
+					<Card.Title>Set up Reviewer Agent</Card.Title>
 					<Card.Description>
 						Finish these quick checks, then click next when you are ready to open your requested
 						GitHub pull requests.

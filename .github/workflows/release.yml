@@ -47,7 +47,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          app_dir="$(find artifacts -mindepth 1 -maxdepth 3 -type d \( -name 'linux-unpacked' -o -name 'win-unpacked' -o -name 'PR Review Agent.app' -o -name 'PRReviewAgent.app' \) | head -n 1 || true)"
+          app_dir="$(find artifacts -mindepth 1 -maxdepth 3 -type d \( -name 'linux-unpacked' -o -name 'win-unpacked' -o -name 'Reviewer Agent.app' -o -name 'ReviewerAgent.app' \) | head -n 1 || true)"
           if [[ -z "$app_dir" ]]; then
             app_dir="$(find artifacts -mindepth 1 -maxdepth 3 -type d | head -n 1 || true)"
           fi
@@ -64,18 +64,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          tar -czf "pr-review-agent-${{ matrix.artifact }}.tar.gz" -C "$(dirname '${{ steps.locate.outputs.app_dir }}')" "${{ steps.locate.outputs.app_name }}"
+          tar -czf "reviewer-agent-${{ matrix.artifact }}.tar.gz" -C "$(dirname '${{ steps.locate.outputs.app_dir }}')" "${{ steps.locate.outputs.app_name }}"
 
       - name: Package zip
         if: matrix.archive == 'zip'
         shell: pwsh
         run: |
-          Compress-Archive -Path "${{ steps.locate.outputs.app_dir }}" -DestinationPath "pr-review-agent-${{ matrix.artifact }}.zip" -Force
+          Compress-Archive -Path "${{ steps.locate.outputs.app_dir }}" -DestinationPath "reviewer-agent-${{ matrix.artifact }}.zip" -Force
 
       - uses: actions/upload-artifact@v4
         with:
-          name: pr-review-agent-${{ matrix.artifact }}
-          path: pr-review-agent-${{ matrix.artifact }}.*
+          name: reviewer-agent-${{ matrix.artifact }}
+          path: reviewer-agent-${{ matrix.artifact }}.*
 
   publish:
     name: Publish GitHub Release
@@ -93,7 +93,7 @@ jobs:
         run: |
           set -euo pipefail
           cd artifacts
-          sha256sum pr-review-agent-* > SHA256SUMS
+          sha256sum reviewer-agent-* > SHA256SUMS
 
       - uses: softprops/action-gh-release@v2
         with:

@@ -1,5 +1,5 @@
 {
-	"name": "pr-review-agent",
+	"name": "reviewer-agent",
 	"version": "0.1.13",
 	"private": true,
 	"description": "Local-first Electron desktop app for AI-assisted GitHub pull request review drafts.",
@@ -59,8 +59,8 @@
 		]
 	},
 	"build": {
-		"appId": "dev.local.pr-review-agent",
-		"productName": "PR Review Agent",
+		"appId": "dev.local.reviewer-agent",
+		"productName": "Reviewer Agent",
 		"files": [
 			"build/electron/**/*",
 			"dist/**/*",

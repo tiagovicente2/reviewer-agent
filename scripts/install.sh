@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO="${PR_REVIEW_AGENT_REPO:-tiagovicente2/pr-review-agent}"
-APP_NAME="pr-review-agent"
-INSTALL_DIR="${PR_REVIEW_AGENT_INSTALL_DIR:-$HOME/.local/share/pr-review-agent}"
-BIN_DIR="${PR_REVIEW_AGENT_BIN_DIR:-$HOME/.local/bin}"
+REPO="${REVIEWER_AGENT_REPO:-tiagovicente2/reviewer-agent}"
+APP_NAME="reviewer-agent"
+INSTALL_DIR="${REVIEWER_AGENT_INSTALL_DIR:-$HOME/.local/share/reviewer-agent}"
+BIN_DIR="${REVIEWER_AGENT_BIN_DIR:-$HOME/.local/bin}"
 DESKTOP_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 
-log() { printf '[pr-review-agent] %s\n' "$*"; }
-fail() { printf '[pr-review-agent] error: %s\n' "$*" >&2; exit 1; }
+log() { printf '[reviewer-agent] %s\n' "$*"; }
+fail() { printf '[reviewer-agent] error: %s\n' "$*" >&2; exit 1; }
 
 command -v curl >/dev/null 2>&1 || fail "curl is required"
 command -v tar >/dev/null 2>&1 || fail "tar is required"
@@ -26,7 +26,7 @@ case "$arch" in
   *) fail "unsupported architecture: $arch" ;;
 esac
 
-artifact="pr-review-agent-${platform}-${arch}.tar.gz"
+artifact="reviewer-agent-${platform}-${arch}.tar.gz"
 url="https://github.com/${REPO}/releases/latest/download/${artifact}"
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
@@ -59,7 +59,7 @@ tar -xzf "$tmp_dir/$artifact" -C "$INSTALL_DIR" --strip-components=1
 if [[ "$platform" == "linux" ]]; then
   launcher="$INSTALL_DIR/$APP_NAME"
   if [[ ! -x "$launcher" ]]; then
-    launcher="$(find "$INSTALL_DIR" -maxdepth 2 -type f -perm -111 \( -name "$APP_NAME" -o -name 'PR Review Agent' \) | head -n 1 || true)"
+    launcher="$(find "$INSTALL_DIR" -maxdepth 2 -type f -perm -111 \( -name "$APP_NAME" -o -name 'Reviewer Agent' \) | head -n 1 || true)"
   fi
   [[ -n "$launcher" && -x "$launcher" ]] || fail "app executable not found under $INSTALL_DIR"
   mkdir -p "$BIN_DIR"
@@ -76,22 +76,22 @@ if [[ "$platform" == "linux" ]]; then
   if [[ ! -f "$icon_path" ]]; then
     icon_path="$APP_NAME"
   fi
-  cat > "$DESKTOP_DIR/pr-review-agent.desktop" <<EOF
+  cat > "$DESKTOP_DIR/reviewer-agent.desktop" <<EOF
 [Desktop Entry]
-Name=PR Review Agent
+Name=Reviewer Agent
 Comment=AI-assisted GitHub pull request review drafts
 Exec=$launcher
 Icon=$icon_path
 Terminal=false
 Type=Application
 Categories=Development;
-StartupWMClass=PR Review Agent
+StartupWMClass=Reviewer Agent
 EOF
   command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$DESKTOP_DIR" >/dev/null 2>&1 || true
   log "installed launcher: $BIN_DIR/$APP_NAME"
-  log "installed desktop entry: $DESKTOP_DIR/pr-review-agent.desktop"
+  log "installed desktop entry: $DESKTOP_DIR/reviewer-agent.desktop"
 else
-  apps_dir="${PR_REVIEW_AGENT_APPS_DIR:-$HOME/Applications}"
+  apps_dir="${REVIEWER_AGENT_APPS_DIR:-$HOME/Applications}"
   mkdir -p "$apps_dir"
   app_bundle="$(find "$INSTALL_DIR" -maxdepth 1 -name '*.app' -type d | head -n 1 || true)"
   if [[ -n "$app_bundle" ]]; then

@@ -2,7 +2,7 @@
 
 ## App shape
 
-PR Review Agent is an Electron desktop app with a React renderer and Node.js main-process services.
+Reviewer Agent is an Electron desktop app with a React renderer and Node.js main-process services.
 
 Important areas:
 

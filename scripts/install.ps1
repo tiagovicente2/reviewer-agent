@@ -1,15 +1,15 @@
 $ErrorActionPreference = 'Stop'
 
-$Repo = if ($env:PR_REVIEW_AGENT_REPO) { $env:PR_REVIEW_AGENT_REPO } else { 'tiagovicente2/pr-review-agent' }
-$InstallDir = if ($env:PR_REVIEW_AGENT_INSTALL_DIR) { $env:PR_REVIEW_AGENT_INSTALL_DIR } else { Join-Path $env:LOCALAPPDATA 'PR Review Agent' }
-$Artifact = 'pr-review-agent-windows-x64.zip'
+$Repo = if ($env:REVIEWER_AGENT_REPO) { $env:REVIEWER_AGENT_REPO } else { 'tiagovicente2/reviewer-agent' }
+$InstallDir = if ($env:REVIEWER_AGENT_INSTALL_DIR) { $env:REVIEWER_AGENT_INSTALL_DIR } else { Join-Path $env:LOCALAPPDATA 'Reviewer Agent' }
+$Artifact = 'reviewer-agent-windows-x64.zip'
 $Url = "https://github.com/$Repo/releases/latest/download/$Artifact"
 $ChecksumUrl = "https://github.com/$Repo/releases/latest/download/SHA256SUMS"
 $TempDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.Guid]::NewGuid().ToString())
 $ZipPath = Join-Path $TempDir $Artifact
 $ChecksumPath = Join-Path $TempDir 'SHA256SUMS'
 
-function Log($Message) { Write-Host "[pr-review-agent] $Message" }
+function Log($Message) { Write-Host "[reviewer-agent] $Message" }
 
 New-Item -ItemType Directory -Force -Path $TempDir | Out-Null
 try {
@@ -39,12 +39,12 @@ try {
     Remove-Item -Recurse -Force $Nested.FullName
   }
 
-  $Launcher = Get-ChildItem -Path $InstallDir -Recurse -File -Filter 'pr-review-agent.exe' | Select-Object -First 1
-  if (-not $Launcher) { $Launcher = Get-ChildItem -Path $InstallDir -Recurse -File -Filter 'PR Review Agent.exe' | Select-Object -First 1 }
+  $Launcher = Get-ChildItem -Path $InstallDir -Recurse -File -Filter 'reviewer-agent.exe' | Select-Object -First 1
+  if (-not $Launcher) { $Launcher = Get-ChildItem -Path $InstallDir -Recurse -File -Filter 'Reviewer Agent.exe' | Select-Object -First 1 }
   if (-not $Launcher) { throw 'app executable not found in release artifact' }
 
   $StartMenu = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs'
-  $ShortcutPath = Join-Path $StartMenu 'PR Review Agent.lnk'
+  $ShortcutPath = Join-Path $StartMenu 'Reviewer Agent.lnk'
   $Shell = New-Object -ComObject WScript.Shell
   $Shortcut = $Shell.CreateShortcut($ShortcutPath)
   $Shortcut.TargetPath = $Launcher.FullName

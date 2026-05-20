@@ -3,7 +3,7 @@ import { app } from 'electron'
 import type { UpdateResult, UpdateStatus } from '@/shared/update'
 import { compareVersions, normalizeVersion } from '@/shared/version'
 
-const REPO = 'tiagovicente2/pr-review-agent'
+const REPO = 'tiagovicente2/reviewer-agent'
 const LATEST_RELEASE_API_URL = `https://api.github.com/repos/${REPO}/releases/latest`
 const INSTALL_SCRIPT_URL = `https://raw.githubusercontent.com/${REPO}/main/scripts/install.sh`
 const INSTALL_SCRIPT_PS_URL = `https://raw.githubusercontent.com/${REPO}/main/scripts/install.ps1`

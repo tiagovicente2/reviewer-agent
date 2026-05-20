@@ -1,10 +1,10 @@
-# PR Review Agent
+# Reviewer Agent
 
 Local-first desktop app for generating and publishing AI-assisted GitHub pull request review drafts.
 
 ## What it does
 
-PR Review Agent gives you a focused inbox for PRs that need your review. You can inspect the PR summary and diff, generate a draft review with a local coding agent, edit the suggested comments, and publish only the comments you choose.
+Reviewer Agent gives you a focused inbox for PRs that need your review. You can inspect the PR summary and diff, generate a draft review with a local coding agent, edit the suggested comments, and publish only the comments you choose.
 
 ## Core features
 
@@ -26,13 +26,13 @@ PR Review Agent gives you a focused inbox for PRs that need your review. You can
 Linux/macOS:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/tiagovicente2/pr-review-agent/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/tiagovicente2/reviewer-agent/main/scripts/install.sh | bash
 ```
 
 Windows PowerShell:
 
 ```powershell
-irm https://raw.githubusercontent.com/tiagovicente2/pr-review-agent/main/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/tiagovicente2/reviewer-agent/main/scripts/install.ps1 | iex
 ```
 
 ## Requirements
@@ -48,7 +48,7 @@ gh auth login --web --git-protocol https
 
 ## Safety model
 
-PR Review Agent does not approve, request changes, merge, or submit full GitHub reviews automatically. Generated content stays local until you explicitly publish selected inline comments from the UI.
+Reviewer Agent does not approve, request changes, merge, or submit full GitHub reviews automatically. Generated content stays local until you explicitly publish selected inline comments from the UI.
 
 ## Documentation
 

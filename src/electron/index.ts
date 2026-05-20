@@ -97,7 +97,7 @@ for (const [name, handler] of Object.entries(handlers) as [
 
 async function createWindow() {
 	const window = new BrowserWindow({
-		title: 'PR Review Agent',
+		title: 'Reviewer Agent',
 		icon: appIconPath,
 		backgroundColor: getWindowBackgroundColor(),
 		show: false,

@@ -15,7 +15,7 @@ export function OpeningScreen({
 		<Grid h="100%" minH="0" overflowY="auto" placeItems="center" p="6">
 			<Card.Root maxW="520px" w="full">
 				<Card.Header alignItems="center" textAlign="center">
-					<Card.Title>Opening PR Review Agent</Card.Title>
+					<Card.Title>Opening Reviewer Agent</Card.Title>
 					<Card.Description>
 						Checking your setup and loading review requests before opening the inbox.
 					</Card.Description>
