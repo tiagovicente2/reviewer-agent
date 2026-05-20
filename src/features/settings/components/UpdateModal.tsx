@@ -7,14 +7,11 @@ import { getErrorMessage } from '@/app/utils'
 import { Button } from '@/components/ui'
 import type { UpdateStatus } from '@/shared/update'
 
-export function UpdateModal({
-	onClose,
-}: {
-	onClose: () => void
-}) {
+export function UpdateModal({ onClose }: { onClose: () => void }) {
 	const [status, setStatus] = useState<UpdateStatus | null>(null)
 	const [state, setState] = useState<AsyncState>('loading')
 	const [installing, setInstalling] = useState(false)
+	const [confirmingInstall, setConfirmingInstall] = useState(false)
 	const { showToast } = useToast()
 
 	const refresh = useCallback(async () => {
@@ -38,14 +35,16 @@ export function UpdateModal({
 	}, [refresh])
 
 	const update = async () => {
+		setConfirmingInstall(false)
 		setInstalling(true)
 		try {
 			const result = await appRpc.request.installUpdate()
 			showToast({
-				title: result.ok ? 'Installing update' : 'Update failed',
+				title: result.ok ? 'Update installed' : 'Update failed',
 				description: result.message,
-				tone: result.ok ? 'info' : 'error',
+				tone: result.ok ? 'success' : 'error',
 			})
+			if (!result.ok) setInstalling(false)
 		} catch (error) {
 			showToast({ title: 'Update failed', description: getErrorMessage(error), tone: 'error' })
 			setInstalling(false)
@@ -70,7 +69,7 @@ export function UpdateModal({
 			alignItems="center"
 			justifyContent="center"
 			zIndex="modal"
-			onClick={onClose}
+			onClick={installing ? undefined : onClose}
 		>
 			<Box
 				bg="gray.1"
@@ -84,6 +83,37 @@ export function UpdateModal({
 				onClick={(e) => e.stopPropagation()}
 			>
 				<Stack gap="4">
+					{installing ? (
+						<Box
+							bg="cyan.2"
+							borderColor="cyan.6"
+							borderRadius="l2"
+							borderWidth="1px"
+							color="cyan.11"
+							p="3"
+							textStyle="sm"
+						>
+							Installing update in the background. The app will restart automatically when the
+							update finishes.
+						</Box>
+					) : null}
+					{confirmingInstall ? (
+						<Box bg="gray.2" borderColor="gray.6" borderRadius="l2" borderWidth="1px" p="3">
+							<Box color="fg.default" fontWeight="medium" textStyle="sm">
+								Install update now?
+							</Box>
+							<Box color="fg.muted" mt="1" textStyle="sm">
+								The update will install in the background. This app will restart automatically when
+								it finishes.
+							</Box>
+							<HStack gap="2" justify="flex-end" mt="3">
+								<Button variant="outline" onClick={() => setConfirmingInstall(false)}>
+									Not now
+								</Button>
+								<Button onClick={() => void update()}>OK</Button>
+							</HStack>
+						</Box>
+					) : null}
 					<HStack justify="space-between" alignItems="flex-start">
 						<Box>
 							<Box fontWeight="bold" textStyle="lg">
@@ -108,15 +138,24 @@ export function UpdateModal({
 					</HStack>
 
 					<HStack gap="2" justify="flex-end" mt="2">
-						<Button variant="outline" onClick={onClose}>
+						<Button variant="outline" disabled={installing} onClick={onClose}>
 							Close
 						</Button>
-						<Button variant="outline" loading={state === 'loading'} onClick={() => void refresh()}>
+						<Button
+							variant="outline"
+							disabled={installing}
+							loading={state === 'loading'}
+							onClick={() => void refresh()}
+						>
 							Check again
 						</Button>
 						{status?.available ? (
-							<Button loading={installing} onClick={update}>
-								Install update
+							<Button
+								disabled={confirmingInstall}
+								loading={installing}
+								onClick={() => setConfirmingInstall(true)}
+							>
+								{installing ? 'Installing…' : 'Install update'}
 							</Button>
 						) : null}
 					</HStack>

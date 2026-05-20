@@ -53,14 +53,36 @@ export async function installUpdate(): Promise<UpdateResult> {
 		return { ok: false, message: `Auto-update is not supported on ${process.platform}.` }
 	}
 
-	const child = spawn(command.command, command.args, {
-		detached: true,
-		stdio: 'ignore',
-	})
-	child.unref()
+	const result = await runUpdateInstaller(command)
+	if (!result.ok) return result
 
-	setTimeout(() => app.quit(), 500)
-	return { ok: true, message: 'Installing update. The app will close and can be reopened shortly.' }
+	app.relaunch()
+	app.quit()
+	return { ok: true, message: 'Update installed. Restarting the app now.' }
+}
+
+async function runUpdateInstaller(command: {
+	command: string
+	args: string[]
+}): Promise<UpdateResult> {
+	return new Promise((resolve) => {
+		const child = spawn(command.command, command.args, {
+			stdio: 'ignore',
+			windowsHide: true,
+		})
+
+		child.once('error', (error) => {
+			resolve({ ok: false, message: `Could not start updater: ${error.message}` })
+		})
+
+		child.once('close', (exitCode) => {
+			if (exitCode === 0) {
+				resolve({ ok: true, message: 'Update installed. Restarting the app now.' })
+				return
+			}
+			resolve({ ok: false, message: `Updater exited with code ${exitCode ?? 'unknown'}.` })
+		})
+	})
 }
 
 function getUpdateCommand(): { command: string; args: string[] } | null {
@@ -72,7 +94,7 @@ function getUpdateCommand(): { command: string; args: string[] } | null {
 				'-ExecutionPolicy',
 				'Bypass',
 				'-Command',
-				`Start-Sleep -Seconds 1; irm '${INSTALL_SCRIPT_PS_URL}' | iex`,
+				`irm '${INSTALL_SCRIPT_PS_URL}' | iex`,
 			],
 		}
 	}
@@ -80,7 +102,7 @@ function getUpdateCommand(): { command: string; args: string[] } | null {
 	if (process.platform === 'linux' || process.platform === 'darwin') {
 		return {
 			command: 'sh',
-			args: ['-lc', `sleep 1; curl -fsSL '${INSTALL_SCRIPT_URL}' | bash`],
+			args: ['-lc', `curl -fsSL '${INSTALL_SCRIPT_URL}' | bash`],
 		}
 	}
 
