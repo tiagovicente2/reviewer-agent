@@ -57,7 +57,7 @@ export function ReviewInbox({
 			p="5"
 		>
 			<Stack gap="5">
-				<UpdateHint onOpenSettings={onOpenSettings} status={updateStatus} />
+				<UpdateHint status={updateStatus} />
 				<ReviewInboxHeader
 					onOpenSettings={onOpenSettings}
 					onRefresh={onRefresh}
