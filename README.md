@@ -2,6 +2,8 @@
 
 Local-first desktop app for generating and publishing AI-assisted GitHub pull request review drafts.
 
+<img width="1569" height="891" alt="image" src="https://github.com/user-attachments/assets/db35f315-7fa9-4b97-8f47-a298b117196d" />
+
 ## What it does
 
 Reviewer Agent gives you a focused inbox for PRs that need your review. You can inspect the PR summary and diff, generate a draft review with a local coding agent, edit the suggested comments, and publish only the comments you choose.
