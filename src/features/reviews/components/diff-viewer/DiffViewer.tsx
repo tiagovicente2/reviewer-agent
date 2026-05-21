@@ -240,22 +240,26 @@ function PlainFileDiff({
 					{hunk.hunkContent.flatMap((content) => {
 						if (content.type === 'context') {
 							return Array.from({ length: content.lines }, (_, index) => {
-								const oldLine = hunk.deletionStart + content.deletionLineIndex + index
-								const newLine = hunk.additionStart + content.additionLineIndex + index
+								const oldLine = getDeletionLineNumber(hunk, content.deletionLineIndex, index)
+								const newLine = getAdditionLineNumber(hunk, content.additionLineIndex, index)
+								const annotation =
+									annotationsByLine.get(`additions:${newLine}`) ??
+									annotationsByLine.get(`deletions:${oldLine}`)
 								return (
-									<DiffLine
-										key={`context:${oldLine}:${newLine}`}
-										newLine={newLine}
-										oldLine={oldLine}
-										text={fileDiff.additionLines[content.additionLineIndex + index] ?? ''}
-										type="context"
-									/>
+									<DiffLineGroup key={`context:${oldLine}:${newLine}`} annotation={annotation}>
+										<DiffLine
+											newLine={newLine}
+											oldLine={oldLine}
+											text={fileDiff.additionLines[content.additionLineIndex + index] ?? ''}
+											type="context"
+										/>
+									</DiffLineGroup>
 								)
 							})
 						}
 
 						const deletionRows = Array.from({ length: content.deletions }, (_, index) => {
-							const lineNumber = hunk.deletionStart + content.deletionLineIndex + index
+							const lineNumber = getDeletionLineNumber(hunk, content.deletionLineIndex, index)
 							const annotation = annotationsByLine.get(`deletions:${lineNumber}`)
 							return (
 								<DiffLineGroup key={`deletion:${lineNumber}`} annotation={annotation}>
@@ -268,7 +272,7 @@ function PlainFileDiff({
 							)
 						})
 						const additionRows = Array.from({ length: content.additions }, (_, index) => {
-							const lineNumber = hunk.additionStart + content.additionLineIndex + index
+							const lineNumber = getAdditionLineNumber(hunk, content.additionLineIndex, index)
 							const annotation = annotationsByLine.get(`additions:${lineNumber}`)
 							return (
 								<DiffLineGroup key={`addition:${lineNumber}`} annotation={annotation}>
@@ -286,6 +290,22 @@ function PlainFileDiff({
 			))}
 		</Box>
 	)
+}
+
+function getDeletionLineNumber(
+	hunk: FileDiffMetadata['hunks'][number],
+	lineIndex: number,
+	offset: number,
+) {
+	return hunk.deletionStart + (lineIndex - hunk.deletionLineIndex) + offset
+}
+
+function getAdditionLineNumber(
+	hunk: FileDiffMetadata['hunks'][number],
+	lineIndex: number,
+	offset: number,
+) {
+	return hunk.additionStart + (lineIndex - hunk.additionLineIndex) + offset
 }
 
 function DiffLineGroup({

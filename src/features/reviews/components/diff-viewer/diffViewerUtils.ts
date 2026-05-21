@@ -27,9 +27,14 @@ export function getLineAnnotations(
 		...(fileDiff.prevName ? (inlineCommentsByPath.get(fileDiff.prevName) ?? []) : []),
 	]
 
+	const availableLines = getAvailableAnnotationLines(fileDiff)
+
 	for (const comment of comments) {
 		const side = comment.side === 'LEFT' ? 'deletions' : 'additions'
-		const key = `${side}:${comment.line}`
+		if (!availableLines[side].has(comment.line)) continue
+
+		const lineNumber = comment.line
+		const key = `${side}:${lineNumber}`
 		const existing = annotationsByLine.get(key)
 		const threadComment = {
 			author: comment.author,
@@ -41,7 +46,7 @@ export function getLineAnnotations(
 			existing.metadata.comments.push(threadComment)
 		} else {
 			annotationsByLine.set(key, {
-				lineNumber: comment.line,
+				lineNumber,
 				metadata: { comments: [threadComment] },
 				side,
 			})
@@ -49,6 +54,51 @@ export function getLineAnnotations(
 	}
 
 	return [...annotationsByLine.values()]
+}
+
+function getAvailableAnnotationLines(fileDiff: FileDiffMetadata) {
+	const additions = new Set<number>()
+	const deletions = new Set<number>()
+
+	for (const hunk of fileDiff.hunks) {
+		for (const content of hunk.hunkContent) {
+			if (content.type === 'context') {
+				for (let index = 0; index < content.lines; index += 1) {
+					deletions.add(getDeletionLineNumber(hunk, content.deletionLineIndex, index))
+					additions.add(getAdditionLineNumber(hunk, content.additionLineIndex, index))
+				}
+				continue
+			}
+
+			for (let index = 0; index < content.deletions; index += 1) {
+				deletions.add(getDeletionLineNumber(hunk, content.deletionLineIndex, index))
+			}
+			for (let index = 0; index < content.additions; index += 1) {
+				additions.add(getAdditionLineNumber(hunk, content.additionLineIndex, index))
+			}
+		}
+	}
+
+	return {
+		additions,
+		deletions,
+	}
+}
+
+function getDeletionLineNumber(
+	hunk: FileDiffMetadata['hunks'][number],
+	lineIndex: number,
+	offset: number,
+) {
+	return hunk.deletionStart + (lineIndex - hunk.deletionLineIndex) + offset
+}
+
+function getAdditionLineNumber(
+	hunk: FileDiffMetadata['hunks'][number],
+	lineIndex: number,
+	offset: number,
+) {
+	return hunk.additionStart + (lineIndex - hunk.additionLineIndex) + offset
 }
 
 export function getScrollableParent(node: HTMLElement) {

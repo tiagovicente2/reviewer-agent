@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Box, Grid, HStack, Stack } from 'styled-system/jsx'
 import { appRpc } from '@/app/rpc'
 import type { AsyncState, ColorMode } from '@/app/types'
@@ -11,7 +11,6 @@ import { usePullRequestDiff } from '../hooks/usePullRequestDiff'
 import { CodeTab, ReviewTab, SummaryTab } from './ReviewDetailTabs'
 
 type TabId = 'code' | 'summary' | 'review'
-
 
 export function ReviewDetail({
 	colorMode,
@@ -48,13 +47,49 @@ export function ReviewDetail({
 		onStartGeneration: handleGenerationStart,
 		onSummary: setSummary,
 	})
+	const diffInlineComments = useMemo(() => {
+		if (!generatedReview) return []
+
+		const comments = [...generatedReview.inlineComments]
+		const existingCommentIndexes = new Map(
+			comments.map((comment, index) => [
+				getCommentIdentity(comment.path, comment.side, comment.body),
+				index,
+			]),
+		)
+
+		for (const finding of generatedReview.findings) {
+			const body = finding.suggestedCommentBody?.trim()
+			if (!finding.filePath || !finding.lineStart || !body) continue
+
+			const key = getCommentIdentity(finding.filePath, 'RIGHT', body)
+			const existingIndex = existingCommentIndexes.get(key)
+			if (existingIndex !== undefined) {
+				comments[existingIndex] = {
+					...comments[existingIndex],
+					body,
+					line: finding.lineStart,
+				}
+				continue
+			}
+
+			existingCommentIndexes.set(key, comments.length)
+			comments.push({
+				body,
+				line: finding.lineStart,
+				path: finding.filePath,
+				side: 'RIGHT',
+			})
+		}
+
+		return comments
+	}, [generatedReview])
 
 	const handleOpenOnGitHub = async () => {
 		if (review) {
 			await appRpc.request.openExternalUrl({ url: review.url })
 		}
 	}
-
 
 	if (!review) {
 		return (
@@ -180,7 +215,7 @@ export function ReviewDetail({
 									diffError={diffError}
 									diffState={diffState}
 									firstDiffFilePath={firstDiffFilePath}
-									inlineComments={generatedReview?.inlineComments ?? []}
+									inlineComments={diffInlineComments}
 									onLoadDiff={loadDiff}
 								/>
 							</Box>
@@ -204,4 +239,8 @@ export function ReviewDetail({
 			</Grid>
 		</Box>
 	)
+}
+
+function getCommentIdentity(path: string, side: 'LEFT' | 'RIGHT', body: string) {
+	return `${path}:${side}:${body.trim().replace(/\s+/g, ' ')}`
 }
