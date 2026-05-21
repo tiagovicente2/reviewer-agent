@@ -103,6 +103,14 @@ function revealSelectedPath(
 }
 
 const treeUnsafeCss = `
+[data-item-type='file'] > [data-item-section='content'] [data-truncate-group-container='middle'] > div:first-child {
+	flex: 0 1 max-content;
+}
+
+[data-item-type='file'] > [data-item-section='content'] [data-truncate-group-container='middle'] > div:last-child {
+	display: none;
+}
+
 [data-item-selected='true'] {
 	background-color: var(--trees-selected-bg) !important;
 }
@@ -110,8 +118,6 @@ const treeUnsafeCss = `
 [data-item-selected='true'] [data-truncate-marker] {
 	background-color: var(--trees-selected-bg) !important;
 	background-image: none !important;
-	color: transparent !important;
-	opacity: 0 !important;
 }
 `
 
@@ -132,7 +138,13 @@ function getTreeStyle(colorMode: 'light' | 'dark') {
 		'--trees-bg-muted-override': 'var(--colors-gray.2)',
 		'--trees-fg-override': 'var(--colors-fg-default)',
 		'--trees-fg-muted-override': 'var(--colors-fg-muted)',
+		'--trees-git-lane-width-override': '8px',
+		'--trees-icon-width-override': '14px',
 		'--trees-input-bg-override': 'var(--colors-gray.2)',
+		'--trees-item-padding-x-override': '3px',
+		'--trees-item-row-gap-override': '2px',
+		'--trees-level-gap-override': '3px',
+		'--trees-padding-inline-override': '6px',
 		'--trees-search-fg-override': 'var(--colors-fg-default)',
 		'--trees-focus-ring-color-override': 'var(--colors-review-blue)',
 		'--trees-selected-bg-override': 'var(--colors-review-tree-selected-bg)',
