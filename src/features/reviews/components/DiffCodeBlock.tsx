@@ -12,11 +12,12 @@ const diffCodeBlockClassName = css({
 	lineHeight: '1.7',
 	maxWidth: '100%',
 	overflowX: 'auto',
-	padding: '3',
+	py: '3',
 })
 
 const diffLineClassName = css({
 	display: 'block',
+	px: '3',
 	whiteSpace: 'pre',
 })
 

@@ -14,7 +14,7 @@ export function stripMarkdownFence(value: string) {
 }
 
 export function diffLineColor(line: string) {
-	if (line.startsWith('+') && !line.startsWith('+++')) return 'green.11'
+	if (line.startsWith('+') && !line.startsWith('+++')) return 'review.blue'
 	if (line.startsWith('-') && !line.startsWith('---')) return 'red.11'
 	if (line.startsWith('@@')) return 'cyan.11'
 	return 'fg.muted'

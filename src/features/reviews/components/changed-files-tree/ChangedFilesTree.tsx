@@ -40,6 +40,7 @@ export function ChangedFilesTree({
 			return text ? { text, title: `${item.path}: ${text}` } : null
 		},
 		search: true,
+		unsafeCSS: treeUnsafeCss,
 	})
 
 	useEffect(() => {
@@ -60,11 +61,59 @@ export function ChangedFilesTree({
 			const item = model.getItem(selectedFilePath)
 			item?.select()
 			item?.focus()
+			revealSelectedPath(model, selectedFilePath, paths)
 		}
-	}, [model, selectedFilePath])
+	}, [model, paths, selectedFilePath])
 
 	return <FileTree key={colorMode} model={model} style={getTreeStyle(colorMode)} />
 }
+
+function revealSelectedPath(
+	model: {
+		getFileTreeContainer: () => HTMLElement | undefined
+		getItemHeight: () => number
+	},
+	selectedPath: string,
+	paths: string[],
+) {
+	const root = model.getFileTreeContainer()?.shadowRoot
+	const scrollElement = root?.querySelector('[data-file-tree-virtualized-scroll="true"]')
+	if (!(scrollElement instanceof HTMLElement) || !root) return
+
+	const findSelectedRow = () =>
+		Array.from(root.querySelectorAll('[data-item-path]')).find(
+			(element): element is HTMLElement =>
+				element instanceof HTMLElement && element.dataset.itemPath === selectedPath,
+		)
+
+	const selectedRow = findSelectedRow()
+	if (selectedRow) {
+		selectedRow.scrollIntoView({ block: 'nearest' })
+		return
+	}
+
+	const selectedIndex = paths.indexOf(selectedPath)
+	if (selectedIndex < 0) return
+
+	scrollElement.scrollTop = Math.max(
+		0,
+		selectedIndex * model.getItemHeight() - scrollElement.clientHeight / 2,
+	)
+	requestAnimationFrame(() => findSelectedRow()?.scrollIntoView({ block: 'nearest' }))
+}
+
+const treeUnsafeCss = `
+[data-item-selected='true'] {
+	background-color: var(--trees-selected-bg) !important;
+}
+
+[data-item-selected='true'] [data-truncate-marker] {
+	background-color: var(--trees-selected-bg) !important;
+	background-image: none !important;
+	color: transparent !important;
+	opacity: 0 !important;
+}
+`
 
 function getExpandableParentPaths(paths: string[]) {
 	return Array.from(
@@ -85,7 +134,9 @@ function getTreeStyle(colorMode: 'light' | 'dark') {
 		'--trees-fg-muted-override': 'var(--colors-fg-muted)',
 		'--trees-input-bg-override': 'var(--colors-gray.2)',
 		'--trees-search-fg-override': 'var(--colors-fg-default)',
-		'--trees-selected-bg-override': 'var(--colors-gray.3)',
+		'--trees-focus-ring-color-override': 'var(--colors-review-blue)',
+		'--trees-selected-bg-override': 'var(--colors-review-tree-selected-bg)',
+		'--trees-selected-focused-border-color-override': 'var(--colors-review-blue)',
 		'--trees-selected-fg-override': 'var(--colors-fg-default)',
 		backgroundColor: 'transparent',
 		border: 'none',

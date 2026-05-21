@@ -89,6 +89,13 @@ export default defineConfig({
 						commentBg: { value: { _light: '#fff8c5', _dark: '#fff8c5' } },
 						commentBorder: { value: { _light: '#d4a72c', _dark: '#d4a72c' } },
 						commentTagBg: { value: { _light: '#00a2c7', _dark: '#00a2c7' } },
+						diffAdditionBg: {
+							value: { _light: 'rgba(0, 127, 255, 0.18)', _dark: 'rgba(0, 127, 255, 0.18)' },
+						},
+						diffDeletionBg: {
+							value: { _light: 'rgba(220, 38, 38, 0.2)', _dark: 'rgba(220, 38, 38, 0.2)' },
+						},
+						treeSelectedBg: { value: { _light: '{colors.cyan.a3}', _dark: '{colors.cyan.a3}' } },
 					},
 				},
 

@@ -10,7 +10,6 @@ import { ChangedFilesTree } from './changed-files-tree/ChangedFilesTree'
 import { DiffViewer } from './diff-viewer/DiffViewer'
 import { GeneratedFindings } from './GeneratedFindings'
 
-
 export function ReviewTab({
 	generationError,
 	generationMessage,
@@ -116,11 +115,7 @@ export function CodeTab({
 			>
 				<Card.Header>
 					<Card.Title>Changed files</Card.Title>
-					<Card.Description truncate>
-						{selectedFilePath
-							? `Focused: ${selectedFilePath}`
-							: `${detail?.files.length ?? 0} edited files`}
-					</Card.Description>
+					<Card.Description truncate>{detail?.files.length ?? 0} edited files</Card.Description>
 				</Card.Header>
 				<Card.Body minH="0" overflow="hidden">
 					{detail ? (
@@ -145,20 +140,14 @@ export function CodeTab({
 			>
 				<Card.Body minH="0" overflow="hidden" py="4">
 					<Box h="100%" minH="0" overflow="auto" pr="3" scrollbarGutter="stable">
-						{diff && selectedFilePath ? (
+						{diff ? (
 							<DiffViewer
 								colorMode={colorMode}
 								inlineComments={inlineComments}
+								onSelectFile={setSelectedFilePath}
 								patch={diff}
 								selectedFilePath={selectedFilePath}
 							/>
-						) : diff ? (
-							<Stack h="100%" placeContent="center" alignItems="center" gap="4" textAlign="center">
-								<StatusCard
-									title="No file selected"
-									body="Choose a changed file from the tree to render its diff."
-								/>
-							</Stack>
 						) : (
 							<Stack h="100%" placeContent="center" alignItems="center" gap="4" textAlign="center">
 								<StatusCard

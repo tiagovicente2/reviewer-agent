@@ -6,6 +6,7 @@ import { Box, HStack, Stack } from 'styled-system/jsx'
 import { Badge } from '@/components/ui'
 import type { PiInlineComment } from '@/shared/review'
 import {
+	type DiffAnnotation,
 	getFileDiffKey,
 	getLineAnnotations,
 	getScrollableParent,
@@ -20,12 +21,14 @@ type ParsedPatchState =
 type DiffViewerProps = {
 	colorMode: 'light' | 'dark'
 	inlineComments?: PiInlineComment[]
+	onSelectFile?: (path: string) => void
 	patch: string
 	selectedFilePath?: string | null
 }
 
 export const DiffViewer = memo(function DiffViewer({
 	inlineComments = [],
+	onSelectFile,
 	patch,
 	selectedFilePath,
 }: DiffViewerProps) {
@@ -39,9 +42,7 @@ export const DiffViewer = memo(function DiffViewer({
 	const fileRefs = useRef(new Map<string, HTMLDivElement>())
 
 	useEffect(() => {
-		if (!selectedFilePath) {
-			return
-		}
+		if (!selectedFilePath) return
 
 		let selectedKey: string | null = null
 		setCollapsedFiles((current) => {
@@ -56,9 +57,7 @@ export const DiffViewer = memo(function DiffViewer({
 		})
 
 		requestAnimationFrame(() => {
-			if (!selectedKey) {
-				return
-			}
+			if (!selectedKey) return
 
 			const node = fileRefs.current.get(selectedKey)
 			const scrollParent = node ? getScrollableParent(node) : null
@@ -70,6 +69,7 @@ export const DiffViewer = memo(function DiffViewer({
 			}
 		})
 	}, [parsedPatch.files, selectedFilePath])
+
 	if (!patch.trim()) {
 		return <DiffStatus title="No diff loaded" body="Select a PR to load its GitHub diff." />
 	}
@@ -106,6 +106,7 @@ export const DiffViewer = memo(function DiffViewer({
 							collapsed={collapsed}
 							fileDiff={fileDiff}
 							onToggle={() => {
+								onSelectFile?.(fileDiff.name)
 								if (collapsed) {
 									setCollapsedFiles((current) => {
 										const next = new Set(current)
@@ -147,6 +148,8 @@ function DiffFileHeader({
 }) {
 	const additions = fileDiff.hunks.reduce((total, hunk) => total + hunk.additionLines, 0)
 	const deletions = fileDiff.hunks.reduce((total, hunk) => total + hunk.deletionLines, 0)
+	const displayPath = formatPathWithFilename(fileDiff.name)
+	const previousDisplayPath = fileDiff.prevName ? formatPathWithFilename(fileDiff.prevName) : null
 
 	return (
 		<Box
@@ -167,12 +170,30 @@ function DiffFileHeader({
 						{collapsed ? '▸' : '▾'}
 					</Box>
 					<Stack gap="0" minW="0">
-						<Box fontFamily="mono" fontSize="sm" fontWeight="medium" truncate>
-							{fileDiff.name}
+						<Box
+							direction="rtl"
+							fontFamily="mono"
+							fontSize="sm"
+							fontWeight="medium"
+							title={fileDiff.name}
+							truncate
+						>
+							<Box as="span" direction="ltr" unicodeBidi="plaintext">
+								{displayPath}
+							</Box>
 						</Box>
 						{fileDiff.prevName && fileDiff.prevName !== fileDiff.name ? (
-							<Box color="fg.muted" fontFamily="mono" fontSize="xs" truncate>
-								from {fileDiff.prevName}
+							<Box
+								color="fg.muted"
+								direction="rtl"
+								fontFamily="mono"
+								fontSize="xs"
+								title={fileDiff.prevName}
+								truncate
+							>
+								<Box as="span" direction="ltr" unicodeBidi="plaintext">
+									from {previousDisplayPath}
+								</Box>
 							</Box>
 						) : null}
 					</Stack>
@@ -189,14 +210,23 @@ function DiffFileHeader({
 	)
 }
 
+function formatPathWithFilename(path: string) {
+	const segments = path.split('/')
+	if (segments.length <= 1) return path
+
+	const filename = segments.at(-1)
+	const directory = segments.slice(0, -1).join('/')
+	return `${filename} · ${directory}`
+}
+
 function PlainFileDiff({
 	fileDiff,
 	lineAnnotations,
 }: {
 	fileDiff: FileDiffMetadata
-	lineAnnotations: DiffLineAnnotation<{ body: string }>[]
+	lineAnnotations: DiffLineAnnotation<DiffAnnotation>[]
 }) {
-	const annotationKey = (annotation: DiffLineAnnotation<{ body: string }>) =>
+	const annotationKey = (annotation: DiffLineAnnotation<DiffAnnotation>) =>
 		`${annotation.side}:${annotation.lineNumber}`
 	const annotationsByLine = new Map(
 		lineAnnotations.map((annotation) => [annotationKey(annotation), annotation]),
@@ -262,7 +292,7 @@ function DiffLineGroup({
 	annotation,
 	children,
 }: {
-	annotation?: DiffLineAnnotation<{ body: string }>
+	annotation?: DiffLineAnnotation<DiffAnnotation>
 	children: React.ReactNode
 }) {
 	return (
@@ -358,8 +388,8 @@ const plainDiffClassName = css({
 		minW: 'max-content',
 	},
 	'& .diffLine.context': { bg: 'gray.1' },
-	'& .diffLine.addition': { bg: 'green.2' },
-	'& .diffLine.deletion': { bg: 'red.2' },
+	'& .diffLine.addition': { bg: 'review.diffAdditionBg' },
+	'& .diffLine.deletion': { bg: 'review.diffDeletionBg' },
 	'& .lineNumber': {
 		borderRightWidth: '1px',
 		borderColor: 'border.default',

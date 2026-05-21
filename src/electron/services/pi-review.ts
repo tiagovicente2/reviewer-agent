@@ -287,6 +287,8 @@ function parsePiReview(
 							line?: unknown
 							side?: unknown
 							body?: unknown
+							author?: unknown
+							createdAt?: unknown
 						}
 						const side: 'LEFT' | 'RIGHT' = value.side === 'LEFT' ? 'LEFT' : 'RIGHT'
 						return {
@@ -294,6 +296,8 @@ function parsePiReview(
 							line: typeof value.line === 'number' ? value.line : 1,
 							side,
 							body: typeof value.body === 'string' ? value.body : '',
+							author: typeof value.author === 'string' ? value.author : undefined,
+							createdAt: typeof value.createdAt === 'string' ? value.createdAt : undefined,
 						}
 					})
 					.filter((comment) => comment.path && comment.body)

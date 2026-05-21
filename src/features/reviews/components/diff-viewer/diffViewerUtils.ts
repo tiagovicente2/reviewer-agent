@@ -2,7 +2,11 @@ import type { DiffLineAnnotation, FileDiffMetadata } from '@pierre/diffs/direct/
 import type { PiInlineComment } from '@/shared/review'
 
 export type DiffAnnotation = {
-	body: string
+	comments: Array<{
+		author?: string
+		body: string
+		createdAt?: string
+	}>
 }
 
 export function groupInlineCommentsByPath(inlineComments: PiInlineComment[]) {
@@ -17,16 +21,34 @@ export function getLineAnnotations(
 	fileDiff: FileDiffMetadata,
 	inlineCommentsByPath: Map<string, PiInlineComment[]>,
 ): DiffLineAnnotation<DiffAnnotation>[] {
-	return [
+	const annotationsByLine = new Map<string, DiffLineAnnotation<DiffAnnotation>>()
+	const comments = [
 		...(inlineCommentsByPath.get(fileDiff.name) ?? []),
 		...(fileDiff.prevName ? (inlineCommentsByPath.get(fileDiff.prevName) ?? []) : []),
-	].map((comment) => ({
-		lineNumber: comment.line,
-		metadata: {
+	]
+
+	for (const comment of comments) {
+		const side = comment.side === 'LEFT' ? 'deletions' : 'additions'
+		const key = `${side}:${comment.line}`
+		const existing = annotationsByLine.get(key)
+		const threadComment = {
+			author: comment.author,
 			body: comment.body,
-		},
-		side: comment.side === 'LEFT' ? 'deletions' : 'additions',
-	}))
+			createdAt: comment.createdAt,
+		}
+
+		if (existing) {
+			existing.metadata.comments.push(threadComment)
+		} else {
+			annotationsByLine.set(key, {
+				lineNumber: comment.line,
+				metadata: { comments: [threadComment] },
+				side,
+			})
+		}
+	}
+
+	return [...annotationsByLine.values()]
 }
 
 export function getScrollableParent(node: HTMLElement) {

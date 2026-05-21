@@ -21,6 +21,8 @@ export type PiInlineComment = {
 	line: number
 	side: 'RIGHT' | 'LEFT'
 	body: string
+	author?: string
+	createdAt?: string
 }
 
 export type PiGeneratedReview = {
