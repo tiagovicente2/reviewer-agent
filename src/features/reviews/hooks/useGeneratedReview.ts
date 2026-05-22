@@ -189,7 +189,7 @@ export function useGeneratedReview({
 			event,
 			findings,
 		}: {
-			body: string
+			body?: string
 			event: PiReviewSubmitEvent
 			findings?: PiReviewFinding[]
 		}) => {

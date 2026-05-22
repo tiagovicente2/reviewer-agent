@@ -23,6 +23,7 @@ export function ReviewTab({
 	publishError,
 	onPublishFinding,
 	onSubmitReview,
+	publishableFindings,
 	publishingFindingIds,
 	submittingReviewEvent,
 }: {
@@ -33,10 +34,11 @@ export function ReviewTab({
 	publishError: string
 	onPublishFinding: (finding: PiReviewFinding) => void
 	onSubmitReview: (params: {
-		body: string
+		body?: string
 		event: PiReviewSubmitEvent
 		findings?: PiReviewFinding[]
 	}) => void
+	publishableFindings: PiReviewFinding[]
 	publishingFindingIds: Set<string>
 	submittingReviewEvent: PiReviewSubmitEvent | null
 }) {
@@ -59,6 +61,7 @@ export function ReviewTab({
 						generationState={generationState}
 						onPublishFinding={onPublishFinding}
 						onSubmitReview={onSubmitReview}
+						publishableFindings={publishableFindings}
 						publishingFindingIds={publishingFindingIds}
 						submittingReviewEvent={submittingReviewEvent}
 						review={generatedReview}

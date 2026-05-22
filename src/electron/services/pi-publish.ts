@@ -51,8 +51,7 @@ export async function publishPiReviewComments(
 }
 
 export async function submitPiReview(params: SubmitPiReviewParams): Promise<SubmitPiReviewResult> {
-	const body = params.body.trim()
-	if (!body) throw new Error('Review body is required.')
+	const body = params.body?.trim()
 
 	const comments =
 		params.event === 'request_changes'
@@ -65,11 +64,11 @@ export async function submitPiReview(params: SubmitPiReviewParams): Promise<Subm
 			: []
 
 	const payload = {
-		body,
 		comments,
 		commit_id: params.pullRequest.headSha,
 		event: params.event === 'approve' ? 'APPROVE' : 'REQUEST_CHANGES',
 	}
+	if (body) Object.assign(payload, { body })
 
 	const result = await runGh(
 		[

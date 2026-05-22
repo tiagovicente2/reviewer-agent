@@ -1,7 +1,7 @@
 'use client'
 import { ark } from '@ark-ui/react/factory'
 import { createContext, mergeProps } from '@ark-ui/react/utils'
-import { type ComponentProps, forwardRef, useMemo } from 'react'
+import { type ComponentProps, forwardRef, type MouseEvent, useMemo } from 'react'
 import { styled } from 'styled-system/jsx'
 import { type ButtonVariantProps, button } from 'styled-system/recipes'
 import { Group, type GroupProps } from './group'
@@ -41,13 +41,25 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
 	)
 
 	const { loading, loadingText, children, spinner, spinnerPlacement, ...rest } = buttonProps
+	const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
+		if (loading) {
+			event.preventDefault()
+			event.stopPropagation()
+			return
+		}
+
+		rest.onClick?.(event)
+	}
+
 	return (
 		<BaseButton
 			type="button"
 			ref={ref}
 			{...rest}
+			aria-disabled={loading || rest['aria-disabled'] ? true : undefined}
 			data-loading={loading ? '' : undefined}
-			disabled={loading || rest.disabled}
+			disabled={rest.disabled}
+			onClick={handleClick}
 		>
 			{!props.asChild && loading ? (
 				<Loader spinner={spinner} text={loadingText} spinnerPlacement={spinnerPlacement}>

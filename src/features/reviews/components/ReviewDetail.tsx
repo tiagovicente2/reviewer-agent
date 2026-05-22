@@ -36,10 +36,8 @@ export function ReviewDetail({
 		generationError,
 		generationMessage,
 		generationState,
-		publishAll,
 		publishError,
 		publishFinding,
-		publishingAll,
 		publishingFindingIds,
 		submitReview,
 		submittingReviewEvent,
@@ -86,6 +84,10 @@ export function ReviewDetail({
 
 		return comments
 	}, [generatedReview])
+	const publishableFindings = useMemo(
+		() => generatedReview?.findings.filter(isPublishableFinding) ?? [],
+		[generatedReview],
+	)
 
 	const handleOpenOnGitHub = async () => {
 		if (review) {
@@ -185,15 +187,20 @@ export function ReviewDetail({
 								</HStack>
 								{activeTab === 'review' && generatedReview ? (
 									<HStack gap="2">
-										{generatedReview.findings.length ? (
-											<Button
-												loading={publishingAll}
-												onClick={() => publishAll(generatedReview.findings)}
-												size="sm"
-											>
-												Publish all comments
-											</Button>
-										) : null}
+										<Button
+											disabled={!detail || detailState === 'loading'}
+											loading={submittingReviewEvent === 'approve'}
+											onClick={() =>
+												submitReview({
+													body: '',
+													event: 'approve',
+												})
+											}
+											size="sm"
+											variant="outline"
+										>
+											Approve
+										</Button>
 										<Button
 											disabled={!detail || detailState === 'loading'}
 											loading={generationState === 'loading'}
@@ -233,6 +240,7 @@ export function ReviewDetail({
 									generatedReview={generatedReview}
 									onPublishFinding={publishFinding}
 									onSubmitReview={submitReview}
+									publishableFindings={publishableFindings}
 									publishingFindingIds={publishingFindingIds}
 									submittingReviewEvent={submittingReviewEvent}
 								/>
@@ -247,4 +255,13 @@ export function ReviewDetail({
 
 function getCommentIdentity(path: string, side: 'LEFT' | 'RIGHT', body: string) {
 	return `${path}:${side}:${body.trim().replace(/\s+/g, ' ')}`
+}
+
+function isPublishableFinding(finding: {
+	filePath: string
+	lineStart?: number
+	suggestedCommentBody?: string
+	body: string
+}) {
+	return Boolean(finding.filePath && finding.lineStart && (finding.suggestedCommentBody || finding.body))
 }

@@ -27,6 +27,12 @@ export const button = defineRecipe({
 		_disabled: {
 			layerStyle: 'disabled',
 		},
+		'&[data-loading]': {
+			cursor: 'progress',
+			filter: 'none',
+			opacity: '1',
+			pointerEvents: 'none',
+		},
 		focusVisibleRing: 'outside',
 	},
 	defaultVariants: {

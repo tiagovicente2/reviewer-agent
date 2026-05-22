@@ -157,7 +157,7 @@ function assertSubmitReviewParams(params: unknown) {
 	if (!['approve', 'request_changes'].includes(String(params.event))) {
 		throw new Error('Invalid review event.')
 	}
-	assertString(params.body, 'body')
+	assertOptionalString(params.body, 'body')
 	if (params.findings !== undefined) {
 		if (!Array.isArray(params.findings)) throw new Error('Expected findings to be an array.')
 		for (const finding of params.findings) assertFinding(finding)

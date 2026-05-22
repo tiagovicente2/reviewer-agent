@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Box, HStack, Stack } from 'styled-system/jsx'
 import type { AsyncState } from '@/app/types'
 import { StatusCard } from '@/components/common'
@@ -14,6 +14,7 @@ export function GeneratedFindings({
 	generationState,
 	onPublishFinding,
 	onSubmitReview,
+	publishableFindings,
 	publishingFindingIds,
 	submittingReviewEvent,
 	review,
@@ -23,10 +24,11 @@ export function GeneratedFindings({
 	generationState: AsyncState
 	onPublishFinding?: (finding: PiReviewFinding) => void
 	onSubmitReview?: (params: {
-		body: string
+		body?: string
 		event: PiReviewSubmitEvent
 		findings?: PiReviewFinding[]
 	}) => void
+	publishableFindings?: PiReviewFinding[]
 	publishingFindingIds?: Set<string>
 	submittingReviewEvent?: PiReviewSubmitEvent | null
 	review: PiGeneratedReview | null
@@ -59,15 +61,17 @@ export function GeneratedFindings({
 			<Box color="fg.muted" textStyle="sm">
 				{review.summary}
 			</Box>
-			<ReviewDecisionCard
-				onSubmitReview={onSubmitReview}
-				review={review}
-				submittingReviewEvent={submittingReviewEvent ?? null}
-			/>
 			{review.diffWasTruncated ? (
 				<StatusCard
 					title="Diff was truncated"
 					body="The PR diff was too large to send in full. Review the raw diff before publishing anything."
+				/>
+			) : null}
+			{publishableFindings?.length ? (
+				<RequestChangesCard
+					findings={publishableFindings}
+					onSubmitReview={onSubmitReview}
+					submittingReviewEvent={submittingReviewEvent ?? null}
 				/>
 			) : null}
 			{review.findings.length === 0 ? (
@@ -88,28 +92,21 @@ export function GeneratedFindings({
 	)
 }
 
-function ReviewDecisionCard({
+function RequestChangesCard({
+	findings,
 	onSubmitReview,
-	review,
 	submittingReviewEvent,
 }: {
+	findings: PiReviewFinding[]
 	onSubmitReview?: (params: {
-		body: string
+		body?: string
 		event: PiReviewSubmitEvent
 		findings?: PiReviewFinding[]
 	}) => void
-	review: PiGeneratedReview
 	submittingReviewEvent: PiReviewSubmitEvent | null
 }) {
-	const [reviewBody, setReviewBody] = useState(review.publishableBody || review.summary)
-	const publishableFindings = review.findings.filter(
-		(finding) => finding.filePath && finding.lineStart && (finding.suggestedCommentBody || finding.body),
-	)
-	const canSubmit = Boolean(reviewBody.trim()) && !submittingReviewEvent
-
-	useEffect(() => {
-		setReviewBody(review.publishableBody || review.summary)
-	}, [review])
+	const [reviewBody, setReviewBody] = useState('')
+	const canSubmit = !submittingReviewEvent
 
 	return (
 		<Card.Root variant="outline">
@@ -117,26 +114,12 @@ function ReviewDecisionCard({
 				<Stack gap="3">
 					<HStack justify="space-between" gap="3" alignItems="flex-start">
 						<Stack gap="1">
-							<Box fontWeight="semibold">Submit review</Box>
+							<Box fontWeight="semibold">Request changes</Box>
 							<Box color="fg.muted" textStyle="sm">
-								Request changes includes {publishableFindings.length} generated inline comments.
+								Submit a GitHub review with {findings.length} generated inline comments.
 							</Box>
 						</Stack>
 						<HStack gap="2">
-							<Button
-								disabled={!canSubmit}
-								loading={submittingReviewEvent === 'approve'}
-								onClick={() =>
-									onSubmitReview?.({
-										body: reviewBody.trim(),
-										event: 'approve',
-									})
-								}
-								size="sm"
-								variant="outline"
-							>
-								Approve
-							</Button>
 							<Button
 								disabled={!canSubmit}
 								loading={submittingReviewEvent === 'request_changes'}
@@ -144,7 +127,7 @@ function ReviewDecisionCard({
 									onSubmitReview?.({
 										body: reviewBody.trim(),
 										event: 'request_changes',
-										findings: review.findings,
+										findings,
 									})
 								}
 								size="sm"

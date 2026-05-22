@@ -74,7 +74,7 @@ export type PiReviewSubmitEvent = 'approve' | 'request_changes'
 export type SubmitPiReviewParams = {
 	pullRequest: GitHubPullRequestDetails
 	event: PiReviewSubmitEvent
-	body: string
+	body?: string
 	findings?: PiReviewFinding[]
 }
 
