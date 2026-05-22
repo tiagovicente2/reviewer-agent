@@ -16,6 +16,8 @@ type SpawnOptions = {
 	cwd?: string
 	env?: NodeJS.ProcessEnv
 	input?: string
+	onStderr?: (chunk: string) => void
+	onStdout?: (chunk: string) => void
 	timeoutMs?: number
 }
 
@@ -55,8 +57,14 @@ export function runCommandBuffer(command: string, args: string[], options: Spawn
 			}, options.timeoutMs)
 		}
 
-		child.stdout.on('data', (chunk: Buffer) => stdoutChunks.push(chunk))
-		child.stderr.on('data', (chunk: Buffer) => stderrChunks.push(chunk))
+		child.stdout.on('data', (chunk: Buffer) => {
+			stdoutChunks.push(chunk)
+			options.onStdout?.(chunk.toString('utf8'))
+		})
+		child.stderr.on('data', (chunk: Buffer) => {
+			stderrChunks.push(chunk)
+			options.onStderr?.(chunk.toString('utf8'))
+		})
 		child.on('error', (error) => finish(error))
 		child.on('close', (code) => {
 			const stdout = Buffer.concat(stdoutChunks)

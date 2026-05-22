@@ -25,6 +25,7 @@ export function useGeneratedReview({
 	const [generationState, setGenerationState] = useState<AsyncState>('idle')
 	const [generationError, setGenerationError] = useState('')
 	const [generationMessage, setGenerationMessage] = useState('')
+	const [generationOutputText, setGenerationOutputText] = useState('')
 	const [publishError, setPublishError] = useState('')
 	const [publishingAll, setPublishingAll] = useState(false)
 	const [publishingFindingIds, setPublishingFindingIds] = useState<Set<string>>(() => new Set())
@@ -37,6 +38,7 @@ export function useGeneratedReview({
 			setGeneratedReview(review)
 			onSummary(review.publishableBody || review.summary)
 			setGenerationState('idle')
+			setGenerationOutputText('')
 			showToast({
 				title: 'Review completed',
 				description: 'A draft review was generated.',
@@ -51,6 +53,7 @@ export function useGeneratedReview({
 		setGenerationState('idle')
 		setGenerationError('')
 		setGenerationMessage('')
+		setGenerationOutputText('')
 		setPublishError('')
 		setGenerationJobId(null)
 		if (!detail) return
@@ -72,6 +75,7 @@ export function useGeneratedReview({
 					setGenerationState('loading')
 					setGenerationJobId(job.id)
 					setGenerationMessage(job.statusMessage ?? '')
+					setGenerationOutputText(job.outputText ?? '')
 				} else if (job?.status === 'failed') {
 					setGenerationState('error')
 					setGenerationError(job.error ?? 'Review generation failed.')
@@ -98,6 +102,7 @@ export function useGeneratedReview({
 				const job = await appRpc.request.getReviewGenerationJob({ jobId: generationJobId })
 				if (cancelled || !job) return
 				setGenerationMessage(job.statusMessage ?? '')
+				setGenerationOutputText(job.outputText ?? '')
 
 				if (job.status === 'completed' && job.review) {
 					completeGeneration(job.review)
@@ -107,12 +112,14 @@ export function useGeneratedReview({
 				if (job.status === 'failed') {
 					setGenerationError(job.error ?? 'Review generation failed.')
 					setGenerationState('error')
+					setGenerationOutputText('')
 					setGenerationJobId(null)
 				}
 			} catch (error) {
 				if (!cancelled) {
 					setGenerationError(getErrorMessage(error))
 					setGenerationState('error')
+					setGenerationOutputText('')
 					setGenerationJobId(null)
 				}
 			}
@@ -135,6 +142,7 @@ export function useGeneratedReview({
 		setGenerationState('loading')
 		setGenerationError('')
 		setGenerationMessage('Loading the latest PR diff before starting review generation...')
+		setGenerationOutputText('')
 
 		try {
 			const loadedDiff = await loadDiff()
@@ -143,11 +151,13 @@ export function useGeneratedReview({
 				pullRequest: { ...detail, diff: loadedDiff },
 			})
 			setGenerationJobId(job.id)
+			setGenerationOutputText(job.outputText ?? '')
 			if (job.status === 'completed' && job.review) completeGeneration(job.review)
 		} catch (error) {
 			setGenerationMessage('')
 			setGenerationError(getErrorMessage(error))
 			setGenerationState('error')
+			setGenerationOutputText('')
 		}
 	}, [completeGeneration, detail, loadDiff, onStartGeneration])
 
@@ -221,6 +231,7 @@ export function useGeneratedReview({
 		generatedReview,
 		generationError,
 		generationMessage,
+		generationOutputText,
 		generationState,
 		publishAll,
 		publishError,

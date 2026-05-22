@@ -46,7 +46,18 @@ export function startReviewGeneration(params: GenerateReviewParams): ReviewGener
 	}
 
 	job.progressTimer = startProgressTimer(jobId, job)
-	job.promise = generateReview(params)
+	job.promise = generateReview(params, {
+		onProgress: ({ message, outputText }) => {
+			if (!message && outputText === undefined) return
+			const current = jobs.get(jobId) ?? job
+			if (current.status !== 'running') return
+			jobs.set(jobId, {
+				...current,
+				outputText: outputText ?? current.outputText,
+				statusMessage: message ?? current.statusMessage,
+			})
+		},
+	})
 		.then((review) => {
 			clearProgressTimer(job)
 			jobs.set(jobId, {
