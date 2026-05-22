@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Box, HStack, Stack } from 'styled-system/jsx'
 import { MarkdownContent } from '@/components/markdown/MarkdownContent'
 import { Badge, Button, Textarea } from '@/components/ui'
-import type { PiInlineComment, PiReviewFinding } from '@/shared/review'
+import type { ReviewFinding, ReviewInlineComment } from '@/shared/review'
 import {
 	DiffFileView,
 	findPatchFile,
@@ -20,9 +20,9 @@ export function EditableFindingCard({
 	publishing,
 }: {
 	diff: string
-	finding: PiReviewFinding
-	inlineComments: PiInlineComment[]
-	onPublishFinding?: (finding: PiReviewFinding) => void
+	finding: ReviewFinding
+	inlineComments: ReviewInlineComment[]
+	onPublishFinding?: (finding: ReviewFinding) => void
 	publishing: boolean
 }) {
 	const [commentBody, setCommentBody] = useState(finding.suggestedCommentBody || finding.body)
@@ -47,10 +47,7 @@ export function EditableFindingCard({
 				<Stack gap="3">
 					<HStack justify="space-between" gap="3" alignItems="flex-start">
 						<Stack gap="2" minW="0">
-							<Badge
-								alignSelf="flex-start"
-								colorPalette={severityColorPalette(finding.severity)}
-							>
+							<Badge alignSelf="flex-start" colorPalette={severityColorPalette(finding.severity)}>
 								{finding.severity}
 							</Badge>
 							<Box fontWeight="semibold">{finding.title}</Box>
@@ -106,8 +103,8 @@ function FindingDiffPreview({
 	inlineComments,
 }: {
 	diff: string
-	finding: PiReviewFinding
-	inlineComments: PiInlineComment[]
+	finding: ReviewFinding
+	inlineComments: ReviewInlineComment[]
 }) {
 	const fileDiff = findPatchFile(diff, finding.filePath)
 	const focusedFileDiff =
@@ -152,8 +149,7 @@ function findHunkForRightLine(fileDiff: FileDiffMetadata, lineNumber: number) {
 	return (
 		fileDiff.hunks.find(
 			(hunk) =>
-				lineNumber >= hunk.additionStart &&
-				lineNumber < hunk.additionStart + hunk.additionCount,
+				lineNumber >= hunk.additionStart && lineNumber < hunk.additionStart + hunk.additionCount,
 		) ?? null
 	)
 }
@@ -169,11 +165,7 @@ function getFocusedPatchLines(
 	for (const content of hunk.hunkContent) {
 		if (content.type === 'context') {
 			for (let offset = 0; offset < content.lines; offset += 1) {
-				const additionLineNumber = getAdditionLineNumber(
-					hunk,
-					content.additionLineIndex,
-					offset,
-				)
+				const additionLineNumber = getAdditionLineNumber(hunk, content.additionLineIndex, offset)
 				if (additionLineNumber < windowStart || additionLineNumber > windowEnd) continue
 
 				patchLines.push({

@@ -1,8 +1,8 @@
 import type { DiffLineAnnotation, FileDiffMetadata, FileDiffOptions } from '@pierre/diffs'
-import { FileDiff } from '@pierre/diffs/react'
 import { parsePatchFiles } from '@pierre/diffs/direct/utils/parsePatchFiles.js'
+import { FileDiff } from '@pierre/diffs/react'
 import { Box, HStack } from 'styled-system/jsx'
-import type { PiInlineComment } from '@/shared/review'
+import type { ReviewInlineComment } from '@/shared/review'
 import type { DiffAnnotation } from './diffViewerUtils'
 import { getLineAnnotations, groupInlineCommentsByPath } from './diffViewerUtils'
 import { ReviewCommentAnnotation } from './ReviewCommentAnnotation'
@@ -40,7 +40,9 @@ export function parsePatch(patch: string) {
 	try {
 		return {
 			error: undefined,
-			files: parsePatchFiles(patch, 'github-pr-diff', true).flatMap((parsedPatch) => parsedPatch.files),
+			files: parsePatchFiles(patch, 'github-pr-diff', true).flatMap(
+				(parsedPatch) => parsedPatch.files,
+			),
 		}
 	} catch (error) {
 		return {
@@ -51,7 +53,10 @@ export function parsePatch(patch: string) {
 }
 
 export function findPatchFile(patch: string, filePath: string) {
-	return parsePatch(patch).files.find((file) => file.name === filePath || file.prevName === filePath) ?? null
+	return (
+		parsePatch(patch).files.find((file) => file.name === filePath || file.prevName === filePath) ??
+		null
+	)
 }
 
 export function DiffFileView({
@@ -62,7 +67,7 @@ export function DiffFileView({
 }: {
 	disableFileHeader?: boolean
 	fileDiff: FileDiffMetadata
-	inlineComments: PiInlineComment[]
+	inlineComments: ReviewInlineComment[]
 	settings: DiffDisplaySettings
 }) {
 	const commentsByPath = groupInlineCommentsByPath(inlineComments)

@@ -2,7 +2,7 @@ import type { GitHubPullRequestDetails } from './github'
 
 export type ReviewSeverity = 'critical' | 'high' | 'medium' | 'low' | 'info'
 
-export type PiReviewFinding = {
+export type ReviewFinding = {
 	id: string
 	severity: ReviewSeverity
 	title: string
@@ -16,7 +16,7 @@ export type PiReviewFinding = {
 	confidence: number
 }
 
-export type PiInlineComment = {
+export type ReviewInlineComment = {
 	path: string
 	line: number
 	side: 'RIGHT' | 'LEFT'
@@ -25,62 +25,62 @@ export type PiInlineComment = {
 	createdAt?: string
 }
 
-export type PiGeneratedReview = {
+export type GeneratedReview = {
 	summary: string
 	publishableBody: string
 	verdictRecommendation: 'comment' | 'approve' | 'request_changes'
 	severity: ReviewSeverity
-	findings: PiReviewFinding[]
-	inlineComments: PiInlineComment[]
+	findings: ReviewFinding[]
+	inlineComments: ReviewInlineComment[]
 	rawOutput: string
 	modelLabel: string
 	generatedAt: string
 	diffWasTruncated: boolean
 }
 
-export type GeneratePiReviewParams = {
+export type GenerateReviewParams = {
 	pullRequest: GitHubPullRequestDetails
 }
 
-export type PiReviewGenerationJob = {
+export type ReviewGenerationJob = {
 	id: string
 	pullRequestKey: string
 	status: 'running' | 'completed' | 'failed'
 	statusMessage?: string
 	startedAt: string
 	finishedAt?: string
-	review?: PiGeneratedReview
+	review?: GeneratedReview
 	error?: string
 }
 
-export type GetSavedPiReviewParams = {
+export type GetSavedReviewParams = {
 	repo: string
 	pullRequestNumber: number
 	headSha: string
 }
 
-export type PublishPiReviewCommentParams = {
+export type PublishReviewCommentParams = {
 	pullRequest: GitHubPullRequestDetails
-	finding: PiReviewFinding
+	finding: ReviewFinding
 }
 
-export type PublishPiReviewCommentsParams = {
+export type PublishReviewCommentsParams = {
 	pullRequest: GitHubPullRequestDetails
-	findings: PiReviewFinding[]
+	findings: ReviewFinding[]
 }
 
-export type PiReviewSubmitEvent = 'approve' | 'request_changes'
+export type ReviewSubmitEvent = 'approve' | 'request_changes'
 
-export type SubmitPiReviewParams = {
+export type SubmitReviewParams = {
 	pullRequest: GitHubPullRequestDetails
-	event: PiReviewSubmitEvent
+	event: ReviewSubmitEvent
 	body?: string
-	findings?: PiReviewFinding[]
+	findings?: ReviewFinding[]
 }
 
-export type PublishPiReviewCommentResult = {
+export type PublishReviewCommentResult = {
 	ok: true
 	output: string
 }
 
-export type SubmitPiReviewResult = PublishPiReviewCommentResult
+export type SubmitReviewResult = PublishReviewCommentResult

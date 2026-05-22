@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import type { GitHubPullRequestDetails } from '@/shared/github'
-import type { PiGeneratedReview } from '@/shared/review'
+import type { GeneratedReview } from '@/shared/review'
 import { getLegacyDataDir, getUserDataPath } from '../paths'
 import { pruneRecordByUpdatedAt, writeJsonFileAtomically } from './json-store'
 
@@ -10,7 +10,7 @@ type StoredReview = {
 	repo: string
 	pullRequestNumber: number
 	headSha: string
-	review: PiGeneratedReview
+	review: GeneratedReview
 	createdAt: string
 	updatedAt: string
 }
@@ -34,8 +34,8 @@ let writeQueued = false
 
 export function saveGeneratedReview(params: {
 	pullRequest: GitHubPullRequestDetails
-	review: PiGeneratedReview
-}): PiGeneratedReview {
+	review: GeneratedReview
+}): GeneratedReview {
 	const id = getReviewStoreKey(params.pullRequest)
 	const now = new Date().toISOString()
 	store[id] = {
@@ -55,7 +55,7 @@ export function getSavedGeneratedReview(params: {
 	repo: string
 	pullRequestNumber: number
 	headSha: string
-}): PiGeneratedReview | null {
+}): GeneratedReview | null {
 	return store[getReviewStoreKey(params)]?.review ?? null
 }
 
@@ -94,7 +94,7 @@ function migrateLegacyReviews(): Record<string, StoredReview> {
 	try {
 		const rows = JSON.parse(result.stdout) as LegacyReviewRow[]
 		return rows.reduce<Record<string, StoredReview>>((nextStore, row) => {
-			const review = JSON.parse(row.review_json) as PiGeneratedReview
+			const review = JSON.parse(row.review_json) as GeneratedReview
 			const entry = {
 				repo: row.repo,
 				pullRequestNumber: row.pr_number,

@@ -1,16 +1,12 @@
+import type { Dispatch, SetStateAction } from 'react'
 import { useEffect, useState } from 'react'
 import { Box, Grid, Stack } from 'styled-system/jsx'
-import type { Dispatch, SetStateAction } from 'react'
 import type { AsyncState, ColorMode } from '@/app/types'
 import { StatusCard } from '@/components/common'
 import { MarkdownContent } from '@/components/markdown/MarkdownContent'
 import { Button, Card } from '@/components/ui'
 import type { GitHubPullRequestDetails } from '@/shared/github'
-import type {
-	PiGeneratedReview,
-	PiInlineComment,
-	PiReviewFinding,
-} from '@/shared/review'
+import type { GeneratedReview, ReviewFinding, ReviewInlineComment } from '@/shared/review'
 import { ChangedFilesTree } from './changed-files-tree/ChangedFilesTree'
 import type { DiffDisplaySettings } from './diff-viewer/DiffDisplay'
 import { DiffViewer } from './diff-viewer/DiffViewer'
@@ -34,11 +30,11 @@ export function ReviewTab({
 	generationError: string
 	generationMessage: string
 	generationState: AsyncState
-	generatedReview: PiGeneratedReview | null
-	inlineComments: PiInlineComment[]
+	generatedReview: GeneratedReview | null
+	inlineComments: ReviewInlineComment[]
 	publishError: string
-	onPublishFinding: (finding: PiReviewFinding) => void
-	publishableFindings: PiReviewFinding[]
+	onPublishFinding: (finding: ReviewFinding) => void
+	publishableFindings: ReviewFinding[]
 	publishingFindingIds: Set<string>
 	reviewDecisionBody: string
 	setReviewDecisionBody: Dispatch<SetStateAction<string>>
@@ -94,7 +90,7 @@ export function CodeTab({
 	diffError: string
 	diffDisplaySettings: DiffDisplaySettings
 	diffState: AsyncState
-	inlineComments: PiInlineComment[]
+	inlineComments: ReviewInlineComment[]
 	onLoadDiff: () => Promise<string>
 }) {
 	const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null)

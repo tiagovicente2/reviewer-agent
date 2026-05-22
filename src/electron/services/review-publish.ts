@@ -1,10 +1,10 @@
 import type {
-	PiReviewFinding,
-	PublishPiReviewCommentParams,
-	PublishPiReviewCommentResult,
-	PublishPiReviewCommentsParams,
-	SubmitPiReviewParams,
-	SubmitPiReviewResult,
+	PublishReviewCommentParams,
+	PublishReviewCommentResult,
+	PublishReviewCommentsParams,
+	ReviewFinding,
+	SubmitReviewParams,
+	SubmitReviewResult,
 } from '@/shared/review'
 import { runCommand } from '../process'
 
@@ -16,15 +16,15 @@ type CommandResult = {
 	stderr: string
 }
 
-export async function publishPiReviewComment(
-	params: PublishPiReviewCommentParams,
-): Promise<PublishPiReviewCommentResult> {
-	return publishPiReviewComments({ pullRequest: params.pullRequest, findings: [params.finding] })
+export async function publishReviewComment(
+	params: PublishReviewCommentParams,
+): Promise<PublishReviewCommentResult> {
+	return publishReviewComments({ pullRequest: params.pullRequest, findings: [params.finding] })
 }
 
-export async function publishPiReviewComments(
-	params: PublishPiReviewCommentsParams,
-): Promise<PublishPiReviewCommentResult> {
+export async function publishReviewComments(
+	params: PublishReviewCommentsParams,
+): Promise<PublishReviewCommentResult> {
 	const publishableFindings = params.findings.filter(isPublishableFinding)
 	if (publishableFindings.length === 0) {
 		throw new Error(
@@ -50,7 +50,7 @@ export async function publishPiReviewComments(
 	return { ok: true, output: results.join('\n') }
 }
 
-export async function submitPiReview(params: SubmitPiReviewParams): Promise<SubmitPiReviewResult> {
+export async function submitReview(params: SubmitReviewParams): Promise<SubmitReviewResult> {
 	const body = params.body?.trim()
 	if (params.event === 'approve') return submitApproval(params, body)
 
@@ -66,7 +66,12 @@ export async function submitPiReview(params: SubmitPiReviewParams): Promise<Subm
 
 	const payload: {
 		body?: string
-		comments: Array<{ body: string | undefined; line: number | undefined; path: string; side: 'RIGHT' }>
+		comments: Array<{
+			body: string | undefined
+			line: number | undefined
+			path: string
+			side: 'RIGHT'
+		}>
 		commit_id?: string
 		event: 'APPROVE' | 'REQUEST_CHANGES'
 	} = {
@@ -102,9 +107,9 @@ export async function submitPiReview(params: SubmitPiReviewParams): Promise<Subm
 }
 
 async function submitApproval(
-	params: SubmitPiReviewParams,
+	params: SubmitReviewParams,
 	body: string | undefined,
-): Promise<SubmitPiReviewResult> {
+): Promise<SubmitReviewResult> {
 	const args = [
 		'pr',
 		'review',
@@ -125,7 +130,7 @@ async function submitApproval(
 	return { ok: true, output: output || 'Submitted approval.' }
 }
 
-async function getLatestPullRequestHeadSha(params: SubmitPiReviewParams) {
+async function getLatestPullRequestHeadSha(params: SubmitReviewParams) {
 	const result = await runGh([
 		'api',
 		`repos/${params.pullRequest.repo}/pulls/${params.pullRequest.pullRequestNumber}`,
@@ -140,17 +145,17 @@ async function getLatestPullRequestHeadSha(params: SubmitPiReviewParams) {
 	return result.stdout.trim() || params.pullRequest.headSha
 }
 
-function isPublishableFinding(finding: PiReviewFinding) {
+function isPublishableFinding(finding: ReviewFinding) {
 	return Boolean(finding.filePath && finding.lineStart && getCommentBody(finding))
 }
 
-function getCommentBody(finding: PiReviewFinding) {
+function getCommentBody(finding: ReviewFinding) {
 	return finding.suggestedCommentBody || finding.body
 }
 
 async function publishFinding(
-	params: PublishPiReviewCommentsParams,
-	finding: PiReviewFinding,
+	params: PublishReviewCommentsParams,
+	finding: ReviewFinding,
 ): Promise<CommandResult> {
 	const body = getCommentBody(finding)
 	if (!body || !finding.lineStart) {

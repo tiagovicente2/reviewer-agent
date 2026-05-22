@@ -21,13 +21,13 @@ import {
 	searchGitHubPullRequests,
 	startGitHubLogin,
 } from './services/github'
+import { generateReview } from './services/review-generation'
+import { getReviewGenerationJob, startReviewGeneration } from './services/review-generation-jobs'
 import {
-	publishPiReviewComment,
-	publishPiReviewComments,
-	submitPiReview,
-} from './services/pi-publish'
-import { generateReviewWithPi } from './services/pi-review'
-import { getPiReviewGenerationJob, startPiReviewGeneration } from './services/pi-review-jobs'
+	publishReviewComment,
+	publishReviewComments,
+	submitReview,
+} from './services/review-publish'
 import { getSavedGeneratedReview } from './services/review-store'
 import {
 	completeOnboarding,
@@ -77,17 +77,17 @@ const handlers: Handlers = {
 	getGitHubPullRequestDetails,
 	getGitHubPullRequestDiff,
 	getGitHubAsset,
-	generateReviewWithPi,
-	startPiReviewGeneration,
-	getPiReviewGenerationJob,
-	getSavedPiReview: getSavedGeneratedReview,
+	generateReview,
+	startReviewGeneration,
+	getReviewGenerationJob,
+	getSavedReview: getSavedGeneratedReview,
 	openExternalUrl,
 	minimizeWindow,
 	toggleMaximizeWindow,
 	closeWindow,
-	publishPiReviewComment,
-	publishPiReviewComments,
-	submitPiReview,
+	publishReviewComment,
+	publishReviewComments,
+	submitReview,
 }
 
 for (const [name, handler] of Object.entries(handlers) as [

@@ -280,5 +280,7 @@ function isPublishableFinding(finding: {
 	suggestedCommentBody?: string
 	body: string
 }) {
-	return Boolean(finding.filePath && finding.lineStart && (finding.suggestedCommentBody || finding.body))
+	return Boolean(
+		finding.filePath && finding.lineStart && (finding.suggestedCommentBody || finding.body),
+	)
 }

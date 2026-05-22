@@ -3,7 +3,7 @@ import { Box, HStack, Stack } from 'styled-system/jsx'
 import type { AsyncState } from '@/app/types'
 import { StatusCard } from '@/components/common'
 import { Badge, Textarea } from '@/components/ui'
-import type { PiGeneratedReview, PiReviewFinding } from '@/shared/review'
+import type { GeneratedReview, ReviewFinding } from '@/shared/review'
 import { EditableFindingCard } from './EditableFindingCard'
 import { ReviewProgress } from './ReviewProgress'
 import { severityColorPalette } from './reviewUtils'
@@ -27,13 +27,13 @@ export function GeneratedFindings({
 	errorTitle?: string
 	generationMessage?: string
 	generationState: AsyncState
-	inlineComments: PiGeneratedReview['inlineComments']
-	onPublishFinding?: (finding: PiReviewFinding) => void
-	publishableFindings?: PiReviewFinding[]
+	inlineComments: GeneratedReview['inlineComments']
+	onPublishFinding?: (finding: ReviewFinding) => void
+	publishableFindings?: ReviewFinding[]
 	publishingFindingIds?: Set<string>
 	reviewDecisionBody: string
 	setReviewDecisionBody: Dispatch<SetStateAction<string>>
-	review: PiGeneratedReview | null
+	review: GeneratedReview | null
 }) {
 	if (generationState === 'loading') {
 		return <ReviewProgress message={generationMessage} />
@@ -110,7 +110,7 @@ function RequestChangesSection({
 	reviewDecisionBody,
 	setReviewDecisionBody,
 }: {
-	findings: PiReviewFinding[]
+	findings: ReviewFinding[]
 	reviewDecisionBody: string
 	setReviewDecisionBody: Dispatch<SetStateAction<string>>
 }) {
@@ -119,7 +119,8 @@ function RequestChangesSection({
 			<Stack gap="1">
 				<Box fontWeight="semibold">Review message</Box>
 				<Box color="fg.muted" textStyle="sm">
-					Request changes will submit {findings.length} generated inline comments. This message is optional.
+					Request changes will submit {findings.length} generated inline comments. This message is
+					optional.
 				</Box>
 			</Stack>
 			<Textarea

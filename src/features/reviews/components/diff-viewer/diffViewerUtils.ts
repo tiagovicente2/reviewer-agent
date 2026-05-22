@@ -1,5 +1,5 @@
 import type { DiffLineAnnotation, FileDiffMetadata } from '@pierre/diffs/direct/types.js'
-import type { PiInlineComment } from '@/shared/review'
+import type { ReviewInlineComment } from '@/shared/review'
 
 export type DiffAnnotation = {
 	comments: Array<{
@@ -9,8 +9,8 @@ export type DiffAnnotation = {
 	}>
 }
 
-export function groupInlineCommentsByPath(inlineComments: PiInlineComment[]) {
-	const commentsByPath = new Map<string, PiInlineComment[]>()
+export function groupInlineCommentsByPath(inlineComments: ReviewInlineComment[]) {
+	const commentsByPath = new Map<string, ReviewInlineComment[]>()
 	for (const comment of inlineComments) {
 		commentsByPath.set(comment.path, [...(commentsByPath.get(comment.path) ?? []), comment])
 	}
@@ -19,7 +19,7 @@ export function groupInlineCommentsByPath(inlineComments: PiInlineComment[]) {
 
 export function getLineAnnotations(
 	fileDiff: FileDiffMetadata,
-	inlineCommentsByPath: Map<string, PiInlineComment[]>,
+	inlineCommentsByPath: Map<string, ReviewInlineComment[]>,
 ): DiffLineAnnotation<DiffAnnotation>[] {
 	const annotationsByLine = new Map<string, DiffLineAnnotation<DiffAnnotation>>()
 	const comments = [

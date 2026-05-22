@@ -6,15 +6,15 @@ import type {
 	GitHubReviewRequest,
 } from './github'
 import type {
-	GeneratePiReviewParams,
-	GetSavedPiReviewParams,
-	PiGeneratedReview,
-	PiReviewGenerationJob,
-	PublishPiReviewCommentParams,
-	PublishPiReviewCommentResult,
-	PublishPiReviewCommentsParams,
-	SubmitPiReviewParams,
-	SubmitPiReviewResult,
+	GeneratedReview,
+	GenerateReviewParams,
+	GetSavedReviewParams,
+	PublishReviewCommentParams,
+	PublishReviewCommentResult,
+	PublishReviewCommentsParams,
+	ReviewGenerationJob,
+	SubmitReviewParams,
+	SubmitReviewResult,
 } from './review'
 import type {
 	AgentAvailability,
@@ -107,21 +107,21 @@ export type AppRPCSchema = {
 				params: { url: string }
 				response: { dataUrl: string }
 			}
-			generateReviewWithPi: {
-				params: GeneratePiReviewParams
-				response: PiGeneratedReview
+			generateReview: {
+				params: GenerateReviewParams
+				response: GeneratedReview
 			}
-			startPiReviewGeneration: {
-				params: GeneratePiReviewParams
-				response: PiReviewGenerationJob
+			startReviewGeneration: {
+				params: GenerateReviewParams
+				response: ReviewGenerationJob
 			}
-			getPiReviewGenerationJob: {
+			getReviewGenerationJob: {
 				params: { jobId: string }
-				response: PiReviewGenerationJob | null
+				response: ReviewGenerationJob | null
 			}
-			getSavedPiReview: {
-				params: GetSavedPiReviewParams
-				response: PiGeneratedReview | null
+			getSavedReview: {
+				params: GetSavedReviewParams
+				response: GeneratedReview | null
 			}
 			openExternalUrl: {
 				params: { url: string }
@@ -139,17 +139,17 @@ export type AppRPCSchema = {
 				params: undefined
 				response: { ok: true }
 			}
-			publishPiReviewComment: {
-				params: PublishPiReviewCommentParams
-				response: PublishPiReviewCommentResult
+			publishReviewComment: {
+				params: PublishReviewCommentParams
+				response: PublishReviewCommentResult
 			}
-			publishPiReviewComments: {
-				params: PublishPiReviewCommentsParams
-				response: PublishPiReviewCommentResult
+			publishReviewComments: {
+				params: PublishReviewCommentsParams
+				response: PublishReviewCommentResult
 			}
-			submitPiReview: {
-				params: SubmitPiReviewParams
-				response: SubmitPiReviewResult
+			submitReview: {
+				params: SubmitReviewParams
+				response: SubmitReviewResult
 			}
 		}
 		messages: Record<never, never>

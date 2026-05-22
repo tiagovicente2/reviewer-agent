@@ -1,4 +1,4 @@
-import type { GeneratePiReviewParams, PiGeneratedReview, PiReviewFinding } from '@/shared/review'
+import type { GeneratedReview, GenerateReviewParams, ReviewFinding } from '@/shared/review'
 import { runCommand } from '../process'
 import { saveGeneratedReview } from './review-store'
 import {
@@ -147,7 +147,7 @@ Automation-specific rules:
 `
 }
 
-function buildUserPrompt(params: GeneratePiReviewParams) {
+function buildUserPrompt(params: GenerateReviewParams) {
 	const { pullRequest } = params
 	const diffWasTruncated = pullRequest.diff.length > MAX_DIFF_CHARS
 	const diff = diffWasTruncated
@@ -225,9 +225,7 @@ ${diff}
 	}
 }
 
-export async function generateReviewWithPi(
-	params: GeneratePiReviewParams,
-): Promise<PiGeneratedReview> {
+export async function generateReview(params: GenerateReviewParams): Promise<GeneratedReview> {
 	const availability = (await listAgentAvailability()).find(
 		(agent) => agent.agent === getReviewCodeAgent(),
 	)
@@ -246,7 +244,7 @@ export async function generateReviewWithPi(
 		)
 	}
 
-	const parsed = parsePiReview(output)
+	const parsed = parseGeneratedReview(output)
 	const review = {
 		...parsed,
 		rawOutput: output,
@@ -258,11 +256,11 @@ export async function generateReviewWithPi(
 	return saveGeneratedReview({ pullRequest: params.pullRequest, review })
 }
 
-function parsePiReview(
+function parseGeneratedReview(
 	output: string,
-): Omit<PiGeneratedReview, 'rawOutput' | 'modelLabel' | 'generatedAt' | 'diffWasTruncated'> {
+): Omit<GeneratedReview, 'rawOutput' | 'modelLabel' | 'generatedAt' | 'diffWasTruncated'> {
 	const jsonText = extractJson(output)
-	const parsed = JSON.parse(jsonText) as Partial<PiGeneratedReview>
+	const parsed = JSON.parse(jsonText) as Partial<GeneratedReview>
 	const findings = normalizeFindings(parsed.findings)
 
 	return {
@@ -329,7 +327,7 @@ function extractJson(output: string) {
 	throw new Error('The reviewer did not return parseable JSON.')
 }
 
-function normalizeFindings(findings: unknown): PiReviewFinding[] {
+function normalizeFindings(findings: unknown): ReviewFinding[] {
 	if (!Array.isArray(findings)) {
 		return []
 	}
@@ -356,15 +354,15 @@ function normalizeFindings(findings: unknown): PiReviewFinding[] {
 		.filter((finding) => finding.title && finding.body)
 }
 
-function isSeverity(value: unknown): value is PiGeneratedReview['severity'] {
+function isSeverity(value: unknown): value is GeneratedReview['severity'] {
 	return ['critical', 'high', 'medium', 'low', 'info'].includes(String(value))
 }
 
-function isVerdict(value: unknown): value is PiGeneratedReview['verdictRecommendation'] {
+function isVerdict(value: unknown): value is GeneratedReview['verdictRecommendation'] {
 	return ['comment', 'approve', 'request_changes'].includes(String(value))
 }
 
-function inferOverallSeverity(findings: PiReviewFinding[]): PiGeneratedReview['severity'] {
+function inferOverallSeverity(findings: ReviewFinding[]): GeneratedReview['severity'] {
 	for (const severity of ['critical', 'high', 'medium', 'low', 'info'] as const) {
 		if (findings.some((finding) => finding.severity === severity)) {
 			return severity

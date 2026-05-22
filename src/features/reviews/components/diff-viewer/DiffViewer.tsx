@@ -1,17 +1,13 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { Box, HStack, Stack } from 'styled-system/jsx'
-import { Badge } from '@/components/ui'
 import { StatusCard } from '@/components/common'
-import type { PiInlineComment } from '@/shared/review'
-import {
-	type DiffDisplaySettings,
-	DiffFileView,
-	parsePatch,
-} from './DiffDisplay'
+import { Badge } from '@/components/ui'
+import type { ReviewInlineComment } from '@/shared/review'
+import { type DiffDisplaySettings, DiffFileView, parsePatch } from './DiffDisplay'
 import { getFileDiffKey, getScrollableParent } from './diffViewerUtils'
 
 type DiffViewerProps = {
-	inlineComments?: PiInlineComment[]
+	inlineComments?: ReviewInlineComment[]
 	onSelectFile?: (path: string) => void
 	patch: string
 	selectedFilePath?: string | null

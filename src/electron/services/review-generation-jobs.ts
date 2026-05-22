@@ -1,8 +1,8 @@
-import type { GeneratePiReviewParams, PiReviewGenerationJob } from '@/shared/review'
-import { generateReviewWithPi } from './pi-review'
+import type { GenerateReviewParams, ReviewGenerationJob } from '@/shared/review'
+import { generateReview } from './review-generation'
 import { getReviewCodeAgent } from './settings'
 
-type StoredJob = PiReviewGenerationJob & {
+type StoredJob = ReviewGenerationJob & {
 	promise?: Promise<void>
 	progressTimer?: NodeJS.Timeout
 }
@@ -11,6 +11,7 @@ function getAgentLabel() {
 	const agent = getReviewCodeAgent()
 	if (agent === 'claude') return 'Claude'
 	if (agent === 'opencode') return 'opencode'
+	if (agent === 'codex') return 'Codex'
 	return 'Pi'
 }
 
@@ -27,7 +28,7 @@ function getProgressMessages() {
 
 const jobs = new Map<string, StoredJob>()
 
-export function startPiReviewGeneration(params: GeneratePiReviewParams): PiReviewGenerationJob {
+export function startReviewGeneration(params: GenerateReviewParams): ReviewGenerationJob {
 	const jobId = getJobId(params)
 	const existing = jobs.get(jobId)
 	if (existing?.status === 'running') {
@@ -45,7 +46,7 @@ export function startPiReviewGeneration(params: GeneratePiReviewParams): PiRevie
 	}
 
 	job.progressTimer = startProgressTimer(jobId, job)
-	job.promise = generateReviewWithPi(params)
+	job.promise = generateReview(params)
 		.then((review) => {
 			clearProgressTimer(job)
 			jobs.set(jobId, {
@@ -73,12 +74,12 @@ export function startPiReviewGeneration(params: GeneratePiReviewParams): PiRevie
 	return toPublicJob(job)
 }
 
-export function getPiReviewGenerationJob(params: { jobId: string }): PiReviewGenerationJob | null {
+export function getReviewGenerationJob(params: { jobId: string }): ReviewGenerationJob | null {
 	const job = jobs.get(params.jobId)
 	return job ? toPublicJob(job) : null
 }
 
-function toPublicJob(job: StoredJob): PiReviewGenerationJob {
+function toPublicJob(job: StoredJob): ReviewGenerationJob {
 	const { progressTimer: _progressTimer, promise: _promise, ...publicJob } = job
 	return publicJob
 }
@@ -107,11 +108,11 @@ function clearProgressTimer(job: StoredJob) {
 	}
 }
 
-function getJobId(params: GeneratePiReviewParams) {
-	return `pi-review:${getPullRequestKey(params)}`
+function getJobId(params: GenerateReviewParams) {
+	return `review-generation:${getPullRequestKey(params)}`
 }
 
-function getPullRequestKey(params: GeneratePiReviewParams) {
+function getPullRequestKey(params: GenerateReviewParams) {
 	const pr = params.pullRequest
 	return `${pr.repo}#${pr.pullRequestNumber}:${pr.headSha}`
 }
