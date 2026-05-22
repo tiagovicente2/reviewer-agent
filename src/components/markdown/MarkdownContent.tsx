@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { css } from 'styled-system/css'
+import { css, cx } from 'styled-system/css'
 import { Box } from 'styled-system/jsx'
 import { appRpc } from '@/app/rpc'
 
@@ -62,6 +62,31 @@ const markdownContentClassName = css({
 		padding: '3',
 	},
 	'& summary': { color: 'fg.default', cursor: 'pointer', fontWeight: 'semibold' },
+})
+
+const commentMarkdownContentClassName = css({
+	color: 'black',
+	'& h1, & h2, & h3, & h4': {
+		color: 'black',
+	},
+	'& a': { color: '#005cc5' },
+	'& code': {
+		backgroundColor: 'rgba(27, 31, 35, 0.12)',
+		color: 'black',
+	},
+	'& pre': {
+		backgroundColor: 'rgba(27, 31, 35, 0.08)',
+	},
+	'& blockquote': {
+		borderLeftColor: 'rgba(27, 31, 35, 0.35)',
+		color: 'rgba(0, 0, 0, 0.78)',
+	},
+	'& th, & td': { borderColor: 'rgba(27, 31, 35, 0.22)' },
+	'& details': {
+		backgroundColor: 'rgba(27, 31, 35, 0.06)',
+		borderColor: 'rgba(27, 31, 35, 0.22)',
+	},
+	'& summary': { color: 'black' },
 })
 
 function isGitHubImageSrc(src?: string) {
@@ -137,9 +162,20 @@ function GitHubImage({ alt, src }: { alt?: string; src?: string }) {
 	)
 }
 
-export function MarkdownContent({ children }: { children: string }) {
+export function MarkdownContent({
+	children,
+	tone = 'default',
+}: {
+	children: string
+	tone?: 'comment' | 'default'
+}) {
 	return (
-		<Box className={markdownContentClassName}>
+		<Box
+			className={cx(
+				markdownContentClassName,
+				tone === 'comment' ? commentMarkdownContentClassName : undefined,
+			)}
+		>
 			<ReactMarkdown
 				components={{ img: ({ alt, src }) => <GitHubImage alt={alt} src={src} /> }}
 				remarkPlugins={[remarkGfm]}

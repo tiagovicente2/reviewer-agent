@@ -52,6 +52,7 @@ export async function publishPiReviewComments(
 
 export async function submitPiReview(params: SubmitPiReviewParams): Promise<SubmitPiReviewResult> {
 	const body = params.body?.trim()
+	if (params.event === 'approve') return submitApproval(params, body)
 
 	const comments =
 		params.event === 'request_changes'
@@ -59,16 +60,23 @@ export async function submitPiReview(params: SubmitPiReviewParams): Promise<Subm
 					body: getCommentBody(finding),
 					line: finding.lineStart,
 					path: finding.filePath,
-					side: 'RIGHT',
+					side: 'RIGHT' as const,
 				}))
 			: []
 
-	const payload = {
+	const payload: {
+		body?: string
+		comments: Array<{ body: string | undefined; line: number | undefined; path: string; side: 'RIGHT' }>
+		commit_id?: string
+		event: 'APPROVE' | 'REQUEST_CHANGES'
+	} = {
 		comments,
-		commit_id: params.pullRequest.headSha,
-		event: params.event === 'approve' ? 'APPROVE' : 'REQUEST_CHANGES',
+		event: 'REQUEST_CHANGES',
 	}
 	if (body) Object.assign(payload, { body })
+	if (comments.length > 0) {
+		payload.commit_id = await getLatestPullRequestHeadSha(params)
+	}
 
 	const result = await runGh(
 		[
@@ -89,8 +97,47 @@ export async function submitPiReview(params: SubmitPiReviewParams): Promise<Subm
 
 	return {
 		ok: true,
-		output: output || `Submitted ${params.event === 'approve' ? 'approval' : 'change request'}.`,
+		output: output || 'Submitted change request.',
 	}
+}
+
+async function submitApproval(
+	params: SubmitPiReviewParams,
+	body: string | undefined,
+): Promise<SubmitPiReviewResult> {
+	const args = [
+		'pr',
+		'review',
+		String(params.pullRequest.pullRequestNumber),
+		'--repo',
+		params.pullRequest.repo,
+		'--approve',
+	]
+	if (body) args.push('--body', body)
+
+	const result = await runGh(args)
+	const output = [result.stdout, result.stderr].filter(Boolean).join('\n').trim()
+
+	if (result.exitCode !== 0) {
+		throw new Error(output || 'Failed to approve pull request.')
+	}
+
+	return { ok: true, output: output || 'Submitted approval.' }
+}
+
+async function getLatestPullRequestHeadSha(params: SubmitPiReviewParams) {
+	const result = await runGh([
+		'api',
+		`repos/${params.pullRequest.repo}/pulls/${params.pullRequest.pullRequestNumber}`,
+		'--jq',
+		'.head.sha',
+	])
+	const output = [result.stdout, result.stderr].filter(Boolean).join('\n').trim()
+	if (result.exitCode !== 0) {
+		throw new Error(output || 'Failed to load latest pull request head SHA.')
+	}
+
+	return result.stdout.trim() || params.pullRequest.headSha
 }
 
 function isPublishableFinding(finding: PiReviewFinding) {

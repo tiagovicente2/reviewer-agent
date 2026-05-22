@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Box, Grid, HStack, Stack } from 'styled-system/jsx'
 import { appRpc } from '@/app/rpc'
 import type { AsyncState, ColorMode } from '@/app/types'
@@ -8,6 +8,7 @@ import { Badge, Button, Card } from '@/components/ui'
 import type { GitHubPullRequestDetails, GitHubReviewRequest } from '@/shared/github'
 import { useGeneratedReview } from '../hooks/useGeneratedReview'
 import { usePullRequestDiff } from '../hooks/usePullRequestDiff'
+import { codeDiffDisplaySettings } from './diff-viewer/DiffDisplay'
 import { CodeTab, ReviewTab, SummaryTab } from './ReviewDetailTabs'
 
 type TabId = 'code' | 'summary' | 'review'
@@ -28,7 +29,8 @@ export function ReviewDetail({
 	setSummary: (summary: string) => void
 }) {
 	const [activeTab, setActiveTab] = useState<TabId>('summary')
-	const { diff, diffError, diffState, firstDiffFilePath, loadDiff } = usePullRequestDiff(detail)
+	const [reviewDecisionBody, setReviewDecisionBody] = useState('')
+	const { diff, diffError, diffState, loadDiff } = usePullRequestDiff(detail)
 	const handleGenerationStart = useCallback(() => setActiveTab('review'), [])
 	const {
 		generateReview,
@@ -88,6 +90,12 @@ export function ReviewDetail({
 		() => generatedReview?.findings.filter(isPublishableFinding) ?? [],
 		[generatedReview],
 	)
+	const generatedReviewId = generatedReview?.generatedAt ?? ''
+
+	useEffect(() => {
+		void generatedReviewId
+		setReviewDecisionBody('')
+	}, [generatedReviewId])
 
 	const handleOpenOnGitHub = async () => {
 		if (review) {
@@ -143,7 +151,7 @@ export function ReviewDetail({
 							onClick={generateReview}
 							size="sm"
 						>
-							Generate review
+							{generatedReview ? 'Regenerate review' : 'Generate review'}
 						</Button>
 						<Button onClick={handleOpenOnGitHub} size="sm" variant="outline">
 							Open on GitHub
@@ -201,15 +209,22 @@ export function ReviewDetail({
 										>
 											Approve
 										</Button>
-										<Button
-											disabled={!detail || detailState === 'loading'}
-											loading={generationState === 'loading'}
-											onClick={generateReview}
-											size="sm"
-											variant="outline"
-										>
-											Regenerate review
-										</Button>
+										{publishableFindings.length ? (
+											<Button
+												disabled={!detail || detailState === 'loading'}
+												loading={submittingReviewEvent === 'request_changes'}
+												onClick={() =>
+													submitReview({
+														body: reviewDecisionBody.trim(),
+														event: 'request_changes',
+														findings: publishableFindings,
+													})
+												}
+												size="sm"
+											>
+												Request changes
+											</Button>
+										) : null}
 									</HStack>
 								) : null}
 							</HStack>
@@ -222,8 +237,8 @@ export function ReviewDetail({
 									detailState={detailState}
 									diff={diff}
 									diffError={diffError}
+									diffDisplaySettings={codeDiffDisplaySettings}
 									diffState={diffState}
-									firstDiffFilePath={firstDiffFilePath}
 									inlineComments={diffInlineComments}
 									onLoadDiff={loadDiff}
 								/>
@@ -237,12 +252,14 @@ export function ReviewDetail({
 									generationMessage={generationMessage}
 									generationState={generationState}
 									publishError={publishError}
+									diff={diff}
 									generatedReview={generatedReview}
+									inlineComments={diffInlineComments}
 									onPublishFinding={publishFinding}
-									onSubmitReview={submitReview}
 									publishableFindings={publishableFindings}
 									publishingFindingIds={publishingFindingIds}
-									submittingReviewEvent={submittingReviewEvent}
+									reviewDecisionBody={reviewDecisionBody}
+									setReviewDecisionBody={setReviewDecisionBody}
 								/>
 							</Box>
 						</Card.Body>

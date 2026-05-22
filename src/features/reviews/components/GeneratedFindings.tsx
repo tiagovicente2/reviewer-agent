@@ -1,36 +1,38 @@
-import { useState } from 'react'
+import type { Dispatch, SetStateAction } from 'react'
 import { Box, HStack, Stack } from 'styled-system/jsx'
 import type { AsyncState } from '@/app/types'
 import { StatusCard } from '@/components/common'
-import { Badge, Button, Card, Textarea } from '@/components/ui'
-import type { PiGeneratedReview, PiReviewFinding, PiReviewSubmitEvent } from '@/shared/review'
+import { Badge, Textarea } from '@/components/ui'
+import type { PiGeneratedReview, PiReviewFinding } from '@/shared/review'
 import { EditableFindingCard } from './EditableFindingCard'
 import { ReviewProgress } from './ReviewProgress'
 import { severityColorPalette } from './reviewUtils'
 
 export function GeneratedFindings({
+	diff,
 	error,
+	errorTitle,
 	generationMessage,
 	generationState,
+	inlineComments,
 	onPublishFinding,
-	onSubmitReview,
 	publishableFindings,
 	publishingFindingIds,
-	submittingReviewEvent,
+	reviewDecisionBody,
+	setReviewDecisionBody,
 	review,
 }: {
+	diff: string
 	error: string
+	errorTitle?: string
 	generationMessage?: string
 	generationState: AsyncState
+	inlineComments: PiGeneratedReview['inlineComments']
 	onPublishFinding?: (finding: PiReviewFinding) => void
-	onSubmitReview?: (params: {
-		body?: string
-		event: PiReviewSubmitEvent
-		findings?: PiReviewFinding[]
-	}) => void
 	publishableFindings?: PiReviewFinding[]
 	publishingFindingIds?: Set<string>
-	submittingReviewEvent?: PiReviewSubmitEvent | null
+	reviewDecisionBody: string
+	setReviewDecisionBody: Dispatch<SetStateAction<string>>
 	review: PiGeneratedReview | null
 }) {
 	if (generationState === 'loading') {
@@ -38,7 +40,7 @@ export function GeneratedFindings({
 	}
 
 	if (error) {
-		return <StatusCard tone="red" title="Review generation failed" body={error} />
+		return <StatusCard tone="red" title={errorTitle ?? 'Review failed'} body={error} />
 	}
 
 	if (!review) {
@@ -51,16 +53,18 @@ export function GeneratedFindings({
 	}
 
 	return (
-		<Stack gap="3">
-			<HStack gap="2">
-				<Badge colorPalette={severityColorPalette(review.severity)}>{review.severity}</Badge>
-				<Badge colorPalette="gray" variant="surface">
-					{review.verdictRecommendation}
-				</Badge>
-			</HStack>
-			<Box color="fg.muted" textStyle="sm">
-				{review.summary}
-			</Box>
+		<Stack gap="5">
+			<Stack gap="2">
+				<HStack gap="2">
+					<Badge colorPalette={severityColorPalette(review.severity)}>{review.severity}</Badge>
+					<Box color="fg.muted" textStyle="sm">
+						{review.verdictRecommendation.replace('_', ' ')} recommended
+					</Box>
+				</HStack>
+				<Box color="fg.muted" textStyle="sm">
+					{review.summary}
+				</Box>
+			</Stack>
 			{review.diffWasTruncated ? (
 				<StatusCard
 					title="Diff was truncated"
@@ -68,10 +72,10 @@ export function GeneratedFindings({
 				/>
 			) : null}
 			{publishableFindings?.length ? (
-				<RequestChangesCard
+				<RequestChangesSection
 					findings={publishableFindings}
-					onSubmitReview={onSubmitReview}
-					submittingReviewEvent={submittingReviewEvent ?? null}
+					reviewDecisionBody={reviewDecisionBody}
+					setReviewDecisionBody={setReviewDecisionBody}
 				/>
 			) : null}
 			{review.findings.length === 0 ? (
@@ -80,76 +84,56 @@ export function GeneratedFindings({
 					body="The reviewer did not identify publishable findings for this diff."
 				/>
 			) : null}
-			{review.findings.map((finding) => (
-				<EditableFindingCard
-					finding={finding}
-					key={finding.id}
-					onPublishFinding={onPublishFinding}
-					publishing={publishingFindingIds?.has(finding.id) ?? false}
-				/>
-			))}
+			{review.findings.length ? (
+				<Stack gap="0">
+					<Box color="fg.muted" fontWeight="semibold" mb="1" textStyle="xs">
+						Findings
+					</Box>
+					{review.findings.map((finding) => (
+						<EditableFindingCard
+							diff={diff}
+							finding={finding}
+							inlineComments={inlineComments}
+							key={finding.id}
+							onPublishFinding={onPublishFinding}
+							publishing={publishingFindingIds?.has(finding.id) ?? false}
+						/>
+					))}
+				</Stack>
+			) : null}
 		</Stack>
 	)
 }
 
-function RequestChangesCard({
+function RequestChangesSection({
 	findings,
-	onSubmitReview,
-	submittingReviewEvent,
+	reviewDecisionBody,
+	setReviewDecisionBody,
 }: {
 	findings: PiReviewFinding[]
-	onSubmitReview?: (params: {
-		body?: string
-		event: PiReviewSubmitEvent
-		findings?: PiReviewFinding[]
-	}) => void
-	submittingReviewEvent: PiReviewSubmitEvent | null
+	reviewDecisionBody: string
+	setReviewDecisionBody: Dispatch<SetStateAction<string>>
 }) {
-	const [reviewBody, setReviewBody] = useState('')
-	const canSubmit = !submittingReviewEvent
-
 	return (
-		<Card.Root variant="outline">
-			<Card.Body p="4">
-				<Stack gap="3">
-					<HStack justify="space-between" gap="3" alignItems="flex-start">
-						<Stack gap="1">
-							<Box fontWeight="semibold">Request changes</Box>
-							<Box color="fg.muted" textStyle="sm">
-								Submit a GitHub review with {findings.length} generated inline comments.
-							</Box>
-						</Stack>
-						<HStack gap="2">
-							<Button
-								disabled={!canSubmit}
-								loading={submittingReviewEvent === 'request_changes'}
-								onClick={() =>
-									onSubmitReview?.({
-										body: reviewBody.trim(),
-										event: 'request_changes',
-										findings,
-									})
-								}
-								size="sm"
-							>
-								Request changes
-							</Button>
-						</HStack>
-					</HStack>
-					<Textarea
-						boxSizing="border-box"
-						color="fg.default"
-						display="block"
-						minH="7rem"
-						onChange={(event) => setReviewBody(event.target.value)}
-						placeholder="Add the review summary that GitHub will publish with the decision..."
-						resize="vertical"
-						value={reviewBody}
-						variant="surface"
-						w="100%"
-					/>
-				</Stack>
-			</Card.Body>
-		</Card.Root>
+		<Stack gap="2" bg="gray.2" borderRadius="l2" p="4">
+			<Stack gap="1">
+				<Box fontWeight="semibold">Review message</Box>
+				<Box color="fg.muted" textStyle="sm">
+					Request changes will submit {findings.length} generated inline comments. This message is optional.
+				</Box>
+			</Stack>
+			<Textarea
+				boxSizing="border-box"
+				color="fg.default"
+				display="block"
+				minH="6rem"
+				onChange={(event) => setReviewDecisionBody(event.target.value)}
+				placeholder="Add an optional review summary for GitHub..."
+				resize="vertical"
+				value={reviewDecisionBody}
+				variant="surface"
+				w="100%"
+			/>
+		</Stack>
 	)
 }

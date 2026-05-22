@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Box, Grid, Stack } from 'styled-system/jsx'
+import type { Dispatch, SetStateAction } from 'react'
 import type { AsyncState, ColorMode } from '@/app/types'
 import { StatusCard } from '@/components/common'
 import { MarkdownContent } from '@/components/markdown/MarkdownContent'
@@ -9,38 +10,38 @@ import type {
 	PiGeneratedReview,
 	PiInlineComment,
 	PiReviewFinding,
-	PiReviewSubmitEvent,
 } from '@/shared/review'
 import { ChangedFilesTree } from './changed-files-tree/ChangedFilesTree'
+import type { DiffDisplaySettings } from './diff-viewer/DiffDisplay'
 import { DiffViewer } from './diff-viewer/DiffViewer'
 import { GeneratedFindings } from './GeneratedFindings'
 
 export function ReviewTab({
+	diff,
 	generationError,
 	generationMessage,
 	generationState,
 	generatedReview,
+	inlineComments,
 	publishError,
 	onPublishFinding,
-	onSubmitReview,
 	publishableFindings,
 	publishingFindingIds,
-	submittingReviewEvent,
+	reviewDecisionBody,
+	setReviewDecisionBody,
 }: {
+	diff: string
 	generationError: string
 	generationMessage: string
 	generationState: AsyncState
 	generatedReview: PiGeneratedReview | null
+	inlineComments: PiInlineComment[]
 	publishError: string
 	onPublishFinding: (finding: PiReviewFinding) => void
-	onSubmitReview: (params: {
-		body?: string
-		event: PiReviewSubmitEvent
-		findings?: PiReviewFinding[]
-	}) => void
 	publishableFindings: PiReviewFinding[]
 	publishingFindingIds: Set<string>
-	submittingReviewEvent: PiReviewSubmitEvent | null
+	reviewDecisionBody: string
+	setReviewDecisionBody: Dispatch<SetStateAction<string>>
 }) {
 	return (
 		<Card.Root h="100%" minH="0" overflow="hidden" variant="outline">
@@ -56,15 +57,18 @@ export function ReviewTab({
 					w="100%"
 				>
 					<GeneratedFindings
+						diff={diff}
 						error={generationError || publishError}
+						errorTitle={publishError ? 'Review submission failed' : 'Review generation failed'}
 						generationMessage={generationMessage}
 						generationState={generationState}
+						inlineComments={inlineComments}
 						onPublishFinding={onPublishFinding}
-						onSubmitReview={onSubmitReview}
 						publishableFindings={publishableFindings}
 						publishingFindingIds={publishingFindingIds}
-						submittingReviewEvent={submittingReviewEvent}
 						review={generatedReview}
+						reviewDecisionBody={reviewDecisionBody}
+						setReviewDecisionBody={setReviewDecisionBody}
 					/>
 				</Box>
 			</Card.Body>
@@ -78,8 +82,8 @@ export function CodeTab({
 	detailState,
 	diff,
 	diffError,
+	diffDisplaySettings,
 	diffState,
-	firstDiffFilePath,
 	inlineComments,
 	onLoadDiff,
 }: {
@@ -88,8 +92,8 @@ export function CodeTab({
 	detailState: AsyncState
 	diff: string
 	diffError: string
+	diffDisplaySettings: DiffDisplaySettings
 	diffState: AsyncState
-	firstDiffFilePath: string | null
 	inlineComments: PiInlineComment[]
 	onLoadDiff: () => Promise<string>
 }) {
@@ -101,8 +105,8 @@ export function CodeTab({
 			return
 		}
 
-		setSelectedFilePath(firstDiffFilePath ?? detail.files[0]?.path ?? null)
-	}, [detail, firstDiffFilePath])
+		setSelectedFilePath(null)
+	}, [detail])
 
 	if (detailState === 'loading' || !detail || (!diff && !diffError)) {
 		return (
@@ -160,11 +164,11 @@ export function CodeTab({
 					<Box h="100%" minH="0" overflow="auto" pr="3" scrollbarGutter="stable">
 						{diff ? (
 							<DiffViewer
-								colorMode={colorMode}
 								inlineComments={inlineComments}
 								onSelectFile={setSelectedFilePath}
 								patch={diff}
 								selectedFilePath={selectedFilePath}
+								settings={diffDisplaySettings}
 							/>
 						) : (
 							<Stack h="100%" placeContent="center" alignItems="center" gap="4" textAlign="center">

@@ -1,6 +1,7 @@
 import type { DiffLineAnnotation } from '@pierre/diffs/direct/types.js'
 import { useState } from 'react'
 import { Box, HStack, Stack } from 'styled-system/jsx'
+import { MarkdownContent } from '@/components/markdown/MarkdownContent'
 import { Badge } from '@/components/ui'
 import type { DiffAnnotation } from './diffViewerUtils'
 
@@ -51,8 +52,8 @@ export function ReviewCommentAnnotation(annotation: DiffLineAnnotation<DiffAnnot
 									@{comment.author ?? 'reviewer-agent'}
 								</Box>
 							) : null}
-							<Box color="black" textStyle="sm" whiteSpace="pre-wrap" wordBreak="break-word">
-								{comment.body}
+							<Box color="black" textStyle="sm" wordBreak="break-word">
+								<MarkdownContent tone="comment">{comment.body}</MarkdownContent>
 							</Box>
 						</Box>
 					))}
