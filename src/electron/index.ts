@@ -21,7 +21,11 @@ import {
 	searchGitHubPullRequests,
 	startGitHubLogin,
 } from './services/github'
-import { publishPiReviewComment, publishPiReviewComments } from './services/pi-publish'
+import {
+	publishPiReviewComment,
+	publishPiReviewComments,
+	submitPiReview,
+} from './services/pi-publish'
 import { generateReviewWithPi } from './services/pi-review'
 import { getPiReviewGenerationJob, startPiReviewGeneration } from './services/pi-review-jobs'
 import { getSavedGeneratedReview } from './services/review-store'
@@ -83,6 +87,7 @@ const handlers: Handlers = {
 	closeWindow,
 	publishPiReviewComment,
 	publishPiReviewComments,
+	submitPiReview,
 }
 
 for (const [name, handler] of Object.entries(handlers) as [

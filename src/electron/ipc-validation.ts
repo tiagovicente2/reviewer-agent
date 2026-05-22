@@ -37,6 +37,7 @@ const validators: Partial<Record<MainRequestName, Validator>> = {
 	closeWindow: (params) => assertUndefined(params, 'closeWindow'),
 	publishPiReviewComment: assertPublishCommentParams,
 	publishPiReviewComments: assertPublishCommentsParams,
+	submitPiReview: assertSubmitReviewParams,
 }
 
 function assertUndefined(params: unknown, name: string) {
@@ -148,6 +149,19 @@ function assertPublishCommentsParams(params: unknown) {
 	assertPullRequestDetails(params.pullRequest)
 	if (!Array.isArray(params.findings)) throw new Error('Expected findings to be an array.')
 	for (const finding of params.findings) assertFinding(finding)
+}
+
+function assertSubmitReviewParams(params: unknown) {
+	assertPlainObject(params)
+	assertPullRequestDetails(params.pullRequest)
+	if (!['approve', 'request_changes'].includes(String(params.event))) {
+		throw new Error('Invalid review event.')
+	}
+	assertString(params.body, 'body')
+	if (params.findings !== undefined) {
+		if (!Array.isArray(params.findings)) throw new Error('Expected findings to be an array.')
+		for (const finding of params.findings) assertFinding(finding)
+	}
 }
 
 function assertPullRequestDetails(value: unknown) {

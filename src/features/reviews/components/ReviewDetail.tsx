@@ -41,6 +41,8 @@ export function ReviewDetail({
 		publishFinding,
 		publishingAll,
 		publishingFindingIds,
+		submitReview,
+		submittingReviewEvent,
 	} = useGeneratedReview({
 		detail,
 		loadDiff,
@@ -230,7 +232,9 @@ export function ReviewDetail({
 									publishError={publishError}
 									generatedReview={generatedReview}
 									onPublishFinding={publishFinding}
+									onSubmitReview={submitReview}
 									publishingFindingIds={publishingFindingIds}
+									submittingReviewEvent={submittingReviewEvent}
 								/>
 							</Box>
 						</Card.Body>

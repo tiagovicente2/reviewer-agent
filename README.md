@@ -6,7 +6,7 @@ Local-first desktop app for generating and publishing AI-assisted GitHub pull re
 
 ## What it does
 
-Reviewer Agent gives you a focused inbox for PRs that need your review. You can inspect the PR summary and diff, generate a draft review with a local coding agent, edit the suggested comments, and publish only the comments you choose.
+Reviewer Agent gives you a focused inbox for PRs that need your review. You can inspect the PR summary and diff, generate a draft review with a local coding agent, edit the suggested comments, and submit only the review decision or comments you choose.
 
 ## Core features
 
@@ -22,6 +22,7 @@ Reviewer Agent gives you a focused inbox for PRs that need your review. You can 
 - Agent/model settings with readiness checks.
 - Locally saved generated reviews.
 - Explicit publish flow for generated inline comments.
+- Manual approve and request-changes review submission with editable summary comments.
 
 ## Install
 
@@ -50,7 +51,7 @@ gh auth login --web --git-protocol https
 
 ## Safety model
 
-Reviewer Agent does not approve, request changes, merge, or submit full GitHub reviews automatically. Generated content stays local until you explicitly publish selected inline comments from the UI.
+Reviewer Agent does not approve, request changes, merge, or submit GitHub reviews automatically. Generated content stays local until you explicitly publish selected inline comments or submit a review decision from the UI.
 
 ## Documentation
 

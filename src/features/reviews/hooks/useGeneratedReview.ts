@@ -4,7 +4,7 @@ import { useToast } from '@/app/toast'
 import type { AsyncState } from '@/app/types'
 import { getErrorMessage } from '@/app/utils'
 import type { GitHubPullRequestDetails } from '@/shared/github'
-import type { PiGeneratedReview, PiReviewFinding } from '@/shared/review'
+import type { PiGeneratedReview, PiReviewFinding, PiReviewSubmitEvent } from '@/shared/review'
 
 function getPiReviewJobId(detail: GitHubPullRequestDetails) {
 	return `pi-review:${detail.repo}#${detail.pullRequestNumber}:${detail.headSha}`
@@ -28,6 +28,7 @@ export function useGeneratedReview({
 	const [publishError, setPublishError] = useState('')
 	const [publishingAll, setPublishingAll] = useState(false)
 	const [publishingFindingIds, setPublishingFindingIds] = useState<Set<string>>(() => new Set())
+	const [submittingReviewEvent, setSubmittingReviewEvent] = useState<PiReviewSubmitEvent | null>(null)
 	const [generationJobId, setGenerationJobId] = useState<string | null>(null)
 	const { showToast } = useToast()
 
@@ -182,6 +183,35 @@ export function useGeneratedReview({
 		[detail],
 	)
 
+	const submitReview = useCallback(
+		async ({
+			body,
+			event,
+			findings,
+		}: {
+			body: string
+			event: PiReviewSubmitEvent
+			findings?: PiReviewFinding[]
+		}) => {
+			if (!detail) return
+			setPublishError('')
+			setSubmittingReviewEvent(event)
+			try {
+				await appRpc.request.submitPiReview({ body, event, findings, pullRequest: detail })
+				showToast({
+					title: event === 'approve' ? 'Pull request approved' : 'Changes requested',
+					description: 'The review was submitted on GitHub.',
+					tone: 'success',
+				})
+			} catch (error) {
+				setPublishError(getErrorMessage(error))
+			} finally {
+				setSubmittingReviewEvent(null)
+			}
+		},
+		[detail, showToast],
+	)
+
 	return {
 		generateReview,
 		generatedReview,
@@ -193,5 +223,7 @@ export function useGeneratedReview({
 		publishFinding,
 		publishingAll,
 		publishingFindingIds,
+		submitReview,
+		submittingReviewEvent,
 	}
 }

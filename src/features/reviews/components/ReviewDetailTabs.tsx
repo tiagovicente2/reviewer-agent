@@ -5,7 +5,12 @@ import { StatusCard } from '@/components/common'
 import { MarkdownContent } from '@/components/markdown/MarkdownContent'
 import { Button, Card } from '@/components/ui'
 import type { GitHubPullRequestDetails } from '@/shared/github'
-import type { PiGeneratedReview, PiInlineComment, PiReviewFinding } from '@/shared/review'
+import type {
+	PiGeneratedReview,
+	PiInlineComment,
+	PiReviewFinding,
+	PiReviewSubmitEvent,
+} from '@/shared/review'
 import { ChangedFilesTree } from './changed-files-tree/ChangedFilesTree'
 import { DiffViewer } from './diff-viewer/DiffViewer'
 import { GeneratedFindings } from './GeneratedFindings'
@@ -17,7 +22,9 @@ export function ReviewTab({
 	generatedReview,
 	publishError,
 	onPublishFinding,
+	onSubmitReview,
 	publishingFindingIds,
+	submittingReviewEvent,
 }: {
 	generationError: string
 	generationMessage: string
@@ -25,7 +32,13 @@ export function ReviewTab({
 	generatedReview: PiGeneratedReview | null
 	publishError: string
 	onPublishFinding: (finding: PiReviewFinding) => void
+	onSubmitReview: (params: {
+		body: string
+		event: PiReviewSubmitEvent
+		findings?: PiReviewFinding[]
+	}) => void
 	publishingFindingIds: Set<string>
+	submittingReviewEvent: PiReviewSubmitEvent | null
 }) {
 	return (
 		<Card.Root h="100%" minH="0" overflow="hidden" variant="outline">
@@ -45,7 +58,9 @@ export function ReviewTab({
 						generationMessage={generationMessage}
 						generationState={generationState}
 						onPublishFinding={onPublishFinding}
+						onSubmitReview={onSubmitReview}
 						publishingFindingIds={publishingFindingIds}
+						submittingReviewEvent={submittingReviewEvent}
 						review={generatedReview}
 					/>
 				</Box>

@@ -13,6 +13,8 @@ import type {
 	PublishPiReviewCommentParams,
 	PublishPiReviewCommentResult,
 	PublishPiReviewCommentsParams,
+	SubmitPiReviewParams,
+	SubmitPiReviewResult,
 } from './review'
 import type {
 	AgentAvailability,
@@ -144,6 +146,10 @@ export type AppRPCSchema = {
 			publishPiReviewComments: {
 				params: PublishPiReviewCommentsParams
 				response: PublishPiReviewCommentResult
+			}
+			submitPiReview: {
+				params: SubmitPiReviewParams
+				response: SubmitPiReviewResult
 			}
 		}
 		messages: Record<never, never>
