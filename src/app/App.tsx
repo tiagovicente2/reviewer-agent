@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Box } from 'styled-system/jsx'
 import { useAgentAvailability } from '@/app/hooks/useAgentAvailability'
 import { useColorMode } from '@/app/hooks/useColorMode'
 import { useErrorLog } from '@/app/hooks/useErrorLog'
 import { usePullRequestDetails } from '@/app/hooks/usePullRequestDetails'
 import { isPullRequestQuery, useReviewRequests } from '@/app/hooks/useReviewRequests'
+import { useReviewSearchFilter } from '@/app/hooks/useReviewSearchFilter'
 import { useUpdateStatus } from '@/app/hooks/useUpdateStatus'
 import { OnboardingPage } from '@/features/auth/components/OnboardingPage'
 import { OpeningScreen } from '@/features/auth/components/OpeningScreen'
@@ -33,7 +34,6 @@ function App() {
 	const [connectState, setConnectState] = useState<AsyncState>('idle')
 	const [loginOutput, setLoginOutput] = useState('')
 	const [query, setQuery] = useState('')
-	const [debouncedQuery, setDebouncedQuery] = useState('')
 	const [, setSummary] = useState('')
 
 	const { colorMode, setPreference: setColorModePreference } = useColorMode()
@@ -122,21 +122,7 @@ function App() {
 		void refreshAgents()
 	}, [refreshAuth, refreshAgents])
 
-	useEffect(() => {
-		const timeout = window.setTimeout(() => setDebouncedQuery(query), 250)
-		return () => window.clearTimeout(timeout)
-	}, [query])
-
-	const displayedReviews = useMemo(() => {
-		const normalizedQuery = debouncedQuery.trim().toLowerCase()
-		if (!normalizedQuery) return reviews
-
-		return reviews.filter((review) => {
-			const searchableText =
-				`${review.repo} ${review.pullRequestNumber} ${review.title} ${review.author} ${review.url}`.toLowerCase()
-			return searchableText.includes(normalizedQuery)
-		})
-	}, [debouncedQuery, reviews])
+	const displayedReviews = useReviewSearchFilter(query, reviews)
 
 	const resetSummary = useCallback(() => setSummary(''), [])
 	const { detail, detailError, detailState } = usePullRequestDetails({

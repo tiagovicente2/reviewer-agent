@@ -6,6 +6,7 @@ import { formatDate } from '@/app/utils'
 import { StatusCard, TabButton } from '@/components/common'
 import { Badge, Button, Card } from '@/components/ui'
 import type { GitHubPullRequestDetails, GitHubReviewRequest } from '@/shared/github'
+import { useDiffInlineComments } from '../hooks/useDiffInlineComments'
 import { useGeneratedReview } from '../hooks/useGeneratedReview'
 import { usePullRequestDiff } from '../hooks/usePullRequestDiff'
 import { codeDiffDisplaySettings } from './diff-viewer/DiffDisplay'
@@ -52,43 +53,7 @@ export function ReviewDetail({
 		onStartGeneration: handleGenerationStart,
 		onSummary: setSummary,
 	})
-	const diffInlineComments = useMemo(() => {
-		if (!generatedReview) return []
-
-		const comments = [...generatedReview.inlineComments]
-		const existingCommentIndexes = new Map(
-			comments.map((comment, index) => [
-				getCommentIdentity(comment.path, comment.side, comment.body),
-				index,
-			]),
-		)
-
-		for (const finding of generatedReview.findings) {
-			const body = finding.suggestedCommentBody?.trim()
-			if (!finding.filePath || !finding.lineStart || !body) continue
-
-			const key = getCommentIdentity(finding.filePath, 'RIGHT', body)
-			const existingIndex = existingCommentIndexes.get(key)
-			if (existingIndex !== undefined) {
-				comments[existingIndex] = {
-					...comments[existingIndex],
-					body,
-					line: finding.lineStart,
-				}
-				continue
-			}
-
-			existingCommentIndexes.set(key, comments.length)
-			comments.push({
-				body,
-				line: finding.lineStart,
-				path: finding.filePath,
-				side: 'RIGHT',
-			})
-		}
-
-		return comments
-	}, [generatedReview])
+	const diffInlineComments = useDiffInlineComments(generatedReview)
 	const publishableFindings = useMemo(
 		() => generatedReview?.findings.filter(isPublishableFinding) ?? [],
 		[generatedReview],
@@ -351,10 +316,6 @@ function ConfirmSubmitReviewModal({
 			</Box>
 		</Box>
 	)
-}
-
-function getCommentIdentity(path: string, side: 'LEFT' | 'RIGHT', body: string) {
-	return `${path}:${side}:${body.trim().replace(/\s+/g, ' ')}`
 }
 
 function isPublishableFinding(finding: {

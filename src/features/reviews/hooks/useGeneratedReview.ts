@@ -4,11 +4,12 @@ import { useToast } from '@/app/toast'
 import type { AsyncState } from '@/app/types'
 import { getErrorMessage } from '@/app/utils'
 import type { GitHubPullRequestDetails } from '@/shared/github'
-import type { GeneratedReview, ReviewFinding, ReviewSubmitEvent } from '@/shared/review'
-
-function getReviewJobId(detail: GitHubPullRequestDetails) {
-	return `review-generation:${detail.repo}#${detail.pullRequestNumber}:${detail.headSha}`
-}
+import {
+	getReviewGenerationJobId,
+	type GeneratedReview,
+	type ReviewFinding,
+	type ReviewSubmitEvent,
+} from '@/shared/review'
 
 const reviewPromptLabel = 'Generate a draft GitHub pull request review'
 
@@ -65,7 +66,7 @@ export function useGeneratedReview({
 		if (!detail) return
 
 		let cancelled = false
-		const jobId = getReviewJobId(detail)
+		const jobId = getReviewGenerationJobId(detail)
 		Promise.all([
 			appRpc.request.getSavedReview({
 				headSha: detail.headSha,

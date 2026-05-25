@@ -114,6 +114,8 @@ async function createWindow() {
 			preload: preloadPath,
 			contextIsolation: true,
 			nodeIntegration: false,
+			sandbox: true,
+			webSecurity: true,
 		},
 	})
 
@@ -124,11 +126,9 @@ async function createWindow() {
 		return { action: 'deny' }
 	})
 	window.webContents.on('will-navigate', (event, url) => {
-		const targetUrl = new URL(url)
-		if (targetUrl.protocol !== 'file:' && targetUrl.origin !== DEV_SERVER_URL) {
-			event.preventDefault()
-			void openExternalUrlIfSafe(url)
-		}
+		if (isAllowedAppNavigation(url)) return
+		event.preventDefault()
+		void openExternalUrlIfSafe(url)
 	})
 
 	if (isDev && (await canReachDevServer())) {
@@ -205,6 +205,15 @@ async function openExternalUrlIfSafe(url: string) {
 		await openExternalUrl({ url })
 	} catch (error) {
 		console.error('Blocked external navigation.', error)
+	}
+}
+
+function isAllowedAppNavigation(url: string) {
+	try {
+		const targetUrl = new URL(url)
+		return targetUrl.protocol === 'file:' || targetUrl.origin === DEV_SERVER_URL
+	} catch {
+		return false
 	}
 }
 

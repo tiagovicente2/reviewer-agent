@@ -1,4 +1,9 @@
-import type { GenerateReviewParams, ReviewGenerationJob } from '@/shared/review'
+import {
+	getReviewGenerationJobId,
+	getReviewGenerationPullRequestKey,
+	type GenerateReviewParams,
+	type ReviewGenerationJob,
+} from '@/shared/review'
 import { formatInitialVisibleReviewOutput } from './agent-json-stream'
 import { generateReview } from './review-generation'
 import { getReviewCodeAgent } from './settings'
@@ -27,11 +32,15 @@ function getProgressMessages() {
 	]
 }
 
+const JOB_TTL_MS = 30 * 60 * 1000
+const MAX_STORED_JOBS = 50
+
 const jobs = new Map<string, StoredJob>()
 const reviewPromptLabel = 'Generate a draft GitHub pull request review'
 
 export function startReviewGeneration(params: GenerateReviewParams): ReviewGenerationJob {
-	const jobId = getJobId(params)
+	cleanupFinishedJobs()
+	const jobId = getReviewGenerationJobId(params.pullRequest)
 	const existing = jobs.get(jobId)
 	if (existing?.status === 'running') {
 		return toPublicJob(existing)
@@ -41,7 +50,7 @@ export function startReviewGeneration(params: GenerateReviewParams): ReviewGener
 	const agent = getAgentLabel()
 	const job: StoredJob = {
 		id: jobId,
-		pullRequestKey: getPullRequestKey(params),
+		pullRequestKey: getReviewGenerationPullRequestKey(params.pullRequest),
 		outputText: formatInitialVisibleReviewOutput({
 			promptLabel: reviewPromptLabel,
 			statusMessages: [`Starting ${agent} review process...`],
@@ -94,6 +103,7 @@ export function startReviewGeneration(params: GenerateReviewParams): ReviewGener
 }
 
 export function getReviewGenerationJob(params: { jobId: string }): ReviewGenerationJob | null {
+	cleanupFinishedJobs()
 	const job = jobs.get(params.jobId)
 	return job ? toPublicJob(job) : null
 }
@@ -127,11 +137,22 @@ function clearProgressTimer(job: StoredJob) {
 	}
 }
 
-function getJobId(params: GenerateReviewParams) {
-	return `review-generation:${getPullRequestKey(params)}`
-}
+function cleanupFinishedJobs() {
+	const now = Date.now()
+	for (const [jobId, job] of jobs) {
+		if (job.status === 'running') continue
+		const finishedAt = job.finishedAt ? Date.parse(job.finishedAt) : Number.NaN
+		if (!Number.isFinite(finishedAt) || now - finishedAt > JOB_TTL_MS) {
+			jobs.delete(jobId)
+		}
+	}
 
-function getPullRequestKey(params: GenerateReviewParams) {
-	const pr = params.pullRequest
-	return `${pr.repo}#${pr.pullRequestNumber}:${pr.headSha}`
+	const finishedJobs = [...jobs.entries()].filter(([, job]) => job.status !== 'running')
+	if (finishedJobs.length <= MAX_STORED_JOBS) return
+
+	for (const [jobId] of finishedJobs
+		.sort(([, a], [, b]) => Date.parse(a.finishedAt ?? a.startedAt) - Date.parse(b.finishedAt ?? b.startedAt))
+		.slice(0, finishedJobs.length - MAX_STORED_JOBS)) {
+		jobs.delete(jobId)
+	}
 }

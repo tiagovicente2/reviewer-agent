@@ -17,10 +17,14 @@ type SpawnOptions = {
 	cwd?: string
 	env?: NodeJS.ProcessEnv
 	input?: string
+	maxBufferBytes?: number
 	onStderr?: (chunk: string) => void
 	onStdout?: (chunk: string) => void
 	timeoutMs?: number
 }
+
+const DEFAULT_MAX_BUFFER_BYTES = 25 * 1024 * 1024
+const KILL_GRACE_MS = 1500
 
 export function runCommand(command: string, args: string[], options: SpawnOptions = {}) {
 	return runCommandBuffer(command, args, options).then(({ exitCode, stdout, stderr }) => ({
@@ -34,6 +38,7 @@ export function runCommandBuffer(command: string, args: string[], options: Spawn
 	return new Promise<SpawnBufferResult>((resolve, reject) => {
 		const child = spawn(command, args, {
 			cwd: options.cwd,
+			detached: process.platform !== 'win32',
 			env: options.env,
 			stdio: ['pipe', 'pipe', 'pipe'],
 		})
@@ -42,25 +47,36 @@ export function runCommandBuffer(command: string, args: string[], options: Spawn
 		const stderrChunks: Buffer[] = []
 		const stdoutDecoder = options.onStdout ? new StringDecoder('utf8') : undefined
 		const stderrDecoder = options.onStderr ? new StringDecoder('utf8') : undefined
+		const maxBufferBytes = options.maxBufferBytes ?? DEFAULT_MAX_BUFFER_BYTES
+		let capturedBytes = 0
 		let timeout: NodeJS.Timeout | undefined
+		let forceKillTimeout: NodeJS.Timeout | undefined
 		let settled = false
 
 		function finish(error?: Error, result?: SpawnBufferResult) {
 			if (settled) return
 			settled = true
 			if (timeout) clearTimeout(timeout)
+			if (forceKillTimeout) clearTimeout(forceKillTimeout)
 			if (error) reject(error)
 			else if (result) resolve(result)
 		}
 
 		if (options.timeoutMs) {
 			timeout = setTimeout(() => {
-				child.kill()
+				terminateChild(child, 'SIGTERM')
+				forceKillTimeout = setTimeout(() => terminateChild(child, 'SIGKILL'), KILL_GRACE_MS)
 				finish(new Error(`${command} timed out.`))
 			}, options.timeoutMs)
 		}
 
 		child.stdout.on('data', (chunk: Buffer) => {
+			capturedBytes += chunk.byteLength
+			if (capturedBytes > maxBufferBytes) {
+				terminateChild(child, 'SIGTERM')
+				finish(new Error(`${command} exceeded output buffer limit.`))
+				return
+			}
 			stdoutChunks.push(chunk)
 			if (stdoutDecoder) {
 				const decoded = stdoutDecoder.write(chunk)
@@ -68,6 +84,12 @@ export function runCommandBuffer(command: string, args: string[], options: Spawn
 			}
 		})
 		child.stderr.on('data', (chunk: Buffer) => {
+			capturedBytes += chunk.byteLength
+			if (capturedBytes > maxBufferBytes) {
+				terminateChild(child, 'SIGTERM')
+				finish(new Error(`${command} exceeded output buffer limit.`))
+				return
+			}
 			stderrChunks.push(chunk)
 			if (stderrDecoder) {
 				const decoded = stderrDecoder.write(chunk)
@@ -94,4 +116,16 @@ export function runCommandBuffer(command: string, args: string[], options: Spawn
 			child.stdin.end()
 		}
 	})
+}
+
+function terminateChild(child: ReturnType<typeof spawn>, signal: NodeJS.Signals) {
+	try {
+		if (process.platform !== 'win32' && child.pid) {
+			process.kill(-child.pid, signal)
+			return
+		}
+		child.kill(signal)
+	} catch {
+		// Process already exited.
+	}
 }

@@ -25,7 +25,8 @@ export async function publishReviewComment(
 export async function publishReviewComments(
 	params: PublishReviewCommentsParams,
 ): Promise<PublishReviewCommentResult> {
-	const publishableFindings = params.findings.filter(isPublishableFinding)
+	const publishableFindings = dedupeFindings(params.findings.filter(isPublishableFinding))
+	validatePublishableFindings(params, publishableFindings)
 	if (publishableFindings.length === 0) {
 		throw new Error(
 			'No publishable inline findings. Findings need filePath, lineStart, and a comment body.',
@@ -54,9 +55,12 @@ export async function submitReview(params: SubmitReviewParams): Promise<SubmitRe
 	const body = params.body?.trim()
 	if (params.event === 'approve') return submitApproval(params, body)
 
+	const reviewFindings = dedupeFindings((params.findings ?? []).filter(isPublishableFinding))
+	validatePublishableFindings({ pullRequest: params.pullRequest, findings: reviewFindings }, reviewFindings)
+
 	const comments =
 		params.event === 'request_changes'
-			? (params.findings ?? []).filter(isPublishableFinding).map((finding) => ({
+			? reviewFindings.map((finding) => ({
 					body: getCommentBody(finding),
 					line: finding.lineStart,
 					path: finding.filePath,
@@ -147,6 +151,31 @@ async function getLatestPullRequestHeadSha(params: SubmitReviewParams) {
 
 function isPublishableFinding(finding: ReviewFinding) {
 	return Boolean(finding.filePath && finding.lineStart && getCommentBody(finding))
+}
+
+function validatePublishableFindings(
+	params: Pick<PublishReviewCommentsParams, 'findings' | 'pullRequest'>,
+	findings: ReviewFinding[],
+) {
+	const changedFiles = new Set(params.pullRequest.files.map((file) => file.path))
+	for (const finding of findings) {
+		if (!changedFiles.has(finding.filePath)) {
+			throw new Error(`Cannot publish comment for unchanged file: ${finding.filePath}.`)
+		}
+		if (!Number.isInteger(finding.lineStart) || !finding.lineStart || finding.lineStart < 1) {
+			throw new Error(`Cannot publish comment with invalid line for ${finding.filePath}.`)
+		}
+	}
+}
+
+function dedupeFindings(findings: ReviewFinding[]) {
+	const seen = new Set<string>()
+	return findings.filter((finding) => {
+		const key = `${finding.filePath}:${finding.lineStart}:${getCommentBody(finding)}`
+		if (seen.has(key)) return false
+		seen.add(key)
+		return true
+	})
 }
 
 function getCommentBody(finding: ReviewFinding) {

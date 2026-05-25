@@ -42,6 +42,22 @@ export type GenerateReviewParams = {
 	pullRequest: GitHubPullRequestDetails
 }
 
+export function getReviewGenerationPullRequestKey(pullRequest: {
+	repo: string
+	pullRequestNumber: number
+	headSha: string
+}) {
+	return `${pullRequest.repo}#${pullRequest.pullRequestNumber}:${pullRequest.headSha}`
+}
+
+export function getReviewGenerationJobId(pullRequest: {
+	repo: string
+	pullRequestNumber: number
+	headSha: string
+}) {
+	return `review-generation:${getReviewGenerationPullRequestKey(pullRequest)}`
+}
+
 export type ReviewGenerationJob = {
 	id: string
 	pullRequestKey: string
