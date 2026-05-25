@@ -9,14 +9,18 @@ type JsonStreamAdapter = {
 
 export function createJsonStreamProgressHandler(params: {
 	adapter: JsonStreamAdapter
+	initialStatusMessages?: string[]
 	onProgress?: ProgressHandler
 	promptLabel?: string
 }) {
-	const { adapter, onProgress, promptLabel } = params
+	const { adapter, initialStatusMessages = [], onProgress, promptLabel } = params
 	if (!onProgress) return undefined
 
 	let buffered = ''
-	let transcript = promptLabel ? `${promptLabel}\n\n` : ''
+	let transcript = formatInitialVisibleReviewOutput({
+		promptLabel,
+		statusMessages: initialStatusMessages,
+	})
 	let streamedText = ''
 	let lastTextLength = 0
 	return (chunk: string) => {
@@ -102,6 +106,20 @@ export function formatVisibleReviewOutput(transcript: string, text: string) {
 
 	if (formattedLines.length === 0) return transcript
 	return `${transcript}${formattedLines.join('\n')}`
+}
+
+export function formatInitialVisibleReviewOutput({
+	promptLabel,
+	statusMessages,
+}: {
+	promptLabel?: string
+	statusMessages?: string[]
+}) {
+	let transcript = promptLabel ? `${promptLabel}\n\n` : ''
+	for (const message of statusMessages ?? []) {
+		transcript = appendTranscriptLine(transcript, `:: ${message}`)
+	}
+	return transcript
 }
 
 export function getNestedValue(value: unknown, path: string[]) {

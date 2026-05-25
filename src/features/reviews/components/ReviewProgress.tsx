@@ -1,13 +1,23 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Box, HStack, Stack } from 'styled-system/jsx'
 
-const reviewFrames = ['[ === ]', '[ ==  ]', '[ =   ]', '[  == ]', '[   = ]', '[  == ]', '[ === ]']
+const reviewFrames = ['[ === ]', '[ ==  ]', '[ =   ]', '[ ==  ]', '[ === ]', '[  == ]', '[   = ]']
 
 export function ReviewProgress({ message, outputText }: { message?: string; outputText?: string }) {
 	const [frameIndex, setFrameIndex] = useState(0)
 	const transcriptRef = useRef<HTMLDivElement | null>(null)
-	const transcriptLines = getTranscriptLines(outputText)
+	const timestampByLineIdRef = useRef(new Map<string, string>())
+	const shouldFollowTranscriptRef = useRef(true)
+	const transcriptLines = getTranscriptLines(outputText, timestampByLineIdRef.current)
 	const hasTranscript = transcriptLines.length > 0
+
+	const updateTranscriptFollowState = useCallback(() => {
+		const transcript = transcriptRef.current
+		if (!transcript) return
+
+		shouldFollowTranscriptRef.current =
+			transcript.scrollHeight - transcript.scrollTop - transcript.clientHeight <= 8
+	}, [])
 
 	useEffect(() => {
 		const interval = window.setInterval(() => {
@@ -17,23 +27,33 @@ export function ReviewProgress({ message, outputText }: { message?: string; outp
 		return () => window.clearInterval(interval)
 	}, [])
 
-	useEffect(() => {
+	useLayoutEffect(() => {
+		if (!hasTranscript || !shouldFollowTranscriptRef.current) return
+
 		const transcript = transcriptRef.current
-		if (!transcript || !hasTranscript) return
+		if (!transcript) return
 
 		transcript.scrollTop = transcript.scrollHeight
 	})
 
 	return (
-		<Stack bg="gray.2" borderRadius="l2" gap="4" minH="18rem" p="6" textAlign="left">
+		<Stack
+			bg="gray.2"
+			borderRadius="l2"
+			gap="4"
+			h="100%"
+			minH="18rem"
+			overflow="hidden"
+			p="6"
+			textAlign="left"
+		>
 			<HStack alignItems="center" justify="space-between" gap="3">
 				<Box fontWeight="semibold">Reviewing this PR</Box>
 				{hasTranscript ? (
 					<HStack color="fg.muted" flexShrink="0" gap="2" textStyle="xs">
 						<Box color="cyan.11" fontFamily="mono" fontWeight="bold">
-							{reviewFrames[frameIndex]}
+							<ReviewFrame frame={reviewFrames[frameIndex]} />
 						</Box>
-						<Box>{message || 'Generating draft review...'}</Box>
 					</HStack>
 				) : null}
 			</HStack>
@@ -44,12 +64,14 @@ export function ReviewProgress({ message, outputText }: { message?: string; outp
 						borderColor="border.default"
 						borderRadius="l2"
 						borderWidth="1px"
+						flex="1"
 						gap="0"
-						h="100%"
-						minH="18rem"
-						overflow="auto"
+						minH="0"
+						onScroll={updateTranscriptFollowState}
+						overflowY="auto"
 						py="3"
 						ref={transcriptRef}
+						scrollbarGutter="stable"
 						w="100%"
 					>
 						{transcriptLines.map((line) => (
@@ -66,7 +88,7 @@ export function ReviewProgress({ message, outputText }: { message?: string; outp
 						textAlign="center"
 					>
 						<Box color="cyan.11" fontFamily="mono" fontSize="5xl" fontWeight="bold" lineHeight="1">
-							{reviewFrames[frameIndex]}
+							<ReviewFrame frame={reviewFrames[frameIndex]} />
 						</Box>
 						<Box color="fg.muted" maxW="32rem" textStyle="sm">
 							{message || 'Waiting for the first streamed response tokens...'}
@@ -75,6 +97,14 @@ export function ReviewProgress({ message, outputText }: { message?: string; outp
 				)}
 			</Stack>
 		</Stack>
+	)
+}
+
+function ReviewFrame({ frame }: { frame?: string }) {
+	return (
+		<Box as="span" display="inline-block" minW="7ch" textAlign="left" whiteSpace="pre">
+			{frame ?? reviewFrames[0]}
+		</Box>
 	)
 }
 
@@ -94,14 +124,36 @@ type TranscriptLineModel = {
 	label?: string
 	raw: string
 	text: string
+	timestamp?: string
 }
 
-function getTranscriptLines(outputText?: string): TranscriptLineModel[] {
+function getTranscriptLines(
+	outputText: string | undefined,
+	timestampByLineId: Map<string, string>,
+): TranscriptLineModel[] {
 	return (outputText ?? '')
 		.split(/\r?\n/)
 		.map((line) => line.trim())
 		.filter(Boolean)
-		.map((line, index) => ({ ...parseTranscriptLine(line), id: `${index}:${line}` }))
+		.map((line, index) => {
+			const parsedLine = parseTranscriptLine(line)
+			const id = `${index}:${line}`
+			let timestamp: string | undefined
+
+			if (parsedLine.kind === 'status') {
+				timestamp = timestampByLineId.get(id)
+				if (!timestamp) {
+					timestamp = formatTranscriptTimestamp()
+					timestampByLineId.set(id, timestamp)
+				}
+			}
+
+			return {
+				...parsedLine,
+				id,
+				timestamp,
+			}
+		})
 }
 
 function parseTranscriptLine(raw: string): Omit<TranscriptLineModel, 'id'> {
@@ -110,7 +162,12 @@ function parseTranscriptLine(raw: string): Omit<TranscriptLineModel, 'id'> {
 	}
 
 	if (raw.startsWith('Thought:')) {
-		return { kind: 'thought', label: 'Thought', raw, text: raw.replace(/^Thought:\s*/, '') }
+		return {
+			kind: 'thought',
+			label: 'Thought',
+			raw,
+			text: raw.replace(/^Thought:\s*/, ''),
+		}
 	}
 
 	if (raw.startsWith('Finding')) {
@@ -125,7 +182,12 @@ function parseTranscriptLine(raw: string): Omit<TranscriptLineModel, 'id'> {
 	}
 
 	if (raw.startsWith('Summary:')) {
-		return { kind: 'summary', label: 'Summary', raw, text: raw.replace(/^Summary:\s*/, '') }
+		return {
+			kind: 'summary',
+			label: 'Summary',
+			raw,
+			text: raw.replace(/^Summary:\s*/, ''),
+		}
 	}
 
 	if (raw.startsWith('->')) {
@@ -160,18 +222,24 @@ function TranscriptLine({ line }: { line: TranscriptLineModel }) {
 			py="2.5"
 			_last={{ borderBottomWidth: '0' }}
 		>
-			<Box
+			<HStack
+				alignItems="baseline"
 				color={tone.labelColor}
 				flexShrink="0"
 				fontFamily="mono"
 				fontSize="xs"
 				fontWeight="semibold"
+				gap="2"
 				lineHeight="1.6"
-				minW="4.5rem"
-				textTransform="uppercase"
+				minW="7.25rem"
 			>
-				{line.label ?? tone.label}
-			</Box>
+				<Box textTransform="uppercase">{line.label ?? tone.label}</Box>
+				{line.timestamp ? (
+					<Box color="fg.subtle" fontSize="2xs" fontWeight="medium">
+						{line.timestamp}
+					</Box>
+				) : null}
+			</HStack>
 			<Stack gap="1" minW="0">
 				{line.detail ? (
 					<Box color={tone.detailColor} fontFamily="mono" textStyle="xs" wordBreak="break-all">
@@ -184,6 +252,14 @@ function TranscriptLine({ line }: { line: TranscriptLineModel }) {
 			</Stack>
 		</HStack>
 	)
+}
+
+function formatTranscriptTimestamp() {
+	return new Intl.DateTimeFormat(undefined, {
+		hour: '2-digit',
+		hour12: false,
+		minute: '2-digit',
+	}).format(new Date())
 }
 
 const transcriptLineTone: Record<

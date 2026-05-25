@@ -11,6 +11,7 @@ const codexStreamAdapter = {
 }
 
 export function createCodexJsonProgressHandler(params: {
+	initialStatusMessages?: string[]
 	onProgress?: ProgressHandler
 	promptLabel?: string
 }) {

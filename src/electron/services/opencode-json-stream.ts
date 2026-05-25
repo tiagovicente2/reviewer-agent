@@ -11,6 +11,7 @@ const opencodeStreamAdapter = {
 }
 
 export function createOpencodeJsonProgressHandler(params: {
+	initialStatusMessages?: string[]
 	onProgress?: ProgressHandler
 	promptLabel?: string
 }) {

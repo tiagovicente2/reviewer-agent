@@ -1,4 +1,5 @@
 import type { GenerateReviewParams, ReviewGenerationJob } from '@/shared/review'
+import { formatInitialVisibleReviewOutput } from './agent-json-stream'
 import { generateReview } from './review-generation'
 import { getReviewCodeAgent } from './settings'
 
@@ -27,6 +28,7 @@ function getProgressMessages() {
 }
 
 const jobs = new Map<string, StoredJob>()
+const reviewPromptLabel = 'Generate a draft GitHub pull request review'
 
 export function startReviewGeneration(params: GenerateReviewParams): ReviewGenerationJob {
 	const jobId = getJobId(params)
@@ -40,6 +42,10 @@ export function startReviewGeneration(params: GenerateReviewParams): ReviewGener
 	const job: StoredJob = {
 		id: jobId,
 		pullRequestKey: getPullRequestKey(params),
+		outputText: formatInitialVisibleReviewOutput({
+			promptLabel: reviewPromptLabel,
+			statusMessages: [`Starting ${agent} review process...`],
+		}),
 		status: 'running',
 		statusMessage: `${agent} is reading the PR metadata and diff...`,
 		startedAt,

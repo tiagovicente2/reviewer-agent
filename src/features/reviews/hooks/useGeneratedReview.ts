@@ -10,6 +10,12 @@ function getReviewJobId(detail: GitHubPullRequestDetails) {
 	return `review-generation:${detail.repo}#${detail.pullRequestNumber}:${detail.headSha}`
 }
 
+const reviewPromptLabel = 'Generate a draft GitHub pull request review'
+
+function getLocalReviewProgressOutput(messages: string[]) {
+	return `${reviewPromptLabel}\n\n${messages.map((message) => `:: ${message}`).join('\n')}\n`
+}
+
 export function useGeneratedReview({
 	detail,
 	loadDiff,
@@ -142,15 +148,26 @@ export function useGeneratedReview({
 		setGenerationState('loading')
 		setGenerationError('')
 		setGenerationMessage('Loading the latest PR diff before starting review generation...')
-		setGenerationOutputText('')
+		setGenerationOutputText(
+			getLocalReviewProgressOutput([
+				'Loading the latest PR diff before starting review generation...',
+			]),
+		)
 
 		try {
 			const loadedDiff = await loadDiff()
 			setGenerationMessage('Starting review generation...')
+			setGenerationOutputText(
+				getLocalReviewProgressOutput([
+					'Loading the latest PR diff before starting review generation...',
+					'Starting review generation...',
+				]),
+			)
 			const job = await appRpc.request.startReviewGeneration({
 				pullRequest: { ...detail, diff: loadedDiff },
 			})
 			setGenerationJobId(job.id)
+			setGenerationMessage(job.statusMessage ?? '')
 			setGenerationOutputText(job.outputText ?? '')
 			if (job.status === 'completed' && job.review) completeGeneration(job.review)
 		} catch (error) {

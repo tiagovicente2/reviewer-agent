@@ -13,6 +13,7 @@ const claudeStreamAdapter = {
 }
 
 export function createClaudeStreamJsonProgressHandler(params: {
+	initialStatusMessages?: string[]
 	onProgress?: ProgressHandler
 	promptLabel?: string
 }) {

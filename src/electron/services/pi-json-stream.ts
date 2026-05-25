@@ -13,6 +13,7 @@ const piStreamAdapter = {
 }
 
 export function createPiJsonProgressHandler(params: {
+	initialStatusMessages?: string[]
 	onProgress?: ProgressHandler
 	promptLabel?: string
 }) {

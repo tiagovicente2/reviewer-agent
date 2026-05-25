@@ -37,6 +37,7 @@ type GenerateReviewOptions = {
 
 const MAX_DIFF_CHARS = 180_000
 const REVIEW_TIMEOUT_MS = 10 * 60 * 1000
+const REVIEW_PROMPT_LABEL = 'Generate a draft GitHub pull request review'
 
 async function runAgentReview(
 	prompt: string,
@@ -63,8 +64,9 @@ async function runAgentReview(
 			env: {},
 			normalizeStdout: normalizeClaudeStreamJsonOutput,
 			onStdout: createClaudeStreamJsonProgressHandler({
+				initialStatusMessages: ['Starting Claude review process...'],
 				onProgress: options.onProgress,
-				promptLabel: 'Generate a draft GitHub pull request review',
+				promptLabel: REVIEW_PROMPT_LABEL,
 			}),
 			prompt,
 		})
@@ -86,8 +88,9 @@ async function runAgentReview(
 			env: {},
 			normalizeStdout: normalizeOpencodeJsonOutput,
 			onStdout: createOpencodeJsonProgressHandler({
+				initialStatusMessages: ['Starting opencode review process...'],
 				onProgress: options.onProgress,
-				promptLabel: 'Generate a draft GitHub pull request review',
+				promptLabel: REVIEW_PROMPT_LABEL,
 			}),
 			prompt: `${systemPrompt}\n\n${prompt}`,
 		})
@@ -109,8 +112,9 @@ async function runAgentReview(
 			env: {},
 			normalizeStdout: normalizeCodexJsonOutput,
 			onStdout: createCodexJsonProgressHandler({
+				initialStatusMessages: ['Starting Codex review process...'],
 				onProgress: options.onProgress,
-				promptLabel: 'Generate a draft GitHub pull request review',
+				promptLabel: REVIEW_PROMPT_LABEL,
 			}),
 			prompt: `${systemPrompt}\n\n${prompt}`,
 		})
@@ -135,8 +139,9 @@ async function runAgentReview(
 		env: { PI_SKIP_VERSION_CHECK: '1' },
 		normalizeStdout: normalizePiJsonOutput,
 		onStdout: createPiJsonProgressHandler({
+			initialStatusMessages: ['Starting Pi review process...'],
 			onProgress: options.onProgress,
-			promptLabel: 'Generate a draft GitHub pull request review',
+			promptLabel: REVIEW_PROMPT_LABEL,
 		}),
 		prompt,
 	})
