@@ -23,7 +23,7 @@ function getProgressMessages() {
 		`${agent} is checking the changed files for correctness issues...`,
 		`${agent} is looking for regressions, edge cases, and risky assumptions...`,
 		`${agent} is drafting concise GitHub review comments...`,
-		`${agent} is formatting the review output...`,
+		`${agent} is finishing the review output...`,
 	]
 }
 
@@ -65,9 +65,10 @@ export function startReviewGeneration(params: GenerateReviewParams): ReviewGener
 		},
 	})
 		.then((review) => {
-			clearProgressTimer(job)
+			const current = jobs.get(jobId) ?? job
+			clearProgressTimer(current)
 			jobs.set(jobId, {
-				...job,
+				...current,
 				progressTimer: undefined,
 				status: 'completed',
 				statusMessage: `${agent} finished the draft review.`,
@@ -76,9 +77,10 @@ export function startReviewGeneration(params: GenerateReviewParams): ReviewGener
 			})
 		})
 		.catch((error: unknown) => {
-			clearProgressTimer(job)
+			const current = jobs.get(jobId) ?? job
+			clearProgressTimer(current)
 			jobs.set(jobId, {
-				...job,
+				...current,
 				progressTimer: undefined,
 				status: 'failed',
 				statusMessage: `${agent} could not finish the draft review.`,

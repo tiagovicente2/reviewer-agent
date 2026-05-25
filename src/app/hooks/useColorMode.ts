@@ -20,7 +20,8 @@ export function useColorMode() {
 				})
 				.catch(syncFromMediaQuery)
 		}
-		const handleNativeChange = ({ colorMode }: { colorMode: ColorMode }) => setSystemColorMode(colorMode)
+		const handleNativeChange = ({ colorMode }: { colorMode: ColorMode }) =>
+			setSystemColorMode(colorMode)
 
 		syncFromNative()
 		media.addEventListener('change', syncFromMediaQuery)

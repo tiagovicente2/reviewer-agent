@@ -31,7 +31,8 @@ export function useErrorLog(openErrorLog: () => void) {
 
 	return {
 		clearErrors: () => setErrors([]),
-		dismissError: (id: string) => setErrors((current) => current.filter((error) => error.id !== id)),
+		dismissError: (id: string) =>
+			setErrors((current) => current.filter((error) => error.id !== id)),
 		errors,
 		logError,
 	}

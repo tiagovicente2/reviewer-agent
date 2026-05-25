@@ -74,9 +74,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 					>
 						<Box alignItems="flex-start" display="flex" gap="3" justifyContent="space-between">
 							<Box minW="0">
-								<Box fontWeight="semibold">
-									{toast.title}
-								</Box>
+								<Box fontWeight="semibold">{toast.title}</Box>
 								{toast.description ? (
 									<Box className={toastDescriptionClassNames[toast.tone]} mt="1" textStyle="sm">
 										{toast.description}

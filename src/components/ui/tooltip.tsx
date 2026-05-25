@@ -2,13 +2,7 @@ import type { ReactNode } from 'react'
 import { css } from 'styled-system/css'
 import { Box } from 'styled-system/jsx'
 
-export function InfoTooltip({
-	children,
-	message,
-}: {
-	children?: ReactNode
-	message: string
-}) {
+export function InfoTooltip({ children, message }: { children?: ReactNode; message: string }) {
 	return (
 		<Box
 			display="inline-flex"

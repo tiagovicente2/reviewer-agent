@@ -105,14 +105,21 @@ function AgentStep({
 	const readyCount = agents.filter((agent) => agent.ready).length
 	return (
 		<OnboardingStep
-			badge={agentsState === 'loading' ? 'Checking' : readyCount > 0 ? `${readyCount} ready` : 'Needs setup'}
+			badge={
+				agentsState === 'loading'
+					? 'Checking'
+					: readyCount > 0
+						? `${readyCount} ready`
+						: 'Needs setup'
+			}
 			badgeTone={readyCount > 0 ? 'green' : agentsState === 'loading' ? 'cyan' : 'red'}
 			index="2"
 			title="Check review agents"
 		>
 			<Stack gap="2">
 				<Box color="fg.muted" textStyle="sm">
-					At least one local review agent must be installed and authenticated before generating drafts.
+					At least one local review agent must be installed and authenticated before generating
+					drafts.
 				</Box>
 				{agents.map((agent) => (
 					<HStack key={agent.agent} justify="space-between" gap="3" textStyle="sm">
@@ -134,7 +141,12 @@ function AgentStep({
 
 function ReviewerInstructionsStep({ onOpenSettings }: { onOpenSettings: () => void }) {
 	return (
-		<OnboardingStep badge="Recommended" badgeTone="cyan" index="3" title="Add reviewer instructions">
+		<OnboardingStep
+			badge="Recommended"
+			badgeTone="cyan"
+			index="3"
+			title="Add reviewer instructions"
+		>
 			<Stack gap="3">
 				<Box color="fg.muted" textStyle="sm">
 					Tell the reviewer how to review your PRs: preferred language, severity style, project
@@ -154,7 +166,8 @@ function PreferencesStep({ onOpenSettings }: { onOpenSettings: () => void }) {
 		<OnboardingStep badge="Optional" badgeTone="gray" index="4" title="Review preferences">
 			<Stack gap="3">
 				<Box color="fg.muted" textStyle="sm">
-					Choose the theme, review language, and default review agent/model used for generated drafts.
+					Choose the theme, review language, and default review agent/model used for generated
+					drafts.
 				</Box>
 				<Button alignSelf="flex-start" size="sm" variant="outline" onClick={onOpenSettings}>
 					Open settings

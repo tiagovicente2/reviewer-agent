@@ -36,12 +36,12 @@ function getClaudeEventText(event: JsonStreamEvent) {
 
 function getClaudeEventStatusMessage(event: JsonStreamEvent) {
 	if (event.type === 'init') return 'Claude started the review session...'
-	if (event.type === 'assistant') return 'Claude is drafting the review JSON...'
-	if (event.type === 'result') return 'Claude is formatting the review output...'
+	if (event.type === 'assistant') return 'Claude is preparing review events...'
+	if (event.type === 'result') return 'Claude finished the review output...'
 
 	const streamType = getNestedValue(event, ['event', 'type'])
-	if (streamType === 'message_start') return 'Claude is drafting the review JSON...'
-	if (streamType === 'message_stop') return 'Claude is formatting the review output...'
+	if (streamType === 'message_start') return 'Claude is preparing review events...'
+	if (streamType === 'message_stop') return 'Claude finished the review output...'
 
 	return undefined
 }

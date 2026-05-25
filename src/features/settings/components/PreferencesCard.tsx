@@ -32,7 +32,9 @@ export function PreferencesCard({
 					<InlineField label="Color mode">
 						<Select
 							value={settings.colorMode}
-							onChange={(value) => onChange({ ...settings, colorMode: value as ColorModePreference })}
+							onChange={(value) =>
+								onChange({ ...settings, colorMode: value as ColorModePreference })
+							}
 							options={['system', 'dark', 'light']}
 						/>
 					</InlineField>
@@ -46,7 +48,9 @@ export function PreferencesCard({
 					>
 						<Select
 							value={settings.codeAgent}
-							onChange={(value) => onChange({ ...settings, codeAgent: value as CodeAgent, model: '' })}
+							onChange={(value) =>
+								onChange({ ...settings, codeAgent: value as CodeAgent, model: '' })
+							}
 							options={['pi', 'claude', 'opencode', 'codex']}
 						/>
 					</InlineField>
@@ -62,7 +66,9 @@ export function PreferencesCard({
 					<InlineField label="Review language">
 						<Select
 							value={settings.reviewLanguage}
-							onChange={(value) => onChange({ ...settings, reviewLanguage: value as ReviewLanguage })}
+							onChange={(value) =>
+								onChange({ ...settings, reviewLanguage: value as ReviewLanguage })
+							}
 							options={['english', 'portuguese']}
 						/>
 					</InlineField>

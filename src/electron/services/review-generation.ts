@@ -194,6 +194,7 @@ function getAgentLabel() {
 
 function buildSystemPrompt() {
 	const outputRules = `- Return newline-delimited JSON (NDJSON), one complete JSON object per line. No markdown fences or prose outside JSON lines.
+- Your first output line must be exactly {"type":"progress","message":"Starting review..."}. Emit it immediately before analyzing the diff.
 - While reviewing, emit concise visible progress objects before the final review. Use these event shapes:
   {"type":"progress","message":"Reading PR metadata and changed files..."}
   {"type":"thought","message":"The PR changes payment flow UI, so I will focus on state transitions, fallbacks, and submission behavior."}
@@ -203,6 +204,7 @@ function buildSystemPrompt() {
   {"type":"summary","summary":"The PR is mostly safe, but one state synchronization issue needs attention.","publishableBody":"Found one state synchronization issue worth addressing before merge.","verdictRecommendation":"request_changes","severity":"medium"}
 - Emit progress only for real checks you are performing from the supplied metadata and diff. Thought events must be short visible progress summaries, not hidden chain-of-thought. Do not claim you opened files, ran commands, or used tools.
 - Emit each finding as soon as it is ready. Do not repeat all findings in one large final object.
+- Do not generate unified diff patches during this first pass. Set fixSuggestion to null. Patch generation happens later on demand.
 - The last line must be exactly {"type":"done"}. Do not emit a final review object unless you cannot follow the event protocol.`
 
 	return `You are Reviewer Agent's local review generator running through the selected coding agent.
@@ -251,7 +253,7 @@ Use this exact TypeScript shape for each finding event's finding payload:
   "codeSnippet": string | null,
   "body": string,
   "suggestedCommentBody": string | null,
-  "fixSuggestion": string | null,
+  "fixSuggestion": null,
   "confidence": number
 }
 
@@ -299,7 +301,7 @@ ${JSON.stringify(
 	2,
 )}
 
-For every finding where a concrete fix is possible, set fixSuggestion to a small unified diff patch for the suggested change. Include file headers and hunk headers when possible, and keep it focused on only the relevant lines. Use null only when no safe code change can be suggested.
+Set fixSuggestion to null for every finding. Do not generate unified diff patches in this first pass.
 
 Write suggestedCommentBody and inlineComments.body as natural GitHub review comments in ${getReviewLanguage() === 'portuguese' ? 'Portuguese (Brazil)' : 'English'}. When writing in Portuguese, preserve technical names and code terms in English, for example say "Esse useEffect..." instead of translating it. Do not use before/after labels like "You did this" or "After review". Prefer direct wording such as "This fallback will also handle future origin types, which can route them to the wrong page. Could we make the postpaid case explicit and return null by default?"
 

@@ -93,7 +93,7 @@ describe('review generation output adapters', () => {
 
 		const lastUpdate = updates[updates.length - 1]
 		expect(lastUpdate).toContain('Generate review')
-		expect(lastUpdate).toContain(':: Claude is drafting the review JSON...')
+		expect(lastUpdate).toContain(':: Claude is preparing review events...')
 	})
 
 	it('formats review protocol events for the live transcript', () => {

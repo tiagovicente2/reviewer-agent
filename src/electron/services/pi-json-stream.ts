@@ -53,8 +53,8 @@ function getPiFinalText(event: JsonStreamEvent) {
 function getPiStatusMessage(event: JsonStreamEvent) {
 	if (event.type === 'agent_start') return 'Pi started the review session...'
 	if (event.type === 'turn_start') return 'Pi is reviewing the supplied diff...'
-	if (event.type === 'message_start') return 'Pi is drafting the review output...'
-	if (event.type === 'turn_end') return 'Pi is formatting the review output...'
+	if (event.type === 'message_start') return 'Pi is preparing review events...'
+	if (event.type === 'turn_end') return 'Pi finished the review output...'
 
 	return undefined
 }

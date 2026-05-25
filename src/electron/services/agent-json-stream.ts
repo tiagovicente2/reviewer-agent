@@ -130,7 +130,8 @@ export function getNestedValue(value: unknown, path: string[]) {
 }
 
 function formatReviewEventLine(line: string, isPartial: boolean) {
-	if (isPartial && line.startsWith('{"type":"final"')) return ':: Formatting final review JSON...'
+	if (isPartial && line.startsWith('{"type":"final"'))
+		return ':: Reading legacy final review JSON...'
 
 	try {
 		const parsed = JSON.parse(line) as unknown
