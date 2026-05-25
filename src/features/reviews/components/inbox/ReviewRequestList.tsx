@@ -18,7 +18,10 @@ export function ReviewRequestList({
 	return (
 		<Stack gap="3">
 			{reviewsState === 'loading' ? (
-				<StatusCard title="Loading GitHub PRs" body="Calling gh search prs --review-requested=@me..." />
+				<StatusCard
+					title="Loading GitHub PRs"
+					body="Calling gh search prs --review-requested=@me..."
+				/>
 			) : null}
 
 			{reviewsState !== 'loading' && reviews.length === 0 ? (

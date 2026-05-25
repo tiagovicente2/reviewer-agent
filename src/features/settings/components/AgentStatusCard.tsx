@@ -25,7 +25,12 @@ export function AgentStatusCard({
 							GitHub is checked during onboarding. Review agent status is shown here.
 						</Card.Description>
 					</Box>
-					<Button size="sm" variant="outline" loading={agentsState === 'loading'} onClick={onRefresh}>
+					<Button
+						size="sm"
+						variant="outline"
+						loading={agentsState === 'loading'}
+						onClick={onRefresh}
+					>
 						Recheck
 					</Button>
 				</HStack>

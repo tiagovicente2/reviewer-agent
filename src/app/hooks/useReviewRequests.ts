@@ -41,7 +41,7 @@ export function useReviewRequests({
 			const items = await appRpc.request.listGitHubReviewRequests()
 			setReviews(items)
 			setSelectedReviewId((current) =>
-				current && items.some((item) => item.id === current) ? current : items[0]?.id ?? null,
+				current && items.some((item) => item.id === current) ? current : (items[0]?.id ?? null),
 			)
 			setReviewsState('idle')
 			return true
@@ -59,7 +59,10 @@ export function useReviewRequests({
 
 			setReviewsState('loading')
 			try {
-				const items = await appRpc.request.searchGitHubPullRequests({ mode: searchMode, query: searchQuery })
+				const items = await appRpc.request.searchGitHubPullRequests({
+					mode: searchMode,
+					query: searchQuery,
+				})
 				setSearchActive(true)
 				setActiveSearchQuery(searchQuery)
 				setReviews(items)

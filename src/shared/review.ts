@@ -46,6 +46,7 @@ export type ReviewGenerationJob = {
 	id: string
 	pullRequestKey: string
 	status: 'running' | 'completed' | 'failed'
+	outputText?: string
 	statusMessage?: string
 	startedAt: string
 	finishedAt?: string

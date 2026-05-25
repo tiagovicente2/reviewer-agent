@@ -16,6 +16,7 @@ export function ReviewTab({
 	diff,
 	generationError,
 	generationMessage,
+	generationOutputText,
 	generationState,
 	generatedReview,
 	inlineComments,
@@ -29,6 +30,7 @@ export function ReviewTab({
 	diff: string
 	generationError: string
 	generationMessage: string
+	generationOutputText: string
 	generationState: AsyncState
 	generatedReview: GeneratedReview | null
 	inlineComments: ReviewInlineComment[]
@@ -57,6 +59,7 @@ export function ReviewTab({
 						error={generationError || publishError}
 						errorTitle={publishError ? 'Review submission failed' : 'Review generation failed'}
 						generationMessage={generationMessage}
+						generationOutputText={generationOutputText}
 						generationState={generationState}
 						inlineComments={inlineComments}
 						onPublishFinding={onPublishFinding}

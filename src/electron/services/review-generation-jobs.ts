@@ -1,4 +1,5 @@
 import type { GenerateReviewParams, ReviewGenerationJob } from '@/shared/review'
+import { formatInitialVisibleReviewOutput } from './agent-json-stream'
 import { generateReview } from './review-generation'
 import { getReviewCodeAgent } from './settings'
 
@@ -22,11 +23,12 @@ function getProgressMessages() {
 		`${agent} is checking the changed files for correctness issues...`,
 		`${agent} is looking for regressions, edge cases, and risky assumptions...`,
 		`${agent} is drafting concise GitHub review comments...`,
-		`${agent} is formatting the review output...`,
+		`${agent} is finishing the review output...`,
 	]
 }
 
 const jobs = new Map<string, StoredJob>()
+const reviewPromptLabel = 'Generate a draft GitHub pull request review'
 
 export function startReviewGeneration(params: GenerateReviewParams): ReviewGenerationJob {
 	const jobId = getJobId(params)
@@ -40,17 +42,33 @@ export function startReviewGeneration(params: GenerateReviewParams): ReviewGener
 	const job: StoredJob = {
 		id: jobId,
 		pullRequestKey: getPullRequestKey(params),
+		outputText: formatInitialVisibleReviewOutput({
+			promptLabel: reviewPromptLabel,
+			statusMessages: [`Starting ${agent} review process...`],
+		}),
 		status: 'running',
 		statusMessage: `${agent} is reading the PR metadata and diff...`,
 		startedAt,
 	}
 
 	job.progressTimer = startProgressTimer(jobId, job)
-	job.promise = generateReview(params)
-		.then((review) => {
-			clearProgressTimer(job)
+	job.promise = generateReview(params, {
+		onProgress: ({ message, outputText }) => {
+			if (!message && outputText === undefined) return
+			const current = jobs.get(jobId) ?? job
+			if (current.status !== 'running') return
 			jobs.set(jobId, {
-				...job,
+				...current,
+				outputText: outputText ?? current.outputText,
+				statusMessage: message ?? current.statusMessage,
+			})
+		},
+	})
+		.then((review) => {
+			const current = jobs.get(jobId) ?? job
+			clearProgressTimer(current)
+			jobs.set(jobId, {
+				...current,
 				progressTimer: undefined,
 				status: 'completed',
 				statusMessage: `${agent} finished the draft review.`,
@@ -59,9 +77,10 @@ export function startReviewGeneration(params: GenerateReviewParams): ReviewGener
 			})
 		})
 		.catch((error: unknown) => {
-			clearProgressTimer(job)
+			const current = jobs.get(jobId) ?? job
+			clearProgressTimer(current)
 			jobs.set(jobId, {
-				...job,
+				...current,
 				progressTimer: undefined,
 				status: 'failed',
 				statusMessage: `${agent} could not finish the draft review.`,

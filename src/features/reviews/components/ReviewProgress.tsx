@@ -1,19 +1,23 @@
-import { useEffect, useState } from 'react'
-import { Box, Stack } from 'styled-system/jsx'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Box, HStack, Stack } from 'styled-system/jsx'
 
-const reviewFrames = [
-	'[=     ]',
-	'[==    ]',
-	'[ ===  ]',
-	'[  === ]',
-	'[    ==]',
-	'[     =]',
-	'[    ==]',
-	'[  === ]',
-]
+const reviewFrames = ['[ === ]', '[ ==  ]', '[ =   ]', '[ ==  ]', '[ === ]', '[  == ]', '[   = ]']
 
-export function ReviewProgress({ message }: { message?: string }) {
+export function ReviewProgress({ message, outputText }: { message?: string; outputText?: string }) {
 	const [frameIndex, setFrameIndex] = useState(0)
+	const transcriptRef = useRef<HTMLDivElement | null>(null)
+	const timestampByLineIdRef = useRef(new Map<string, string>())
+	const shouldFollowTranscriptRef = useRef(true)
+	const transcriptLines = getTranscriptLines(outputText, timestampByLineIdRef.current)
+	const hasTranscript = transcriptLines.length > 0
+
+	const updateTranscriptFollowState = useCallback(() => {
+		const transcript = transcriptRef.current
+		if (!transcript) return
+
+		shouldFollowTranscriptRef.current =
+			transcript.scrollHeight - transcript.scrollTop - transcript.clientHeight <= 8
+	}, [])
 
 	useEffect(() => {
 		const interval = window.setInterval(() => {
@@ -23,19 +27,285 @@ export function ReviewProgress({ message }: { message?: string }) {
 		return () => window.clearInterval(interval)
 	}, [])
 
+	useLayoutEffect(() => {
+		if (!hasTranscript || !shouldFollowTranscriptRef.current) return
+
+		const transcript = transcriptRef.current
+		if (!transcript) return
+
+		transcript.scrollTop = transcript.scrollHeight
+	})
+
 	return (
-		<Stack bg="gray.2" borderRadius="l2" gap="5" minH="18rem" p="6" textAlign="center">
-			<Box fontWeight="semibold" textAlign="left">
-				Reviewing this PR
-			</Box>
-			<Stack alignItems="center" flex="1" gap="4" justify="center">
-				<Box color="cyan.11" fontFamily="mono" fontSize="5xl" fontWeight="bold" lineHeight="1">
-					{reviewFrames[frameIndex]}
-				</Box>
-				<Box color="fg.muted" maxW="32rem" textStyle="sm">
-					{message || 'This can take a minute for larger diffs.'}
-				</Box>
+		<Stack
+			bg="gray.2"
+			borderRadius="l2"
+			gap="4"
+			h="100%"
+			minH="18rem"
+			overflow="hidden"
+			p="6"
+			textAlign="left"
+		>
+			<HStack alignItems="center" justify="space-between" gap="3">
+				<Box fontWeight="semibold">Reviewing this PR</Box>
+				{hasTranscript ? (
+					<HStack color="fg.muted" flexShrink="0" gap="2" textStyle="xs">
+						<Box color="cyan.11" fontFamily="mono" fontWeight="bold">
+							<ReviewFrame frame={reviewFrames[frameIndex]} />
+						</Box>
+					</HStack>
+				) : null}
+			</HStack>
+			<Stack flex="1" minH="0">
+				{hasTranscript ? (
+					<Stack
+						bg="gray.1"
+						borderColor="border.default"
+						borderRadius="l2"
+						borderWidth="1px"
+						flex="1"
+						gap="0"
+						minH="0"
+						onScroll={updateTranscriptFollowState}
+						overflowY="auto"
+						py="3"
+						ref={transcriptRef}
+						scrollbarGutter="stable"
+						w="100%"
+					>
+						{transcriptLines.map((line) => (
+							<TranscriptLine key={line.id} line={line} />
+						))}
+					</Stack>
+				) : (
+					<Stack
+						alignItems="center"
+						flex="1"
+						gap="4"
+						justify="center"
+						minH="18rem"
+						textAlign="center"
+					>
+						<Box color="cyan.11" fontFamily="mono" fontSize="5xl" fontWeight="bold" lineHeight="1">
+							<ReviewFrame frame={reviewFrames[frameIndex]} />
+						</Box>
+						<Box color="fg.muted" maxW="32rem" textStyle="sm">
+							{message || 'Waiting for the first streamed response tokens...'}
+						</Box>
+					</Stack>
+				)}
 			</Stack>
 		</Stack>
 	)
+}
+
+function ReviewFrame({ frame }: { frame?: string }) {
+	return (
+		<Box as="span" display="inline-block" minW="7ch" textAlign="left" whiteSpace="pre">
+			{frame ?? reviewFrames[0]}
+		</Box>
+	)
+}
+
+type TranscriptLineKind =
+	| 'check'
+	| 'finding'
+	| 'output'
+	| 'prompt'
+	| 'status'
+	| 'summary'
+	| 'thought'
+
+type TranscriptLineModel = {
+	detail?: string
+	id: string
+	kind: TranscriptLineKind
+	label?: string
+	raw: string
+	text: string
+	timestamp?: string
+}
+
+function getTranscriptLines(
+	outputText: string | undefined,
+	timestampByLineId: Map<string, string>,
+): TranscriptLineModel[] {
+	return (outputText ?? '')
+		.split(/\r?\n/)
+		.map((line) => line.trim())
+		.filter(Boolean)
+		.map((line, index) => {
+			const parsedLine = parseTranscriptLine(line)
+			const id = `${index}:${line}`
+			let timestamp: string | undefined
+
+			if (parsedLine.kind === 'status') {
+				timestamp = timestampByLineId.get(id)
+				if (!timestamp) {
+					timestamp = formatTranscriptTimestamp()
+					timestampByLineId.set(id, timestamp)
+				}
+			}
+
+			return {
+				...parsedLine,
+				id,
+				timestamp,
+			}
+		})
+}
+
+function parseTranscriptLine(raw: string): Omit<TranscriptLineModel, 'id'> {
+	if (raw.startsWith('::')) {
+		return { kind: 'status', raw, text: raw.replace(/^::\s*/, '') }
+	}
+
+	if (raw.startsWith('Thought:')) {
+		return {
+			kind: 'thought',
+			label: 'Thought',
+			raw,
+			text: raw.replace(/^Thought:\s*/, ''),
+		}
+	}
+
+	if (raw.startsWith('Finding')) {
+		const match = raw.match(/^Finding(?:\s+\(([^)]+)\))?:\s*(.*)$/)
+		return {
+			detail: match?.[1],
+			kind: 'finding',
+			label: 'Finding',
+			raw,
+			text: match?.[2] || raw,
+		}
+	}
+
+	if (raw.startsWith('Summary:')) {
+		return {
+			kind: 'summary',
+			label: 'Summary',
+			raw,
+			text: raw.replace(/^Summary:\s*/, ''),
+		}
+	}
+
+	if (raw.startsWith('->')) {
+		const text = raw.replace(/^->\s*/, '')
+		const separatorIndex = text.indexOf(': ')
+		return {
+			detail: separatorIndex > 0 ? text.slice(0, separatorIndex) : undefined,
+			kind: 'check',
+			label: 'Check',
+			raw,
+			text: separatorIndex > 0 ? text.slice(separatorIndex + 2) : text,
+		}
+	}
+
+	if (/^Generate\b/.test(raw)) {
+		return { kind: 'prompt', raw, text: raw }
+	}
+
+	return { kind: 'output', raw, text: raw }
+}
+
+function TranscriptLine({ line }: { line: TranscriptLineModel }) {
+	const tone = transcriptLineTone[line.kind]
+
+	return (
+		<HStack
+			alignItems="baseline"
+			borderBottomColor="border.muted"
+			borderBottomWidth="1px"
+			gap="3"
+			px="4"
+			py="2.5"
+			_last={{ borderBottomWidth: '0' }}
+		>
+			<HStack
+				alignItems="baseline"
+				color={tone.labelColor}
+				flexShrink="0"
+				fontFamily="mono"
+				fontSize="xs"
+				fontWeight="semibold"
+				gap="2"
+				lineHeight="1.6"
+				minW="7.25rem"
+			>
+				<Box textTransform="uppercase">{line.label ?? tone.label}</Box>
+				{line.timestamp ? (
+					<Box color="fg.subtle" fontSize="2xs" fontWeight="medium">
+						{line.timestamp}
+					</Box>
+				) : null}
+			</HStack>
+			<Stack gap="1" minW="0">
+				{line.detail ? (
+					<Box color={tone.detailColor} fontFamily="mono" textStyle="xs" wordBreak="break-all">
+						{line.detail}
+					</Box>
+				) : null}
+				<Box color={tone.textColor} lineHeight="1.6" textStyle="sm" whiteSpace="pre-wrap">
+					{line.text}
+				</Box>
+			</Stack>
+		</HStack>
+	)
+}
+
+function formatTranscriptTimestamp() {
+	return new Intl.DateTimeFormat(undefined, {
+		hour: '2-digit',
+		hour12: false,
+		minute: '2-digit',
+	}).format(new Date())
+}
+
+const transcriptLineTone: Record<
+	TranscriptLineKind,
+	{ detailColor: string; label: string; labelColor: string; textColor: string }
+> = {
+	check: {
+		detailColor: 'cyan.11',
+		label: 'Check',
+		labelColor: 'cyan.11',
+		textColor: 'fg.default',
+	},
+	finding: {
+		detailColor: 'red.11',
+		label: 'Finding',
+		labelColor: 'red.11',
+		textColor: 'fg.default',
+	},
+	output: {
+		detailColor: 'fg.muted',
+		label: 'Output',
+		labelColor: 'fg.muted',
+		textColor: 'fg.default',
+	},
+	prompt: {
+		detailColor: 'fg.muted',
+		label: 'Prompt',
+		labelColor: 'fg.muted',
+		textColor: 'fg.default',
+	},
+	status: {
+		detailColor: 'fg.muted',
+		label: 'Status',
+		labelColor: 'fg.muted',
+		textColor: 'fg.muted',
+	},
+	summary: {
+		detailColor: 'fg.muted',
+		label: 'Summary',
+		labelColor: 'cyan.11',
+		textColor: 'fg.default',
+	},
+	thought: {
+		detailColor: 'fg.muted',
+		label: 'Thought',
+		labelColor: 'green.11',
+		textColor: 'fg.default',
+	},
 }

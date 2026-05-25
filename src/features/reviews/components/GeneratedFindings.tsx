@@ -13,6 +13,7 @@ export function GeneratedFindings({
 	error,
 	errorTitle,
 	generationMessage,
+	generationOutputText,
 	generationState,
 	inlineComments,
 	onPublishFinding,
@@ -26,6 +27,7 @@ export function GeneratedFindings({
 	error: string
 	errorTitle?: string
 	generationMessage?: string
+	generationOutputText?: string
 	generationState: AsyncState
 	inlineComments: GeneratedReview['inlineComments']
 	onPublishFinding?: (finding: ReviewFinding) => void
@@ -36,7 +38,7 @@ export function GeneratedFindings({
 	review: GeneratedReview | null
 }) {
 	if (generationState === 'loading') {
-		return <ReviewProgress message={generationMessage} />
+		return <ReviewProgress message={generationMessage} outputText={generationOutputText} />
 	}
 
 	if (error) {

@@ -7,11 +7,7 @@ import { getErrorMessage } from '@/app/utils'
 import { Button } from '@/components/ui'
 import type { CacheStats } from '@/shared/cache'
 
-export function CacheModal({
-	onClose,
-}: {
-	onClose: () => void
-}) {
+export function CacheModal({ onClose }: { onClose: () => void }) {
 	const [stats, setStats] = useState<CacheStats | null>(null)
 	const [state, setState] = useState<AsyncState>('loading')
 	const { showToast } = useToast()
@@ -100,7 +96,11 @@ export function CacheModal({
 						<Button variant="outline" loading={state === 'loading'} onClick={() => void refresh()}>
 							Refresh
 						</Button>
-						<Button variant="outline" loading={state === 'loading'} onClick={() => void clearCache()}>
+						<Button
+							variant="outline"
+							loading={state === 'loading'}
+							onClick={() => void clearCache()}
+						>
 							Clear cache
 						</Button>
 					</HStack>

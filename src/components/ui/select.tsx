@@ -71,7 +71,9 @@ export function Select({
 					if (!disabled) setOpen((current) => !current)
 				}}
 			>
-				<span className={css({ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' })}>
+				<span
+					className={css({ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' })}
+				>
 					{loading ? 'Loading…' : selected ? optionLabel(selected) : placeholder || value}
 				</span>
 				<span aria-hidden="true">▾</span>

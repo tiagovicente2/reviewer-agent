@@ -19,7 +19,13 @@ export function ReviewerInstructionsCard({
 	path: string
 }) {
 	return (
-		<Card.Root h="100%" minH="0" overflow="hidden" display="grid" gridTemplateRows="auto minmax(0, 1fr)">
+		<Card.Root
+			h="100%"
+			minH="0"
+			overflow="hidden"
+			display="grid"
+			gridTemplateRows="auto minmax(0, 1fr)"
+		>
 			<Card.Header>
 				<HStack justify="space-between" gap="4">
 					<Box minW="0">
