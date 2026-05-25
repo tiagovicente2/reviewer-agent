@@ -163,8 +163,8 @@ export function ReviewDetail({
 				pt="4"
 			>
 				<Stack gap="5" minH="0" minW="0">
-					<Card.Root h="100%" minH="0" overflow="hidden">
-						<Card.Header>
+					<Card.Root bg="transparent" h="100%" minH="0" overflow="hidden" variant="subtle">
+						<Card.Header p="0" pb="4">
 							<HStack justify="space-between" gap="3" w="100%">
 								<HStack gap="0.5" p="0.5" bg="gray.2" borderRadius="l1" width="fit-content">
 									<TabButton
@@ -205,7 +205,7 @@ export function ReviewDetail({
 								) : null}
 							</HStack>
 						</Card.Header>
-						<Card.Body minH="0" overflow="hidden">
+						<Card.Body minH="0" overflow="hidden" p="0">
 							<Box display={activeTab === 'code' ? 'block' : 'none'} h="100%" minH="0">
 								<CodeTab
 									colorMode={colorMode}
