@@ -21,12 +21,16 @@ export function createJsonStreamProgressHandler(params: {
 		promptLabel,
 		statusMessages: initialStatusMessages,
 	})
-	let streamedText = ''
 	let lastTextLength = 0
+	let streamLineBuffer = ''
+	let visibleStreamLines: string[] = []
+	let visiblePartialLine: string | undefined
 	return (chunk: string) => {
 		buffered += chunk
 		const lines = buffered.split(/\r?\n/)
 		buffered = lines.pop() ?? ''
+		let didUpdateOutput = false
+		let statusMessage: string | undefined
 
 		for (const line of lines) {
 			const event = parseJsonLine(line)
@@ -34,21 +38,42 @@ export function createJsonStreamProgressHandler(params: {
 
 			const textDelta = adapter.getTextDelta?.(event)
 			if (textDelta) {
-				streamedText += textDelta
-				onProgress({ outputText: formatVisibleReviewOutput(transcript, streamedText) })
+				const updated = appendVisibleReviewText(textDelta, {
+					lineBuffer: streamLineBuffer,
+					partialLine: visiblePartialLine,
+					lines: visibleStreamLines,
+				})
+				streamLineBuffer = updated.lineBuffer
+				visibleStreamLines = updated.lines
+				visiblePartialLine = updated.partialLine
+				didUpdateOutput = true
 			}
 
 			const text = adapter.getFinalText?.(event)
 			if (text && text.length !== lastTextLength) {
 				lastTextLength = text.length
-				onProgress({ outputText: formatVisibleReviewOutput(transcript, text) })
+				const formatted = formatReviewText(text)
+				streamLineBuffer = formatted.lineBuffer
+				visibleStreamLines = formatted.lines
+				visiblePartialLine = formatted.partialLine
+				didUpdateOutput = true
 			}
 
 			const message = adapter.getStatusMessage?.(event)
 			if (message) {
-				if (!streamedText) transcript = appendTranscriptLine(transcript, `:: ${message}`)
-				onProgress({ message, outputText: formatVisibleReviewOutput(transcript, streamedText) })
+				if (visibleStreamLines.length === 0 && !visiblePartialLine) {
+					transcript = appendTranscriptLine(transcript, `:: ${message}`)
+				}
+				statusMessage = message
+				didUpdateOutput = true
 			}
+		}
+
+		if (didUpdateOutput) {
+			onProgress({
+				message: statusMessage,
+				outputText: formatVisibleReviewOutput(transcript, visibleStreamLines, visiblePartialLine),
+			})
 		}
 	}
 }
@@ -87,25 +112,14 @@ export function parseJsonLine(line: string) {
 	}
 }
 
-export function formatVisibleReviewOutput(transcript: string, text: string) {
-	if (!transcript) return text
-	if (!text.trim()) return transcript
-
-	const lines = text.split(/\r?\n/)
-	const hasTrailingNewline = /\r?\n$/.test(text)
-	const formattedLines: string[] = []
-
-	for (const [index, line] of lines.entries()) {
-		const trimmed = line.trim()
-		if (!trimmed) continue
-
-		const isLastPartialLine = index === lines.length - 1 && !hasTrailingNewline
-		const formatted = formatReviewEventLine(trimmed, isLastPartialLine)
-		if (formatted) formattedLines.push(formatted)
-	}
-
-	if (formattedLines.length === 0) return transcript
-	return `${transcript}${formattedLines.join('\n')}`
+export function formatVisibleReviewOutput(
+	transcript: string,
+	lines: string[],
+	partialLine?: string,
+) {
+	const visibleLines = partialLine ? [...lines, partialLine] : lines
+	if (visibleLines.length === 0) return transcript
+	return `${transcript}${visibleLines.join('\n')}`
 }
 
 export function formatInitialVisibleReviewOutput({
@@ -184,6 +198,52 @@ function formatReviewEventLine(line: string, isPartial: boolean) {
 	} catch {
 		return isPartial ? undefined : line
 	}
+}
+
+function appendVisibleReviewText(
+	text: string,
+	current: { lineBuffer: string; lines: string[]; partialLine?: string },
+) {
+	const combined = current.lineBuffer + text
+	const lines = combined.split(/\r?\n/)
+	const lineBuffer = lines.pop() ?? ''
+	const formattedLines = [...current.lines]
+
+	for (const line of lines) {
+		const formatted = formatCompleteReviewTextLine(line)
+		if (formatted) formattedLines.push(formatted)
+	}
+
+	return {
+		lineBuffer,
+		lines: formattedLines,
+		partialLine: formatPartialReviewTextLine(lineBuffer),
+	}
+}
+
+function formatReviewText(text: string) {
+	const lines = text.split(/\r?\n/)
+	const hasTrailingNewline = /\r?\n$/.test(text)
+	const lineBuffer = hasTrailingNewline ? '' : (lines.pop() ?? '')
+	const formattedLines = lines
+		.map(formatCompleteReviewTextLine)
+		.filter((line): line is string => Boolean(line))
+
+	return {
+		lineBuffer,
+		lines: formattedLines,
+		partialLine: formatPartialReviewTextLine(lineBuffer),
+	}
+}
+
+function formatCompleteReviewTextLine(line: string) {
+	const trimmed = line.trim()
+	return trimmed ? formatReviewEventLine(trimmed, false) : undefined
+}
+
+function formatPartialReviewTextLine(line: string) {
+	const trimmed = line.trim()
+	return trimmed ? formatReviewEventLine(trimmed, true) : undefined
 }
 
 function getString(value: unknown) {

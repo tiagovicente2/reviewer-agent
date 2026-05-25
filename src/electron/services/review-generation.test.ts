@@ -71,7 +71,7 @@ describe('review generation output adapters', () => {
 			].join('\n'),
 		)
 
-		expect(updates).toEqual(['{"summary":', '{"summary":"ok"}'])
+		expect(updates).toEqual(['{"summary":"ok"}'])
 	})
 
 	it('shows a transcript before Claude emits answer tokens', () => {

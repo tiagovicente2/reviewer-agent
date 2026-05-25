@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process'
+import { StringDecoder } from 'node:string_decoder'
 
 export type SpawnResult = {
 	exitCode: number
@@ -39,6 +40,8 @@ export function runCommandBuffer(command: string, args: string[], options: Spawn
 
 		const stdoutChunks: Buffer[] = []
 		const stderrChunks: Buffer[] = []
+		const stdoutDecoder = options.onStdout ? new StringDecoder('utf8') : undefined
+		const stderrDecoder = options.onStderr ? new StringDecoder('utf8') : undefined
 		let timeout: NodeJS.Timeout | undefined
 		let settled = false
 
@@ -59,14 +62,24 @@ export function runCommandBuffer(command: string, args: string[], options: Spawn
 
 		child.stdout.on('data', (chunk: Buffer) => {
 			stdoutChunks.push(chunk)
-			options.onStdout?.(chunk.toString('utf8'))
+			if (stdoutDecoder) {
+				const decoded = stdoutDecoder.write(chunk)
+				if (decoded) options.onStdout?.(decoded)
+			}
 		})
 		child.stderr.on('data', (chunk: Buffer) => {
 			stderrChunks.push(chunk)
-			options.onStderr?.(chunk.toString('utf8'))
+			if (stderrDecoder) {
+				const decoded = stderrDecoder.write(chunk)
+				if (decoded) options.onStderr?.(decoded)
+			}
 		})
 		child.on('error', (error) => finish(error))
 		child.on('close', (code) => {
+			const remainingStdout = stdoutDecoder?.end()
+			if (remainingStdout) options.onStdout?.(remainingStdout)
+			const remainingStderr = stderrDecoder?.end()
+			if (remainingStderr) options.onStderr?.(remainingStderr)
 			const stdout = Buffer.concat(stdoutChunks)
 			finish(undefined, {
 				exitCode: code ?? 1,
