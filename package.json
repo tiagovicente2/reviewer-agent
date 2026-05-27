@@ -1,6 +1,6 @@
 {
 	"name": "reviewer-agent",
-	"version": "0.1.18",
+	"version": "0.1.19",
 	"private": true,
 	"description": "Local-first Electron desktop app for AI-assisted GitHub pull request review drafts.",
 	"type": "module",
