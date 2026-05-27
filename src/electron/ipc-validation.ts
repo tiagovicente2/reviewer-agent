@@ -142,7 +142,7 @@ function assertSaveAppSettings(params: unknown) {
 	assertString(params.model, 'model')
 	if (!['english', 'portuguese'].includes(String(params.reviewLanguage)))
 		throw new Error('Invalid review language.')
-	assertString(params.reviewerInstructions, 'reviewerInstructions')
+	assertString(params.reviewerInstructions, 'reviewerInstructions', MAX_LONG_TEXT_LENGTH)
 }
 
 function assertSearchParams(params: unknown) {
