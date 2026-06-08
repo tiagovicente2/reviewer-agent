@@ -13,6 +13,12 @@ export function ReviewRequestCard({
 	review: GitHubReviewRequest
 	selected: boolean
 }) {
+	const badgeLabel = review.notificationReason
+		? review.notificationReason.replace(/_/g, ' ')
+		: review.isDraft
+			? 'draft'
+			: 'open'
+
 	return (
 		<Card.Root
 			asChild
@@ -40,12 +46,12 @@ export function ReviewRequestCard({
 								#{review.pullRequestNumber} {review.title}
 							</Box>
 						</Stack>
-						<Badge colorPalette={review.isDraft ? 'gray' : 'cyan'}>
-							{review.isDraft ? 'draft' : 'open'}
+						<Badge colorPalette={review.unread === false || review.isDraft ? 'gray' : 'cyan'}>
+							{badgeLabel}
 						</Badge>
 					</HStack>
 					<HStack justify="space-between" mt="4" color="fg.muted" textStyle="xs">
-						<Box>@{review.author}</Box>
+						<Box>{review.author === 'unknown' ? 'GitHub notification' : `@${review.author}`}</Box>
 						<Box>{formatDate(review.updatedAt)}</Box>
 					</HStack>
 				</Card.Body>

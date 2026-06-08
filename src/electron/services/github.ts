@@ -28,6 +28,7 @@ type CachedAuthStatus = {
 const AUTH_STATUS_CACHE_TTL_MS = 30_000
 const DEFAULT_GH_TIMEOUT_MS = 20_000
 const ASSET_GH_TIMEOUT_MS = 45_000
+const INBOX_PULL_REQUEST_NOTIFICATION_REASONS = new Set(['assign', 'review_requested'])
 const matchingRepositoriesCache = new Map<string, string[]>()
 let cachedAuthStatus: CachedAuthStatus | null = null
 
@@ -259,6 +260,12 @@ function repoFromPullRequestUrl(url: string): { nameWithOwner: string } {
 	return { nameWithOwner: match?.[1] ?? 'unknown/unknown' }
 }
 
+function parsePullRequestApiUrl(url: string): { repo: string; number: number } | null {
+	const match = url.match(/\/repos\/([^/]+\/[^/]+)\/pulls\/(\d+)$/i)
+	if (!match?.[1] || !match[2]) return null
+	return { repo: match[1], number: Number(match[2]) }
+}
+
 function parsePullRequestQuery(query: string): { target: string; repo?: string } {
 	const trimmed = query.trim()
 	if (!trimmed) {
@@ -292,29 +299,96 @@ export async function listGitHubReviewRequests(): Promise<GitHubReviewRequest[]>
 	}
 
 	const result = await runGh([
-		'search',
-		'prs',
-		'--review-requested=@me',
-		'--state=open',
-		'--limit=50',
-		'--json',
-		'repository,number,title,author,url,updatedAt,state,isDraft,id',
+		'api',
+		'--method',
+		'GET',
+		'notifications',
+		'-f',
+		'all=true',
+		'-f',
+		'participating=false',
+		'-f',
+		'per_page=50',
 	])
-	assertSuccess(result, 'list pull requests requesting your review')
+	assertSuccess(result, 'list GitHub notifications')
 
 	const parsed = JSON.parse(result.stdout) as Array<{
-		id?: string
+		id: string
 		repository?: unknown
-		number: number
-		title: string
-		author?: unknown
-		url: string
-		updatedAt: string
-		state: string
-		isDraft?: boolean
+		subject?: {
+			title?: string
+			type?: string
+			url?: string
+		}
+		reason?: string
+		updated_at?: string
+		unread?: boolean
 	}>
 
-	return parsed.map(toReviewRequest)
+	const notifications = parsed
+		.map((notification): GitHubReviewRequest | null => {
+			if (notification.subject?.type !== 'PullRequest' || !notification.subject.url) return null
+			if (
+				!notification.reason ||
+				!INBOX_PULL_REQUEST_NOTIFICATION_REASONS.has(notification.reason)
+			) {
+				return null
+			}
+
+			const pullRequest = parsePullRequestApiUrl(notification.subject.url)
+			if (!pullRequest) return null
+
+			return {
+				id: notification.id,
+				repo: pullRequest.repo,
+				pullRequestNumber: pullRequest.number,
+				title: notification.subject.title ?? `Pull request #${pullRequest.number}`,
+				author: 'unknown',
+				url: `https://github.com/${pullRequest.repo}/pull/${pullRequest.number}`,
+				updatedAt: notification.updated_at ?? new Date().toISOString(),
+				state: 'OPEN',
+				isDraft: false,
+				notificationReason: notification.reason,
+				unread: notification.unread,
+			}
+		})
+		.filter((item): item is GitHubReviewRequest => item !== null)
+
+	const enriched = await Promise.all(
+		notifications.map(async (notification) => enrichReviewRequestFromPullRequest(notification)),
+	)
+
+	return enriched.filter((notification) => notification.state === 'OPEN')
+}
+
+async function enrichReviewRequestFromPullRequest(
+	reviewRequest: GitHubReviewRequest,
+): Promise<GitHubReviewRequest> {
+	const result = await runGh([
+		'api',
+		`repos/${reviewRequest.repo}/pulls/${reviewRequest.pullRequestNumber}`,
+		'--jq',
+		'{author: .user.login, state: .state, isDraft: .draft, updatedAt: .updated_at}',
+	])
+
+	if (result.exitCode !== 0) {
+		return reviewRequest
+	}
+
+	const parsed = JSON.parse(result.stdout) as {
+		author?: string | null
+		state?: string | null
+		isDraft?: boolean | null
+		updatedAt?: string | null
+	}
+
+	return {
+		...reviewRequest,
+		author: parsed.author ?? reviewRequest.author,
+		state: parsed.state?.toUpperCase() ?? reviewRequest.state,
+		isDraft: parsed.isDraft ?? reviewRequest.isDraft,
+		updatedAt: parsed.updatedAt ?? reviewRequest.updatedAt,
+	}
 }
 
 export async function searchGitHubPullRequests(params: {

@@ -22,6 +22,8 @@ export type GitHubReviewRequest = {
 	updatedAt: string
 	state: string
 	isDraft: boolean
+	notificationReason?: string
+	unread?: boolean
 }
 
 export type GitHubPullRequestReview = {
