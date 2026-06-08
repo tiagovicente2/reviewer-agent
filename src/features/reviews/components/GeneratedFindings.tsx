@@ -16,6 +16,7 @@ export function GeneratedFindings({
 	generationOutputText,
 	generationState,
 	inlineComments,
+	onDiscardFinding,
 	onPublishFinding,
 	publishableFindings,
 	publishingFindingIds,
@@ -30,6 +31,7 @@ export function GeneratedFindings({
 	generationOutputText?: string
 	generationState: AsyncState
 	inlineComments: GeneratedReview['inlineComments']
+	onDiscardFinding?: (findingId: string) => void
 	onPublishFinding?: (finding: ReviewFinding) => void
 	publishableFindings?: ReviewFinding[]
 	publishingFindingIds?: Set<string>
@@ -97,6 +99,7 @@ export function GeneratedFindings({
 							finding={finding}
 							inlineComments={inlineComments}
 							key={finding.id}
+							onDiscardFinding={onDiscardFinding}
 							onPublishFinding={onPublishFinding}
 							publishing={publishingFindingIds?.has(finding.id) ?? false}
 						/>

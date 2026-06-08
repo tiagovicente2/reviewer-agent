@@ -20,6 +20,7 @@ export function ReviewTab({
 	generationState,
 	generatedReview,
 	inlineComments,
+	onDiscardFinding,
 	publishError,
 	onPublishFinding,
 	publishableFindings,
@@ -34,6 +35,7 @@ export function ReviewTab({
 	generationState: AsyncState
 	generatedReview: GeneratedReview | null
 	inlineComments: ReviewInlineComment[]
+	onDiscardFinding: (findingId: string) => void
 	publishError: string
 	onPublishFinding: (finding: ReviewFinding) => void
 	publishableFindings: ReviewFinding[]
@@ -62,6 +64,7 @@ export function ReviewTab({
 						generationOutputText={generationOutputText}
 						generationState={generationState}
 						inlineComments={inlineComments}
+						onDiscardFinding={onDiscardFinding}
 						onPublishFinding={onPublishFinding}
 						publishableFindings={publishableFindings}
 						publishingFindingIds={publishingFindingIds}

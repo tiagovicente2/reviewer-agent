@@ -17,6 +17,19 @@ function getLocalReviewProgressOutput(messages: string[]) {
 	return `${reviewPromptLabel}\n\n${messages.map((message) => `:: ${message}`).join('\n')}\n`
 }
 
+function isFindingInlineComment(finding: ReviewFinding, comment: GeneratedReview['inlineComments'][number]) {
+	const body = (finding.suggestedCommentBody || finding.body).trim()
+	return Boolean(
+		finding.filePath &&
+			finding.lineStart &&
+			body &&
+			comment.path === finding.filePath &&
+			comment.side === 'RIGHT' &&
+			comment.line === finding.lineStart &&
+			comment.body.trim() === body,
+	)
+}
+
 export function useGeneratedReview({
 	detail,
 	loadDiff,
@@ -199,6 +212,23 @@ export function useGeneratedReview({
 		[detail],
 	)
 
+	const discardFinding = useCallback((findingId: string) => {
+		setPublishError('')
+		setGeneratedReview((current) => {
+			if (!current) return current
+			const finding = current.findings.find((item) => item.id === findingId)
+			if (!finding) return current
+
+			return {
+				...current,
+				findings: current.findings.filter((item) => item.id !== findingId),
+				inlineComments: current.inlineComments.filter(
+					(comment) => !isFindingInlineComment(finding, comment),
+				),
+			}
+		})
+	}, [])
+
 	const publishAll = useCallback(
 		async (findings: ReviewFinding[]) => {
 			if (!detail) return
@@ -245,6 +275,7 @@ export function useGeneratedReview({
 	)
 
 	return {
+		discardFinding,
 		generateReview,
 		generatedReview,
 		generationError,

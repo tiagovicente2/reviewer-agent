@@ -38,6 +38,7 @@ export function ReviewDetail({
 	const {
 		generateReview,
 		generatedReview,
+		discardFinding,
 		generationError,
 		generationMessage,
 		generationOutputText,
@@ -232,6 +233,7 @@ export function ReviewDetail({
 									diff={diff}
 									generatedReview={generatedReview}
 									inlineComments={diffInlineComments}
+									onDiscardFinding={discardFinding}
 									onPublishFinding={publishFinding}
 									publishableFindings={publishableFindings}
 									publishingFindingIds={publishingFindingIds}

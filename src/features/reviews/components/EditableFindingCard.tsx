@@ -16,12 +16,14 @@ export function EditableFindingCard({
 	diff,
 	finding,
 	inlineComments,
+	onDiscardFinding,
 	onPublishFinding,
 	publishing,
 }: {
 	diff: string
 	finding: ReviewFinding
 	inlineComments: ReviewInlineComment[]
+	onDiscardFinding?: (findingId: string) => void
 	onPublishFinding?: (finding: ReviewFinding) => void
 	publishing: boolean
 }) {
@@ -52,14 +54,25 @@ export function EditableFindingCard({
 							</Badge>
 							<Box fontWeight="semibold">{finding.title}</Box>
 						</Stack>
-						<Button
-							disabled={!canPublish}
-							loading={publishing}
-							onClick={() => onPublishFinding?.(publishableFinding)}
-							size="xs"
-						>
-							Publish comment
-						</Button>
+						<HStack gap="2">
+							<Button
+								colorPalette="red"
+								disabled={publishing}
+								onClick={() => onDiscardFinding?.(finding.id)}
+								size="xs"
+								variant="outline"
+							>
+								Discard comment
+							</Button>
+							<Button
+								disabled={!canPublish}
+								loading={publishing}
+								onClick={() => onPublishFinding?.(publishableFinding)}
+								size="xs"
+							>
+								Publish comment
+							</Button>
+						</HStack>
 					</HStack>
 					<MarkdownContent>{finding.body}</MarkdownContent>
 				</Stack>
