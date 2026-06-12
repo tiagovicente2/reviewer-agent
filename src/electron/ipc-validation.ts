@@ -36,6 +36,8 @@ const validators: Partial<Record<MainRequestName, Validator>> = {
 	startReviewGeneration: assertGenerateReviewParams,
 	getReviewGenerationJob: (params) => assertStringObject(params, 'jobId'),
 	getSavedReview: assertSavedReviewLookup,
+	exportReviewToFile: assertExportReviewParams,
+	selectReviewExportDirectory: assertSelectReviewExportDirectoryParams,
 	openExternalUrl: (params) => assertUrlObject(params, 'url'),
 	minimizeWindow: (params) => assertUndefined(params, 'minimizeWindow'),
 	toggleMaximizeWindow: (params) => assertUndefined(params, 'toggleMaximizeWindow'),
@@ -143,6 +145,7 @@ function assertSaveAppSettings(params: unknown) {
 	if (!['english', 'portuguese'].includes(String(params.reviewLanguage)))
 		throw new Error('Invalid review language.')
 	assertString(params.reviewerInstructions, 'reviewerInstructions', MAX_LONG_TEXT_LENGTH)
+	assertString(params.reviewExportDirectory, 'reviewExportDirectory')
 }
 
 function assertSearchParams(params: unknown) {
@@ -206,6 +209,18 @@ function assertSubmitReviewParams(params: unknown) {
 	}
 }
 
+function assertExportReviewParams(params: unknown) {
+	assertPlainObject(params)
+	assertPullRequestDetails(params.pullRequest)
+	assertGeneratedReview(params.review)
+}
+
+function assertSelectReviewExportDirectoryParams(params: unknown) {
+	assertPlainObject(params)
+	assertOnlyFields(params, ['currentDirectory'], 'selectReviewExportDirectory')
+	assertOptionalString(params.currentDirectory, 'currentDirectory')
+}
+
 function assertPullRequestDetails(value: unknown) {
 	assertPlainObject(value)
 	assertRepo(value.repo, 'pullRequest.repo')
@@ -244,6 +259,27 @@ function assertFinding(value: unknown) {
 	if (value.confidence < 0 || value.confidence > 1) throw new Error('Invalid finding confidence.')
 	if (value.lineStart !== undefined) assertPositiveInteger(value.lineStart, 'finding.lineStart')
 	if (value.lineEnd !== undefined) assertPositiveInteger(value.lineEnd, 'finding.lineEnd')
+}
+
+function assertGeneratedReview(value: unknown) {
+	assertPlainObject(value)
+	assertString(value.summary, 'review.summary', MAX_LONG_TEXT_LENGTH)
+	assertString(value.publishableBody, 'review.publishableBody', MAX_LONG_TEXT_LENGTH)
+	if (!['comment', 'approve', 'request_changes'].includes(String(value.verdictRecommendation))) {
+		throw new Error('Invalid review verdict recommendation.')
+	}
+	if (!['critical', 'high', 'medium', 'low', 'info'].includes(String(value.severity))) {
+		throw new Error('Invalid review severity.')
+	}
+	if (!Array.isArray(value.findings)) throw new Error('Expected review.findings to be an array.')
+	if (value.findings.length > MAX_FINDINGS) throw new Error('Too many findings.')
+	for (const finding of value.findings) assertFinding(finding)
+	if (!Array.isArray(value.inlineComments))
+		throw new Error('Expected review.inlineComments to be an array.')
+	assertString(value.rawOutput, 'review.rawOutput', MAX_LONG_TEXT_LENGTH)
+	assertString(value.modelLabel, 'review.modelLabel')
+	assertString(value.generatedAt, 'review.generatedAt')
+	assertBoolean(value.diffWasTruncated, 'review.diffWasTruncated')
 }
 
 function assertPullRequestFile(value: unknown) {

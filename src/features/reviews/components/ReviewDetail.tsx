@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Box, Grid, HStack, Stack } from 'styled-system/jsx'
 import { appRpc } from '@/app/rpc'
+import { useToast } from '@/app/toast'
 import type { AsyncState, ColorMode } from '@/app/types'
-import { formatDate } from '@/app/utils'
+import { formatDate, getErrorMessage } from '@/app/utils'
 import { StatusCard, TabButton } from '@/components/common'
 import { Badge, Button, Card } from '@/components/ui'
 import type { GitHubPullRequestDetails, GitHubReviewRequest } from '@/shared/github'
+import { formatReviewForExport } from '@/shared/review-export'
 import { useDiffInlineComments } from '../hooks/useDiffInlineComments'
 import { useGeneratedReview } from '../hooks/useGeneratedReview'
 import { usePullRequestDiff } from '../hooks/usePullRequestDiff'
@@ -32,7 +34,10 @@ export function ReviewDetail({
 }) {
 	const [activeTab, setActiveTab] = useState<TabId>('summary')
 	const [pendingSubmitAction, setPendingSubmitAction] = useState<PendingSubmitAction>(null)
+	const [exportState, setExportState] = useState<AsyncState>('idle')
+	const [exportError, setExportError] = useState('')
 	const [reviewDecisionBody, setReviewDecisionBody] = useState('')
+	const { showToast } = useToast()
 	const { diff, diffError, diffState, loadDiff } = usePullRequestDiff(detail)
 	const handleGenerationStart = useCallback(() => setActiveTab('review'), [])
 	const {
@@ -89,6 +94,39 @@ export function ReviewDetail({
 		}
 
 		setPendingSubmitAction(null)
+	}
+
+	const copyReviewToClipboard = async () => {
+		if (!detail || !generatedReview) return
+		setExportState('loading')
+		setExportError('')
+		try {
+			await navigator.clipboard.writeText(
+				formatReviewForExport({ pullRequest: detail, review: generatedReview }),
+			)
+			setExportState('idle')
+			showToast({ title: 'Review copied', tone: 'success' })
+		} catch (unknownError) {
+			setExportError(getErrorMessage(unknownError))
+			setExportState('error')
+		}
+	}
+
+	const saveReviewToFile = async () => {
+		if (!detail || !generatedReview) return
+		setExportState('loading')
+		setExportError('')
+		try {
+			const result = await appRpc.request.exportReviewToFile({
+				pullRequest: detail,
+				review: generatedReview,
+			})
+			setExportState('idle')
+			showToast({ title: 'Review exported', description: result.filePath, tone: 'success' })
+		} catch (unknownError) {
+			setExportError(getErrorMessage(unknownError))
+			setExportState('error')
+		}
 	}
 
 	if (!review) {
@@ -184,6 +222,23 @@ export function ReviewDetail({
 								{activeTab === 'review' && generatedReview ? (
 									<HStack gap="2">
 										<Button
+											disabled={!detail || exportState === 'loading'}
+											onClick={() => void copyReviewToClipboard()}
+											size="sm"
+											variant="outline"
+										>
+											Copy
+										</Button>
+										<Button
+											disabled={!detail}
+											loading={exportState === 'loading'}
+											onClick={() => void saveReviewToFile()}
+											size="sm"
+											variant="outline"
+										>
+											Export
+										</Button>
+										<Button
 											disabled={!detail || detailState === 'loading'}
 											loading={submittingReviewEvent === 'approve'}
 											onClick={() => setPendingSubmitAction('approve')}
@@ -224,6 +279,18 @@ export function ReviewDetail({
 								<SummaryTab detail={detail} />
 							</Box>
 							<Box display={activeTab === 'review' ? 'block' : 'none'} h="100%" minH="0">
+								{exportState === 'error' ? (
+									<Box mb="3">
+										<StatusCard
+											tone="red"
+											title="Could not export review"
+											body={
+												exportError ||
+												'Check clipboard permissions or the export folder in Settings.'
+											}
+										/>
+									</Box>
+								) : null}
 								<ReviewTab
 									generationError={generationError}
 									generationMessage={generationMessage}

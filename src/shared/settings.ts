@@ -22,6 +22,7 @@ export type AppSettings = {
 	codeAgent: CodeAgent
 	model: string
 	reviewLanguage: ReviewLanguage
+	reviewExportDirectory: string
 	reviewerInstructions: string
 	reviewerInstructionsPath: string
 	onboardingComplete: boolean
@@ -32,5 +33,6 @@ export type SaveAppSettingsParams = {
 	codeAgent: CodeAgent
 	model: string
 	reviewLanguage: ReviewLanguage
+	reviewExportDirectory: string
 	reviewerInstructions: string
 }

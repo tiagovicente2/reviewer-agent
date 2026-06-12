@@ -16,6 +16,7 @@ import type {
 	SubmitReviewParams,
 	SubmitReviewResult,
 } from './review'
+import type { ExportReviewParams, ExportReviewResult } from './review-export'
 import type {
 	AgentAvailability,
 	AppSettings,
@@ -122,6 +123,14 @@ export type AppRPCSchema = {
 			getSavedReview: {
 				params: GetSavedReviewParams
 				response: GeneratedReview | null
+			}
+			exportReviewToFile: {
+				params: ExportReviewParams
+				response: ExportReviewResult
+			}
+			selectReviewExportDirectory: {
+				params: { currentDirectory?: string }
+				response: { directory: string | null }
 			}
 			openExternalUrl: {
 				params: { url: string }

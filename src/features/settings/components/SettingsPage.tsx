@@ -12,6 +12,7 @@ import type { UpdateStatus } from '@/shared/update'
 import { AgentStatusCard } from './AgentStatusCard'
 import { CacheModal } from './CacheModal'
 import { PreferencesCard } from './PreferencesCard'
+import { ReviewExportCard } from './ReviewExportCard'
 import { ReviewerInstructionsCard } from './ReviewerInstructionsCard'
 import { UpdateModal } from './UpdateModal'
 
@@ -197,6 +198,7 @@ export function SettingsPage({
 								agentsState={agentsState}
 								onRefresh={() => void refreshAgentAvailability()}
 							/>
+							<ReviewExportCard onChange={setSettings} settings={settings} />
 						</Stack>
 
 						<ReviewerInstructionsCard

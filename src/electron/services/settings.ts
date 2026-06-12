@@ -23,6 +23,10 @@ export function getAppSettings(): AppSettings {
 		codeAgent: saved.codeAgent ?? 'pi',
 		model: saved.model ?? getDefaultPiModel(),
 		reviewLanguage: getReviewLanguage(saved.reviewLanguage),
+		reviewExportDirectory:
+			typeof saved.reviewExportDirectory === 'string'
+				? saved.reviewExportDirectory
+				: getDefaultReviewExportDirectory(),
 		onboardingComplete: saved.onboardingComplete === true,
 		reviewerInstructions: readFileSync(instructionsPath, 'utf8'),
 		reviewerInstructionsPath: instructionsPath,
@@ -41,6 +45,7 @@ export function saveAppSettings(params: SaveAppSettingsParams): AppSettings {
 				codeAgent,
 				model: params.model || 'pi-agent',
 				reviewLanguage: getReviewLanguage(params.reviewLanguage),
+				reviewExportDirectory: params.reviewExportDirectory.trim(),
 				onboardingComplete: saved.onboardingComplete === true,
 			},
 			null,
@@ -224,6 +229,7 @@ function ensureSettingsFiles() {
 					codeAgent: 'pi',
 					model: 'pi-agent',
 					reviewLanguage: 'english',
+					reviewExportDirectory: getDefaultReviewExportDirectory(),
 					onboardingComplete: false,
 				},
 				null,
@@ -396,6 +402,10 @@ function getSettingsPath() {
 
 function getInstructionsPath() {
 	return join(getConfigDir(), 'reviewer-instructions.md')
+}
+
+function getDefaultReviewExportDirectory() {
+	return join(getHomeDir(), 'reviewer-agent-exports')
 }
 
 function getConfigDir() {

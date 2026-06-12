@@ -1,6 +1,6 @@
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { app, BrowserWindow, ipcMain, Menu, nativeTheme, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, shell } from 'electron'
 import type { AppRPCSchema } from '@/shared/rpc'
 import {
 	type MainRequestName,
@@ -21,6 +21,7 @@ import {
 	searchGitHubPullRequests,
 	startGitHubLogin,
 } from './services/github'
+import { exportReviewToFile } from './services/review-export'
 import { generateReview } from './services/review-generation'
 import { getReviewGenerationJob, startReviewGeneration } from './services/review-generation-jobs'
 import {
@@ -81,6 +82,8 @@ const handlers: Handlers = {
 	startReviewGeneration,
 	getReviewGenerationJob,
 	getSavedReview: getSavedGeneratedReview,
+	exportReviewToFile,
+	selectReviewExportDirectory,
 	openExternalUrl,
 	minimizeWindow,
 	toggleMaximizeWindow,
@@ -198,6 +201,17 @@ async function openExternalUrl(params: { url: string }): Promise<{ ok: true }> {
 	}
 	await shell.openExternal(params.url)
 	return { ok: true }
+}
+
+async function selectReviewExportDirectory(params: {
+	currentDirectory?: string
+}): Promise<{ directory: string | null }> {
+	const result = await dialog.showOpenDialog({
+		defaultPath: params.currentDirectory || undefined,
+		properties: ['openDirectory', 'createDirectory'],
+		title: 'Select review export folder',
+	})
+	return { directory: result.canceled ? null : (result.filePaths[0] ?? null) }
 }
 
 async function openExternalUrlIfSafe(url: string) {
