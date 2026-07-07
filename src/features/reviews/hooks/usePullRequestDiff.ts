@@ -33,6 +33,13 @@ export function usePullRequestDiff(detail: GitHubPullRequestDetails | null) {
 		}
 	}, [detail, diff])
 
+	const setLoadedDiff = useCallback((nextDiff: string) => {
+		setDiff(nextDiff)
+		setFirstDiffFilePath(getFirstDiffFilePath(nextDiff))
+		setDiffState('idle')
+		setDiffError('')
+	}, [])
+
 	useEffect(() => {
 		setDiff('')
 		setFirstDiffFilePath(null)
@@ -67,7 +74,7 @@ export function usePullRequestDiff(detail: GitHubPullRequestDetails | null) {
 		}
 	}, [detail])
 
-	return { diff, diffError, diffState, firstDiffFilePath, loadDiff }
+	return { diff, diffError, diffState, firstDiffFilePath, loadDiff, setLoadedDiff }
 }
 
 function getFirstDiffFilePath(diff: string) {

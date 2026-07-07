@@ -35,6 +35,7 @@ export type GeneratedReview = {
 	rawOutput: string
 	modelLabel: string
 	generatedAt: string
+	reviewedHeadSha: string
 	diffWasTruncated: boolean
 }
 
@@ -79,11 +80,13 @@ export type GetSavedReviewParams = {
 export type PublishReviewCommentParams = {
 	pullRequest: GitHubPullRequestDetails
 	finding: ReviewFinding
+	reviewedHeadSha: string
 }
 
 export type PublishReviewCommentsParams = {
 	pullRequest: GitHubPullRequestDetails
 	findings: ReviewFinding[]
+	reviewedHeadSha: string
 }
 
 export type ReviewSubmitEvent = 'approve' | 'request_changes'
@@ -93,6 +96,7 @@ export type SubmitReviewParams = {
 	event: ReviewSubmitEvent
 	body?: string
 	findings?: ReviewFinding[]
+	reviewedHeadSha: string
 }
 
 export type PublishReviewCommentResult = {

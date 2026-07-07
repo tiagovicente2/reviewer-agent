@@ -3,6 +3,8 @@ import type {
 	GitHubAuthStatus,
 	GitHubLoginResult,
 	GitHubPullRequestDetails,
+	GitHubPullRequestDetailsParams,
+	GitHubPullRequestDiffParams,
 	GitHubReviewRequest,
 } from './github'
 import type {
@@ -90,18 +92,11 @@ export type AppRPCSchema = {
 				response: GitHubReviewRequest
 			}
 			getGitHubPullRequestDetails: {
-				params: {
-					repo: string
-					pullRequestNumber: number
-				}
+				params: GitHubPullRequestDetailsParams
 				response: GitHubPullRequestDetails
 			}
 			getGitHubPullRequestDiff: {
-				params: {
-					repo: string
-					pullRequestNumber: number
-					headSha: string
-				}
+				params: GitHubPullRequestDiffParams
 				response: { diff: string }
 			}
 			getGitHubAsset: {

@@ -3,6 +3,9 @@ import type {
 	GitHubAuthStatus,
 	GitHubLoginResult,
 	GitHubPullRequestDetails,
+	GitHubPullRequestDetailsParams,
+	GitHubPullRequestDiffParams,
+	GitHubPullRequestReviewThread,
 	GitHubReviewRequest,
 } from '@/shared/github'
 import { getHomePath } from '../paths'
@@ -28,6 +31,8 @@ type CachedAuthStatus = {
 const AUTH_STATUS_CACHE_TTL_MS = 30_000
 const DEFAULT_GH_TIMEOUT_MS = 20_000
 const ASSET_GH_TIMEOUT_MS = 45_000
+const MAX_REVIEW_THREADS = 100
+const MAX_REVIEW_THREAD_COMMENTS = 20
 const matchingRepositoriesCache = new Map<string, string[]>()
 let cachedAuthStatus: CachedAuthStatus | null = null
 
@@ -136,6 +141,18 @@ function getAuthorLogin(author: unknown): string {
 		(author as { name?: string }).name ??
 		'unknown'
 	)
+}
+
+function getOptionalString(value: unknown): string | undefined {
+	return typeof value === 'string' && value ? value : undefined
+}
+
+function getOptionalNumber(value: unknown): number | undefined {
+	return typeof value === 'number' && Number.isFinite(value) ? value : undefined
+}
+
+function getBoolean(value: unknown) {
+	return typeof value === 'boolean' ? value : false
 }
 
 export async function getGitHubAuthStatus(): Promise<GitHubAuthStatus> {
@@ -484,13 +501,16 @@ export async function getGitHubPullRequestForReview(params: {
 	return toReviewRequest({ ...parsed, repository: repoFromPullRequestUrl(parsed.url) })
 }
 
-export async function getGitHubPullRequestDetails(params: {
-	repo: string
-	pullRequestNumber: number
-}): Promise<GitHubPullRequestDetails> {
+export async function getGitHubPullRequestDetails(
+	params: GitHubPullRequestDetailsParams,
+): Promise<GitHubPullRequestDetails> {
 	const cached = getCachedPullRequestDetails(params)
-	if (cached) {
-		return { ...cached, body: rewriteGitHubAssetUrls(cached.body, params.repo) }
+	if (!params.forceRefresh && cached?.reviewThreads) {
+		return {
+			...cached,
+			body: rewriteGitHubAssetUrls(cached.body, params.repo),
+			reviewThreads: cached.reviewThreads,
+		}
 	}
 
 	const view = await runGh([
@@ -524,6 +544,10 @@ export async function getGitHubPullRequestDetails(params: {
 	}
 
 	const body = rewriteGitHubAssetUrls(parsed.body ?? '', params.repo)
+	const reviewThreads = await getPullRequestReviewThreads({
+		repo: params.repo,
+		pullRequestNumber: parsed.number,
+	})
 
 	const details = {
 		repo: params.repo,
@@ -546,6 +570,7 @@ export async function getGitHubPullRequestDetails(params: {
 			state: review.state ?? 'UNKNOWN',
 			submittedAt: review.submittedAt,
 		})),
+		reviewThreads,
 		files: (parsed.files ?? []).map((file) => ({
 			path: file.path ?? 'unknown',
 			additions: file.additions ?? 0,
@@ -556,6 +581,109 @@ export async function getGitHubPullRequestDetails(params: {
 
 	saveCachedPullRequestDetails(details)
 	return details
+}
+
+async function getPullRequestReviewThreads(params: {
+	repo: string
+	pullRequestNumber: number
+}): Promise<GitHubPullRequestReviewThread[]> {
+	const { owner, name } = getRepoParts(params.repo)
+	const query = `
+query($owner: String!, $name: String!, $number: Int!, $threads: Int!, $comments: Int!) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $number) {
+      reviewThreads(first: $threads) {
+        nodes {
+          id
+          path
+          line
+          isResolved
+          isOutdated
+          comments(last: $comments) {
+            nodes {
+              author {
+                login
+              }
+              body
+              createdAt
+              url
+            }
+          }
+        }
+      }
+    }
+  }
+}
+`
+
+	const result = await runGh([
+		'api',
+		'graphql',
+		'-f',
+		`query=${query}`,
+		'-F',
+		`owner=${owner}`,
+		'-F',
+		`name=${name}`,
+		'-F',
+		`number=${params.pullRequestNumber}`,
+		'-F',
+		`threads=${MAX_REVIEW_THREADS}`,
+		'-F',
+		`comments=${MAX_REVIEW_THREAD_COMMENTS}`,
+	])
+
+	if (result.exitCode !== 0) {
+		console.warn('Could not fetch pull request review threads.', commandOutput(result))
+		return []
+	}
+
+	try {
+		const parsed = JSON.parse(result.stdout) as {
+			data?: {
+				repository?: {
+					pullRequest?: {
+						reviewThreads?: {
+							nodes?: unknown[]
+						}
+					}
+				}
+			}
+		}
+
+		return (parsed.data?.repository?.pullRequest?.reviewThreads?.nodes ?? []).map(
+			normalizeReviewThread,
+		)
+	} catch (error) {
+		console.warn('Could not parse pull request review threads.', error)
+		return []
+	}
+}
+
+function normalizeReviewThread(thread: unknown): GitHubPullRequestReviewThread {
+	const value = thread && typeof thread === 'object' ? (thread as Record<string, unknown>) : {}
+	const comments =
+		value.comments && typeof value.comments === 'object'
+			? ((value.comments as { nodes?: unknown[] }).nodes ?? [])
+			: []
+
+	return {
+		id: getOptionalString(value.id) ?? 'unknown-thread',
+		path: getOptionalString(value.path),
+		line: getOptionalNumber(value.line),
+		isResolved: getBoolean(value.isResolved),
+		isOutdated: getBoolean(value.isOutdated),
+		comments: comments.map((comment) => {
+			const commentValue =
+				comment && typeof comment === 'object' ? (comment as Record<string, unknown>) : {}
+			return {
+				author: getAuthorLogin(commentValue.author),
+				body: getOptionalString(commentValue.body) ?? '',
+				createdAt: getOptionalString(commentValue.createdAt),
+				url: getOptionalString(commentValue.url),
+			}
+		}),
+	}
 }
 
 export async function getGitHubAsset(params: { url: string }): Promise<{ dataUrl: string }> {
@@ -600,13 +728,11 @@ function getImageContentType(url: string) {
 	return 'image/png'
 }
 
-export async function getGitHubPullRequestDiff(params: {
-	repo: string
-	pullRequestNumber: number
-	headSha: string
-}): Promise<{ diff: string }> {
+export async function getGitHubPullRequestDiff(
+	params: GitHubPullRequestDiffParams,
+): Promise<{ diff: string }> {
 	const cached = getCachedPullRequestDiff(params)
-	if (cached !== null) {
+	if (!params.forceRefresh && cached !== null) {
 		return { diff: cached }
 	}
 

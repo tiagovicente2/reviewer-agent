@@ -44,6 +44,7 @@ export function formatReviewForExport({ pullRequest, review }: ExportReviewParam
 		`- PR: ${pullRequest.title}`,
 		`- URL: ${pullRequest.url}`,
 		`- Head: ${pullRequest.headRefName} (${pullRequest.headSha.slice(0, 7)})`,
+		`- Reviewed head: ${review.reviewedHeadSha.slice(0, 7)}`,
 		`- Base: ${pullRequest.baseRefName}`,
 		`- Model: ${review.modelLabel}`,
 		`- Generated: ${review.generatedAt}`,

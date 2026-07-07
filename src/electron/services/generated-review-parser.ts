@@ -2,7 +2,10 @@ import type { GeneratedReview, ReviewFinding, ReviewInlineComment } from '@/shar
 
 export function parseGeneratedReview(
 	output: string,
-): Omit<GeneratedReview, 'rawOutput' | 'modelLabel' | 'generatedAt' | 'diffWasTruncated'> {
+): Omit<
+	GeneratedReview,
+	'rawOutput' | 'modelLabel' | 'generatedAt' | 'reviewedHeadSha' | 'diffWasTruncated'
+> {
 	const assembled = assembleGeneratedReviewFromEvents(output)
 	if (assembled) return assembled
 
@@ -29,7 +32,10 @@ export function parseGeneratedReview(
 
 function assembleGeneratedReviewFromEvents(
 	output: string,
-): Omit<GeneratedReview, 'rawOutput' | 'modelLabel' | 'generatedAt' | 'diffWasTruncated'> | null {
+): Omit<
+	GeneratedReview,
+	'rawOutput' | 'modelLabel' | 'generatedAt' | 'reviewedHeadSha' | 'diffWasTruncated'
+> | null {
 	const events = output
 		.split(/\r?\n/)
 		.map(parseReviewEventLine)

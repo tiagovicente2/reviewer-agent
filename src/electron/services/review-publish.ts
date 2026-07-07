@@ -19,24 +19,32 @@ type CommandResult = {
 export async function publishReviewComment(
 	params: PublishReviewCommentParams,
 ): Promise<PublishReviewCommentResult> {
-	return publishReviewComments({ pullRequest: params.pullRequest, findings: [params.finding] })
+	return publishReviewComments({
+		findings: [params.finding],
+		pullRequest: params.pullRequest,
+		reviewedHeadSha: params.reviewedHeadSha,
+	})
 }
 
 export async function publishReviewComments(
 	params: PublishReviewCommentsParams,
 ): Promise<PublishReviewCommentResult> {
-	const publishableFindings = dedupeFindings(params.findings.filter(isPublishableFinding))
+	const latestHeadSha = await assertReviewTargetsLatestHead(params)
+	const publishableFindings = filterNewFindings(
+		params.pullRequest,
+		dedupeFindings(params.findings.filter(isPublishableFinding)),
+	)
 	validatePublishableFindings(params, publishableFindings)
 	if (publishableFindings.length === 0) {
 		throw new Error(
-			'No publishable inline findings. Findings need filePath, lineStart, and a comment body.',
+			'No new publishable inline findings. Findings need filePath, lineStart, and a comment body that is not already present on the PR.',
 		)
 	}
 
 	const results: string[] = []
 
 	for (const finding of publishableFindings) {
-		const result = await publishFinding(params, finding)
+		const result = await publishFinding(params, finding, latestHeadSha)
 		const output = [result.stdout, result.stderr].filter(Boolean).join('\n').trim()
 
 		if (result.exitCode !== 0) {
@@ -53,10 +61,17 @@ export async function publishReviewComments(
 
 export async function submitReview(params: SubmitReviewParams): Promise<SubmitReviewResult> {
 	const body = params.body?.trim()
+	const latestHeadSha = await assertReviewTargetsLatestHead(params)
 	if (params.event === 'approve') return submitApproval(params, body)
 
-	const reviewFindings = dedupeFindings((params.findings ?? []).filter(isPublishableFinding))
-	validatePublishableFindings({ pullRequest: params.pullRequest, findings: reviewFindings }, reviewFindings)
+	const reviewFindings = filterNewFindings(
+		params.pullRequest,
+		dedupeFindings((params.findings ?? []).filter(isPublishableFinding)),
+	)
+	validatePublishableFindings(
+		{ pullRequest: params.pullRequest, findings: reviewFindings },
+		reviewFindings,
+	)
 
 	const comments =
 		params.event === 'request_changes'
@@ -84,7 +99,7 @@ export async function submitReview(params: SubmitReviewParams): Promise<SubmitRe
 	}
 	if (body) Object.assign(payload, { body })
 	if (comments.length > 0) {
-		payload.commit_id = await getLatestPullRequestHeadSha(params)
+		payload.commit_id = latestHeadSha
 	}
 
 	const result = await runGh(
@@ -134,7 +149,20 @@ async function submitApproval(
 	return { ok: true, output: output || 'Submitted approval.' }
 }
 
-async function getLatestPullRequestHeadSha(params: SubmitReviewParams) {
+async function assertReviewTargetsLatestHead(
+	params: Pick<SubmitReviewParams, 'pullRequest' | 'reviewedHeadSha'>,
+) {
+	const latestHeadSha = await getLatestPullRequestHeadSha(params)
+	const reviewedHeadSha = params.reviewedHeadSha || params.pullRequest.headSha
+	if (latestHeadSha && reviewedHeadSha && latestHeadSha !== reviewedHeadSha) {
+		throw new Error(
+			`This draft review was generated for ${reviewedHeadSha.slice(0, 12)}, but the PR is now at ${latestHeadSha.slice(0, 12)}. Regenerate the review before publishing.`,
+		)
+	}
+	return latestHeadSha
+}
+
+async function getLatestPullRequestHeadSha(params: Pick<SubmitReviewParams, 'pullRequest'>) {
 	const result = await runGh([
 		'api',
 		`repos/${params.pullRequest.repo}/pulls/${params.pullRequest.pullRequestNumber}`,
@@ -178,6 +206,43 @@ function dedupeFindings(findings: ReviewFinding[]) {
 	})
 }
 
+function filterNewFindings(
+	pullRequest: PublishReviewCommentsParams['pullRequest'],
+	findings: ReviewFinding[],
+) {
+	const existingCommentKeys = new Set(
+		pullRequest.reviewThreads.flatMap((thread) =>
+			thread.comments.map((comment) =>
+				getCommentKey({
+					body: comment.body,
+					line: thread.line,
+					path: thread.path,
+				}),
+			),
+		),
+	)
+
+	return findings.filter((finding) => {
+		const body = getCommentBody(finding)
+		if (!body) return true
+		return !existingCommentKeys.has(
+			getCommentKey({
+				body,
+				line: finding.lineStart,
+				path: finding.filePath,
+			}),
+		)
+	})
+}
+
+function getCommentKey(params: { body?: string; line?: number; path?: string }) {
+	return `${params.path ?? ''}:${params.line ?? ''}:${normalizeCommentBody(params.body ?? '')}`
+}
+
+function normalizeCommentBody(body: string) {
+	return body.trim().replace(/\s+/g, ' ').toLowerCase()
+}
+
 function getCommentBody(finding: ReviewFinding) {
 	return finding.suggestedCommentBody || finding.body
 }
@@ -185,6 +250,7 @@ function getCommentBody(finding: ReviewFinding) {
 async function publishFinding(
 	params: PublishReviewCommentsParams,
 	finding: ReviewFinding,
+	commitId: string,
 ): Promise<CommandResult> {
 	const body = getCommentBody(finding)
 	if (!body || !finding.lineStart) {
@@ -197,7 +263,7 @@ async function publishFinding(
 		'-f',
 		`body=${body}`,
 		'-f',
-		`commit_id=${params.pullRequest.headSha}`,
+		`commit_id=${commitId}`,
 		'-f',
 		`path=${finding.filePath}`,
 		'-F',

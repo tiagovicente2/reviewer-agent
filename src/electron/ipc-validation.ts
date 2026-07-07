@@ -12,6 +12,8 @@ const MAX_SHORT_TEXT_LENGTH = 2_000
 const MAX_LONG_TEXT_LENGTH = 100_000
 const MAX_DIFF_LENGTH = 1_000_000
 const MAX_FINDINGS = 100
+const MAX_REVIEW_THREADS = 100
+const MAX_REVIEW_THREAD_COMMENTS = 20
 
 const validators: Partial<Record<MainRequestName, Validator>> = {
 	getAppSettings: (params) => assertUndefined(params, 'getAppSettings'),
@@ -162,9 +164,14 @@ function assertSearchParams(params: unknown) {
 
 function assertPullRequestLookup(params: unknown) {
 	assertPlainObject(params)
-	assertOnlyFields(params, ['repo', 'pullRequestNumber', 'headSha'], 'pull request lookup')
+	assertOnlyFields(
+		params,
+		['repo', 'pullRequestNumber', 'headSha', 'forceRefresh'],
+		'pull request lookup',
+	)
 	assertRepo(params.repo, 'repo')
 	assertPositiveInteger(params.pullRequestNumber, 'pullRequestNumber')
+	if (params.forceRefresh !== undefined) assertBoolean(params.forceRefresh, 'forceRefresh')
 }
 
 function assertPullRequestDiffLookup(params: unknown) {
@@ -185,11 +192,13 @@ function assertPublishCommentParams(params: unknown) {
 	assertPlainObject(params)
 	assertPullRequestDetails(params.pullRequest)
 	assertFinding(params.finding)
+	assertString(params.reviewedHeadSha, 'reviewedHeadSha', 100)
 }
 
 function assertPublishCommentsParams(params: unknown) {
 	assertPlainObject(params)
 	assertPullRequestDetails(params.pullRequest)
+	assertString(params.reviewedHeadSha, 'reviewedHeadSha', 100)
 	if (!Array.isArray(params.findings)) throw new Error('Expected findings to be an array.')
 	if (params.findings.length > MAX_FINDINGS) throw new Error('Too many findings.')
 	for (const finding of params.findings) assertFinding(finding)
@@ -202,6 +211,7 @@ function assertSubmitReviewParams(params: unknown) {
 		throw new Error('Invalid review event.')
 	}
 	assertOptionalString(params.body, 'body')
+	assertString(params.reviewedHeadSha, 'reviewedHeadSha', 100)
 	if (params.findings !== undefined) {
 		if (!Array.isArray(params.findings)) throw new Error('Expected findings to be an array.')
 		if (params.findings.length > MAX_FINDINGS) throw new Error('Too many findings.')
@@ -239,6 +249,10 @@ function assertPullRequestDetails(value: unknown) {
 	assertNonNegativeInteger(value.deletions, 'pullRequest.deletions')
 	assertOptionalString(value.reviewDecision, 'pullRequest.reviewDecision')
 	if (!Array.isArray(value.reviews)) throw new Error('Expected pullRequest.reviews to be an array.')
+	if (!Array.isArray(value.reviewThreads))
+		throw new Error('Expected pullRequest.reviewThreads to be an array.')
+	if (value.reviewThreads.length > MAX_REVIEW_THREADS) throw new Error('Too many review threads.')
+	for (const thread of value.reviewThreads) assertReviewThread(thread)
 	if (!Array.isArray(value.files)) throw new Error('Expected pullRequest.files to be an array.')
 	if (value.files.length > 10_000) throw new Error('Too many pull request files.')
 	for (const file of value.files) assertPullRequestFile(file)
@@ -279,6 +293,7 @@ function assertGeneratedReview(value: unknown) {
 	assertString(value.rawOutput, 'review.rawOutput', MAX_LONG_TEXT_LENGTH)
 	assertString(value.modelLabel, 'review.modelLabel')
 	assertString(value.generatedAt, 'review.generatedAt')
+	assertString(value.reviewedHeadSha, 'review.reviewedHeadSha', 100)
 	assertBoolean(value.diffWasTruncated, 'review.diffWasTruncated')
 }
 
@@ -287,4 +302,26 @@ function assertPullRequestFile(value: unknown) {
 	assertString(value.path, 'pullRequest.files.path')
 	assertNonNegativeInteger(value.additions, 'pullRequest.files.additions')
 	assertNonNegativeInteger(value.deletions, 'pullRequest.files.deletions')
+}
+
+function assertReviewThread(value: unknown) {
+	assertPlainObject(value)
+	assertString(value.id, 'pullRequest.reviewThreads.id', 500)
+	assertOptionalString(value.path, 'pullRequest.reviewThreads.path')
+	if (value.line !== undefined) assertPositiveInteger(value.line, 'pullRequest.reviewThreads.line')
+	assertBoolean(value.isResolved, 'pullRequest.reviewThreads.isResolved')
+	assertBoolean(value.isOutdated, 'pullRequest.reviewThreads.isOutdated')
+	if (!Array.isArray(value.comments)) throw new Error('Expected review thread comments.')
+	if (value.comments.length > MAX_REVIEW_THREAD_COMMENTS) {
+		throw new Error('Too many review thread comments.')
+	}
+	for (const comment of value.comments) assertReviewThreadComment(comment)
+}
+
+function assertReviewThreadComment(value: unknown) {
+	assertPlainObject(value)
+	assertString(value.author, 'pullRequest.reviewThreads.comments.author')
+	assertString(value.body, 'pullRequest.reviewThreads.comments.body', MAX_LONG_TEXT_LENGTH)
+	assertOptionalString(value.createdAt, 'pullRequest.reviewThreads.comments.createdAt')
+	assertOptionalString(value.url, 'pullRequest.reviewThreads.comments.url')
 }

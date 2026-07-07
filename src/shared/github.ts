@@ -30,6 +30,20 @@ export type GitHubPullRequestReview = {
 	submittedAt?: string
 }
 
+export type GitHubPullRequestReviewThread = {
+	id: string
+	path?: string
+	line?: number
+	isResolved: boolean
+	isOutdated: boolean
+	comments: Array<{
+		author: string
+		body: string
+		createdAt?: string
+		url?: string
+	}>
+}
+
 export type GitHubPullRequestDetails = {
 	repo: string
 	pullRequestNumber: number
@@ -47,10 +61,24 @@ export type GitHubPullRequestDetails = {
 	deletions: number
 	reviewDecision?: string
 	reviews: GitHubPullRequestReview[]
+	reviewThreads: GitHubPullRequestReviewThread[]
 	files: Array<{
 		path: string
 		additions: number
 		deletions: number
 	}>
 	diff: string
+}
+
+export type GitHubPullRequestDetailsParams = {
+	repo: string
+	pullRequestNumber: number
+	forceRefresh?: boolean
+}
+
+export type GitHubPullRequestDiffParams = {
+	repo: string
+	pullRequestNumber: number
+	headSha: string
+	forceRefresh?: boolean
 }

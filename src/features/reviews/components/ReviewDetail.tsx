@@ -22,6 +22,7 @@ export function ReviewDetail({
 	detail,
 	detailError,
 	detailState,
+	onPullRequestDetailRefresh,
 	review,
 	setSummary,
 }: {
@@ -29,6 +30,7 @@ export function ReviewDetail({
 	detail: GitHubPullRequestDetails | null
 	detailError: string
 	detailState: AsyncState
+	onPullRequestDetailRefresh: (detail: GitHubPullRequestDetails) => void
 	review: GitHubReviewRequest | null
 	setSummary: (summary: string) => void
 }) {
@@ -38,7 +40,7 @@ export function ReviewDetail({
 	const [exportError, setExportError] = useState('')
 	const [reviewDecisionBody, setReviewDecisionBody] = useState('')
 	const { showToast } = useToast()
-	const { diff, diffError, diffState, loadDiff } = usePullRequestDiff(detail)
+	const { diff, diffError, diffState, loadDiff, setLoadedDiff } = usePullRequestDiff(detail)
 	const handleGenerationStart = useCallback(() => setActiveTab('review'), [])
 	const {
 		generateReview,
@@ -55,9 +57,10 @@ export function ReviewDetail({
 		submittingReviewEvent,
 	} = useGeneratedReview({
 		detail,
-		loadDiff,
+		onPullRequestDetailRefresh,
 		onStartGeneration: handleGenerationStart,
 		onSummary: setSummary,
+		onUpdatedDiff: setLoadedDiff,
 	})
 	const diffInlineComments = useDiffInlineComments(generatedReview)
 	const publishableFindings = useMemo(

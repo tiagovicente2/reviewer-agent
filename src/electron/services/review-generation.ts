@@ -36,6 +36,9 @@ type GenerateReviewOptions = {
 }
 
 const MAX_DIFF_CHARS = 180_000
+const MAX_REVIEW_THREAD_PROMPT_THREADS = 60
+const MAX_REVIEW_THREAD_PROMPT_COMMENTS = 4
+const MAX_REVIEW_THREAD_COMMENT_CHARS = 1_200
 const REVIEW_TIMEOUT_MS = 10 * 60 * 1000
 const REVIEW_PROMPT_LABEL = 'Generate a draft GitHub pull request review'
 
@@ -217,6 +220,7 @@ Automation-specific rules:
 ${outputRules}
 - Prioritize real correctness, regression, security, performance, accessibility, TypeScript, React, React Query, architecture, testing, naming, and file-structure issues.
 - Avoid noise, style-only nitpicks, and speculative findings.
+- Before emitting a finding, compare it against existing PR review threads and comments supplied in the prompt. Do not emit a finding when the same concern has already been raised, answered, resolved, or made outdated by later commits. Only emit it again if the current diff still contains the problem and the existing discussion does not cover the current code state. When unsure, prefer not to repeat it.
 - Sort findings by severity: critical, high, medium, low, info.
 - Never claim you ran tests or inspected files beyond the provided metadata and diff.
 - Never publish, approve, or request changes. Only recommend a verdict for the human reviewer.
@@ -295,6 +299,7 @@ ${JSON.stringify(
 		additions: pullRequest.additions,
 		deletions: pullRequest.deletions,
 		files: pullRequest.files,
+		existingReviewThreads: buildExistingReviewThreadPromptContext(pullRequest),
 		diffWasTruncated,
 	},
 	null,
@@ -311,6 +316,23 @@ ${diff}
 \`\`\`
 `,
 	}
+}
+
+function buildExistingReviewThreadPromptContext(pullRequest: GenerateReviewParams['pullRequest']) {
+	return pullRequest.reviewThreads.slice(0, MAX_REVIEW_THREAD_PROMPT_THREADS).map((thread) => ({
+		path: thread.path,
+		line: thread.line,
+		isResolved: thread.isResolved,
+		isOutdated: thread.isOutdated,
+		comments: thread.comments.slice(-MAX_REVIEW_THREAD_PROMPT_COMMENTS).map((comment) => ({
+			author: comment.author,
+			body:
+				comment.body.length > MAX_REVIEW_THREAD_COMMENT_CHARS
+					? `${comment.body.slice(0, MAX_REVIEW_THREAD_COMMENT_CHARS)}...`
+					: comment.body,
+			createdAt: comment.createdAt,
+		})),
+	}))
 }
 
 export async function generateReview(
@@ -341,6 +363,7 @@ export async function generateReview(
 		rawOutput: output,
 		modelLabel: `${getAgentLabel()}${getReviewModel() ? ` · ${getReviewModel()}` : ''}`,
 		generatedAt: new Date().toISOString(),
+		reviewedHeadSha: params.pullRequest.headSha,
 		diffWasTruncated,
 	}
 

@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { appRpc } from '@/app/rpc'
 import { useToast } from '@/app/toast'
 import type { AsyncState } from '@/app/types'
 import { getErrorMessage } from '@/app/utils'
 import type { GitHubPullRequestDetails } from '@/shared/github'
 import {
-	getReviewGenerationJobId,
 	type GeneratedReview,
+	getReviewGenerationJobId,
 	type ReviewFinding,
 	type ReviewSubmitEvent,
 } from '@/shared/review'
@@ -17,7 +17,10 @@ function getLocalReviewProgressOutput(messages: string[]) {
 	return `${reviewPromptLabel}\n\n${messages.map((message) => `:: ${message}`).join('\n')}\n`
 }
 
-function isFindingInlineComment(finding: ReviewFinding, comment: GeneratedReview['inlineComments'][number]) {
+function isFindingInlineComment(
+	finding: ReviewFinding,
+	comment: GeneratedReview['inlineComments'][number],
+) {
 	const body = (finding.suggestedCommentBody || finding.body).trim()
 	return Boolean(
 		finding.filePath &&
@@ -30,16 +33,24 @@ function isFindingInlineComment(finding: ReviewFinding, comment: GeneratedReview
 	)
 }
 
+function getPullRequestIdentity(
+	pullRequest: Pick<GitHubPullRequestDetails, 'pullRequestNumber' | 'repo'>,
+) {
+	return `${pullRequest.repo}#${pullRequest.pullRequestNumber}`
+}
+
 export function useGeneratedReview({
 	detail,
-	loadDiff,
+	onPullRequestDetailRefresh,
 	onSummary,
 	onStartGeneration,
+	onUpdatedDiff,
 }: {
 	detail: GitHubPullRequestDetails | null
-	loadDiff: () => Promise<string>
+	onPullRequestDetailRefresh: (detail: GitHubPullRequestDetails) => void
 	onSummary: (summary: string) => void
 	onStartGeneration: () => void
+	onUpdatedDiff: (diff: string) => void
 }) {
 	const [generatedReview, setGeneratedReview] = useState<GeneratedReview | null>(null)
 	const [generationState, setGenerationState] = useState<AsyncState>('idle')
@@ -51,10 +62,12 @@ export function useGeneratedReview({
 	const [publishingFindingIds, setPublishingFindingIds] = useState<Set<string>>(() => new Set())
 	const [submittingReviewEvent, setSubmittingReviewEvent] = useState<ReviewSubmitEvent | null>(null)
 	const [generationJobId, setGenerationJobId] = useState<string | null>(null)
+	const generatingPullRequestIdentityRef = useRef<string | null>(null)
 	const { showToast } = useToast()
 
 	const completeGeneration = useCallback(
 		(review: GeneratedReview) => {
+			generatingPullRequestIdentityRef.current = null
 			setGeneratedReview(review)
 			onSummary(review.publishableBody || review.summary)
 			setGenerationState('idle')
@@ -69,6 +82,10 @@ export function useGeneratedReview({
 	)
 
 	useEffect(() => {
+		if (detail && generatingPullRequestIdentityRef.current === getPullRequestIdentity(detail)) {
+			return
+		}
+
 		setGeneratedReview(null)
 		setGenerationState('idle')
 		setGenerationError('')
@@ -130,6 +147,7 @@ export function useGeneratedReview({
 				}
 
 				if (job.status === 'failed') {
+					generatingPullRequestIdentityRef.current = null
 					setGenerationError(job.error ?? 'Review generation failed.')
 					setGenerationState('error')
 					setGenerationOutputText('')
@@ -159,6 +177,7 @@ export function useGeneratedReview({
 		}
 
 		onStartGeneration()
+		generatingPullRequestIdentityRef.current = getPullRequestIdentity(detail)
 		setGenerationState('loading')
 		setGenerationError('')
 		setGenerationMessage('Loading the latest PR diff before starting review generation...')
@@ -169,7 +188,19 @@ export function useGeneratedReview({
 		)
 
 		try {
-			const loadedDiff = await loadDiff()
+			const latestDetail = await appRpc.request.getGitHubPullRequestDetails({
+				forceRefresh: true,
+				pullRequestNumber: detail.pullRequestNumber,
+				repo: detail.repo,
+			})
+			onPullRequestDetailRefresh(latestDetail)
+			const { diff: loadedDiff } = await appRpc.request.getGitHubPullRequestDiff({
+				forceRefresh: true,
+				headSha: latestDetail.headSha,
+				pullRequestNumber: latestDetail.pullRequestNumber,
+				repo: latestDetail.repo,
+			})
+			onUpdatedDiff(loadedDiff)
 			setGenerationMessage('Starting review generation...')
 			setGenerationOutputText(
 				getLocalReviewProgressOutput([
@@ -178,27 +209,32 @@ export function useGeneratedReview({
 				]),
 			)
 			const job = await appRpc.request.startReviewGeneration({
-				pullRequest: { ...detail, diff: loadedDiff },
+				pullRequest: { ...latestDetail, diff: loadedDiff },
 			})
 			setGenerationJobId(job.id)
 			setGenerationMessage(job.statusMessage ?? '')
 			setGenerationOutputText(job.outputText ?? '')
 			if (job.status === 'completed' && job.review) completeGeneration(job.review)
 		} catch (error) {
+			generatingPullRequestIdentityRef.current = null
 			setGenerationMessage('')
 			setGenerationError(getErrorMessage(error))
 			setGenerationState('error')
 			setGenerationOutputText('')
 		}
-	}, [completeGeneration, detail, loadDiff, onStartGeneration])
+	}, [completeGeneration, detail, onPullRequestDetailRefresh, onStartGeneration, onUpdatedDiff])
 
 	const publishFinding = useCallback(
 		async (finding: ReviewFinding) => {
-			if (!detail) return
+			if (!detail || !generatedReview) return
 			setPublishError('')
 			setPublishingFindingIds((current) => new Set(current).add(finding.id))
 			try {
-				await appRpc.request.publishReviewComment({ finding, pullRequest: detail })
+				await appRpc.request.publishReviewComment({
+					finding,
+					pullRequest: detail,
+					reviewedHeadSha: generatedReview.reviewedHeadSha,
+				})
 			} catch (error) {
 				setPublishError(getErrorMessage(error))
 			} finally {
@@ -209,7 +245,7 @@ export function useGeneratedReview({
 				})
 			}
 		},
-		[detail],
+		[detail, generatedReview],
 	)
 
 	const discardFinding = useCallback((findingId: string) => {
@@ -231,18 +267,22 @@ export function useGeneratedReview({
 
 	const publishAll = useCallback(
 		async (findings: ReviewFinding[]) => {
-			if (!detail) return
+			if (!detail || !generatedReview) return
 			setPublishError('')
 			setPublishingAll(true)
 			try {
-				await appRpc.request.publishReviewComments({ findings, pullRequest: detail })
+				await appRpc.request.publishReviewComments({
+					findings,
+					pullRequest: detail,
+					reviewedHeadSha: generatedReview.reviewedHeadSha,
+				})
 			} catch (error) {
 				setPublishError(getErrorMessage(error))
 			} finally {
 				setPublishingAll(false)
 			}
 		},
-		[detail],
+		[detail, generatedReview],
 	)
 
 	const submitReview = useCallback(
@@ -255,11 +295,17 @@ export function useGeneratedReview({
 			event: ReviewSubmitEvent
 			findings?: ReviewFinding[]
 		}) => {
-			if (!detail) return
+			if (!detail || !generatedReview) return
 			setPublishError('')
 			setSubmittingReviewEvent(event)
 			try {
-				await appRpc.request.submitReview({ body, event, findings, pullRequest: detail })
+				await appRpc.request.submitReview({
+					body,
+					event,
+					findings,
+					pullRequest: detail,
+					reviewedHeadSha: generatedReview.reviewedHeadSha,
+				})
 				showToast({
 					title: event === 'approve' ? 'Pull request approved' : 'Changes requested',
 					description: 'The review was submitted on GitHub.',
@@ -271,7 +317,7 @@ export function useGeneratedReview({
 				setSubmittingReviewEvent(null)
 			}
 		},
-		[detail, showToast],
+		[detail, generatedReview, showToast],
 	)
 
 	return {

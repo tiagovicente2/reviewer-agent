@@ -125,7 +125,7 @@ function App() {
 	const displayedReviews = useReviewSearchFilter(query, reviews)
 
 	const resetSummary = useCallback(() => setSummary(''), [])
-	const { detail, detailError, detailState } = usePullRequestDetails({
+	const { detail, detailError, detailState, setDetail } = usePullRequestDetails({
 		logError,
 		onResetSummary: resetSummary,
 		review: selectedReview,
@@ -244,6 +244,7 @@ function App() {
 					loadReviewRequests={loadReviewRequests}
 					onClearSearch={handleClearSearch}
 					onOpenSettings={() => setShowSettings(true)}
+					onPullRequestDetailRefresh={setDetail}
 					onReviewPr={handleReviewPr}
 					onSearch={handleSearch}
 					query={query}

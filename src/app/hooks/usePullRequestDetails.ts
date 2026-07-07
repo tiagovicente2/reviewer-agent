@@ -51,5 +51,5 @@ export function usePullRequestDetails({
 		}
 	}, [logError, onResetSummary, review])
 
-	return { detail, detailError, detailState }
+	return { detail, detailError, detailState, setDetail }
 }

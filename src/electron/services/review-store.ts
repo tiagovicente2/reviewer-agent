@@ -56,7 +56,9 @@ export function getSavedGeneratedReview(params: {
 	pullRequestNumber: number
 	headSha: string
 }): GeneratedReview | null {
-	return store[getReviewStoreKey(params)]?.review ?? null
+	const review = store[getReviewStoreKey(params)]?.review
+	if (!review) return null
+	return { ...review, reviewedHeadSha: review.reviewedHeadSha || params.headSha }
 }
 
 function loadStore(): Record<string, StoredReview> {

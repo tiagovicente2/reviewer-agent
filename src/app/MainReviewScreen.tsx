@@ -29,6 +29,7 @@ type MainReviewScreenProps = {
 	loadReviewRequests: () => undefined | Promise<undefined | boolean>
 	onClearSearch: () => void
 	onOpenSettings: () => void
+	onPullRequestDetailRefresh: (detail: GitHubPullRequestDetails) => void
 	onReviewPr: () => void | Promise<void>
 	onSearch: () => void
 	query: string
@@ -57,6 +58,7 @@ export function MainReviewScreen({
 	loadReviewRequests,
 	onClearSearch,
 	onOpenSettings,
+	onPullRequestDetailRefresh,
 	onReviewPr,
 	onSearch,
 	query,
@@ -111,6 +113,7 @@ export function MainReviewScreen({
 					detail={detail}
 					detailError={detailError}
 					detailState={detailState}
+					onPullRequestDetailRefresh={onPullRequestDetailRefresh}
 					review={selectedReview}
 					setSummary={setSummary}
 				/>
