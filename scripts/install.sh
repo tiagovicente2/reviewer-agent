@@ -52,18 +52,37 @@ else
   log "checksums unavailable; skipping verification"
 fi
 
-rm -rf "$INSTALL_DIR"
+linux_sandbox_is_configured() {
+  local sandbox="$INSTALL_DIR/chrome-sandbox"
+  [[ -f "$sandbox" ]] || return 1
+
+  local uid mode
+  uid="$(stat -c '%u' "$sandbox")"
+  mode="$(stat -c '%a' "$sandbox")"
+  [[ "$uid" == "0" && "$mode" == "4755" ]]
+}
+
+preserve_existing_linux_sandbox=false
+if [[ "$platform" == "linux" ]] && linux_sandbox_is_configured; then
+  preserve_existing_linux_sandbox=true
+fi
+
 mkdir -p "$INSTALL_DIR"
-tar -xzf "$tmp_dir/$artifact" -C "$INSTALL_DIR" --strip-components=1
+if [[ "$preserve_existing_linux_sandbox" == "true" ]]; then
+  log "preserving existing Chromium SUID sandbox helper"
+  find "$INSTALL_DIR" -mindepth 1 ! -name 'chrome-sandbox' -exec rm -rf {} +
+  tar -xzf "$tmp_dir/$artifact" -C "$INSTALL_DIR" --strip-components=1 --exclude='chrome-sandbox' --exclude='*/chrome-sandbox'
+else
+  rm -rf "$INSTALL_DIR"
+  mkdir -p "$INSTALL_DIR"
+  tar -xzf "$tmp_dir/$artifact" -C "$INSTALL_DIR" --strip-components=1
+fi
 
 configure_linux_sandbox() {
   local sandbox="$INSTALL_DIR/chrome-sandbox"
   [[ -f "$sandbox" ]] || return 0
 
-  local uid mode
-  uid="$(stat -c '%u' "$sandbox")"
-  mode="$(stat -c '%a' "$sandbox")"
-  if [[ "$uid" == "0" && "$mode" == "4755" ]]; then
+  if linux_sandbox_is_configured; then
     return 0
   fi
 
@@ -78,9 +97,7 @@ configure_linux_sandbox() {
     fail "sudo is required to configure $sandbox. Run: chown root:root '$sandbox' && chmod 4755 '$sandbox'"
   fi
 
-  uid="$(stat -c '%u' "$sandbox")"
-  mode="$(stat -c '%a' "$sandbox")"
-  [[ "$uid" == "0" && "$mode" == "4755" ]] || fail "failed to configure $sandbox; expected owner root and mode 4755"
+  linux_sandbox_is_configured || fail "failed to configure $sandbox; expected owner root and mode 4755"
 }
 
 if [[ "$platform" == "linux" ]]; then
