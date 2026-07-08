@@ -1,5 +1,18 @@
+import { delimiter } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { runCommand } from './process'
+import { getSpawnEnv, runCommand } from './process'
+
+describe('process env', () => {
+	it('adds common user CLI install paths to spawned commands', () => {
+		const env = getSpawnEnv({ PATH: '/custom/bin' })
+		const paths = env.PATH?.split(delimiter) ?? []
+
+		expect(paths).toContain(`${process.env.HOME}/.local/bin`)
+		expect(paths).toContain(`${process.env.HOME}/.asdf/shims`)
+		expect(paths).toContain(`${process.env.HOME}/.local/share/pnpm`)
+		expect(paths).toContain('/custom/bin')
+	})
+})
 
 describe('process streaming', () => {
 	it('decodes streamed UTF-8 split across chunks', async () => {

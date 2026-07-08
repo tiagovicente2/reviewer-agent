@@ -1,4 +1,6 @@
 import { spawn } from 'node:child_process'
+import { homedir } from 'node:os'
+import { delimiter } from 'node:path'
 import { StringDecoder } from 'node:string_decoder'
 
 export type SpawnResult = {
@@ -39,7 +41,7 @@ export function runCommandBuffer(command: string, args: string[], options: Spawn
 		const child = spawn(command, args, {
 			cwd: options.cwd,
 			detached: process.platform !== 'win32',
-			env: options.env,
+			env: getSpawnEnv(options.env),
 			stdio: ['pipe', 'pipe', 'pipe'],
 		})
 
@@ -116,6 +118,37 @@ export function runCommandBuffer(command: string, args: string[], options: Spawn
 			child.stdin.end()
 		}
 	})
+}
+
+export function getSpawnEnv(env: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+	const pathKey = getPathKey(env)
+	return {
+		...env,
+		[pathKey]: augmentPath(env[pathKey] ?? process.env[pathKey] ?? ''),
+	}
+}
+
+function getPathKey(env: NodeJS.ProcessEnv) {
+	return Object.keys(env).find((key) => key.toLowerCase() === 'path') ?? 'PATH'
+}
+
+function augmentPath(pathValue: string) {
+	const home = homedir()
+	const extraPaths = [
+		`${home}/.local/bin`,
+		`${home}/bin`,
+		`${home}/.asdf/shims`,
+		`${home}/.asdf/bin`,
+		`${home}/.local/share/pnpm`,
+		`${home}/.bun/bin`,
+		`${home}/.npm-global/bin`,
+		'/opt/homebrew/bin',
+		'/usr/local/bin',
+		'/usr/bin',
+		'/bin',
+	]
+	const entries = pathValue.split(delimiter).filter(Boolean)
+	return [...new Set([...extraPaths, ...entries])].join(delimiter)
 }
 
 function terminateChild(child: ReturnType<typeof spawn>, signal: NodeJS.Signals) {
