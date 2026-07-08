@@ -56,7 +56,36 @@ rm -rf "$INSTALL_DIR"
 mkdir -p "$INSTALL_DIR"
 tar -xzf "$tmp_dir/$artifact" -C "$INSTALL_DIR" --strip-components=1
 
+configure_linux_sandbox() {
+  local sandbox="$INSTALL_DIR/chrome-sandbox"
+  [[ -f "$sandbox" ]] || return 0
+
+  local uid mode
+  uid="$(stat -c '%u' "$sandbox")"
+  mode="$(stat -c '%a' "$sandbox")"
+  if [[ "$uid" == "0" && "$mode" == "4755" ]]; then
+    return 0
+  fi
+
+  log "configuring Chromium SUID sandbox helper"
+  if [[ "$(id -u)" == "0" ]]; then
+    chown root:root "$sandbox"
+    chmod 4755 "$sandbox"
+  elif command -v sudo >/dev/null 2>&1; then
+    sudo chown root:root "$sandbox"
+    sudo chmod 4755 "$sandbox"
+  else
+    fail "sudo is required to configure $sandbox. Run: chown root:root '$sandbox' && chmod 4755 '$sandbox'"
+  fi
+
+  uid="$(stat -c '%u' "$sandbox")"
+  mode="$(stat -c '%a' "$sandbox")"
+  [[ "$uid" == "0" && "$mode" == "4755" ]] || fail "failed to configure $sandbox; expected owner root and mode 4755"
+}
+
 if [[ "$platform" == "linux" ]]; then
+  configure_linux_sandbox
+
   launcher="$INSTALL_DIR/$APP_NAME"
   if [[ ! -x "$launcher" ]]; then
     launcher="$(find "$INSTALL_DIR" -maxdepth 2 -type f -perm -111 \( -name "$APP_NAME" -o -name 'Reviewer Agent' \) | head -n 1 || true)"
