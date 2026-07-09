@@ -10,7 +10,9 @@ import type {
 } from '@/shared/github'
 import { getHomePath } from '../paths'
 import { runCommand, runCommandBuffer } from '../process'
+import { shouldClearUserScopedCache } from './auth-cache-isolation'
 import {
+	clearPullRequestCache,
 	getCachedPullRequestDetails,
 	getCachedPullRequestDiff,
 	saveCachedPullRequestDetails,
@@ -28,7 +30,6 @@ type CachedAuthStatus = {
 	checkedAt: number
 }
 
-const AUTH_STATUS_CACHE_TTL_MS = 30_000
 const DEFAULT_GH_TIMEOUT_MS = 20_000
 const ASSET_GH_TIMEOUT_MS = 45_000
 const MAX_REVIEW_THREADS = 100
@@ -156,13 +157,23 @@ function getBoolean(value: unknown) {
 }
 
 export async function getGitHubAuthStatus(): Promise<GitHubAuthStatus> {
-	if (cachedAuthStatus && Date.now() - cachedAuthStatus.checkedAt < AUTH_STATUS_CACHE_TTL_MS) {
-		return cachedAuthStatus.status
-	}
-
+	const previous = cachedAuthStatus?.status
 	const status = await readGitHubAuthStatus()
+	if (shouldClearUserScopedCache(previous, status)) {
+		clearPullRequestCache()
+	}
 	cachedAuthStatus = { status, checkedAt: Date.now() }
 	return status
+}
+
+async function getAuthenticatedGitHubUsername(action: string) {
+	const authStatus = await getGitHubAuthStatus()
+	if (!authStatus.authenticated || !authStatus.username) {
+		throw new Error(
+			authStatus.error ?? authStatus.message ?? `Connect GitHub before trying to ${action}.`,
+		)
+	}
+	return authStatus.username
 }
 
 async function readGitHubAuthStatus(): Promise<GitHubAuthStatus> {
@@ -504,7 +515,8 @@ export async function getGitHubPullRequestForReview(params: {
 export async function getGitHubPullRequestDetails(
 	params: GitHubPullRequestDetailsParams,
 ): Promise<GitHubPullRequestDetails> {
-	const cached = getCachedPullRequestDetails(params)
+	const owner = await getAuthenticatedGitHubUsername('load pull request details')
+	const cached = getCachedPullRequestDetails({ ...params, owner })
 	if (!params.forceRefresh && cached?.reviewThreads) {
 		return {
 			...cached,
@@ -579,7 +591,7 @@ export async function getGitHubPullRequestDetails(
 		diff: '',
 	}
 
-	saveCachedPullRequestDetails(details)
+	saveCachedPullRequestDetails(owner, details)
 	return details
 }
 
@@ -731,7 +743,8 @@ function getImageContentType(url: string) {
 export async function getGitHubPullRequestDiff(
 	params: GitHubPullRequestDiffParams,
 ): Promise<{ diff: string }> {
-	const cached = getCachedPullRequestDiff(params)
+	const owner = await getAuthenticatedGitHubUsername('load pull request diff')
+	const cached = getCachedPullRequestDiff({ ...params, owner })
 	if (!params.forceRefresh && cached !== null) {
 		return { diff: cached }
 	}
@@ -746,6 +759,6 @@ export async function getGitHubPullRequestDiff(
 		'--color=never',
 	])
 	assertSuccess(diff, 'fetch pull request diff')
-	saveCachedPullRequestDiff({ ...params, diff: diff.stdout })
+	saveCachedPullRequestDiff({ ...params, owner, diff: diff.stdout })
 	return { diff: diff.stdout }
 }

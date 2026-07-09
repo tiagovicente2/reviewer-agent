@@ -2,9 +2,11 @@ import { mkdirSync, readFileSync, rmSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import type { GitHubPullRequestDetails } from '@/shared/github'
 import { getUserDataPath } from '../paths'
+import { getUserScopedPullRequestCacheKey } from './auth-cache-isolation'
 import { pruneRecordByUpdatedAt, writeJsonFileAtomically } from './json-store'
 
 type DetailsEntry = {
+	owner: string
 	repo: string
 	pullRequestNumber: number
 	headSha: string
@@ -14,6 +16,7 @@ type DetailsEntry = {
 }
 
 type DiffEntry = {
+	owner: string
 	repo: string
 	pullRequestNumber: number
 	headSha: string
@@ -37,29 +40,35 @@ const cache = loadCache()
 let writeQueued = false
 
 export function getCachedPullRequestDetails(params: {
+	owner: string
 	repo: string
 	pullRequestNumber: number
 	headSha?: string
 }): GitHubPullRequestDetails | null {
 	if (params.headSha) {
 		return (
-			cache.details[getPullRequestCacheKey({ ...params, headSha: params.headSha })]?.details ?? null
+			cache.details[getUserScopedPullRequestCacheKey({ ...params, headSha: params.headSha })]
+				?.details ?? null
 		)
 	}
 
 	const entries = Object.values(cache.details)
 		.filter(
-			(entry) => entry.repo === params.repo && entry.pullRequestNumber === params.pullRequestNumber,
+			(entry) =>
+				entry.owner === params.owner &&
+				entry.repo === params.repo &&
+				entry.pullRequestNumber === params.pullRequestNumber,
 		)
 		.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
 	return entries[0]?.details ?? null
 }
 
-export function saveCachedPullRequestDetails(details: GitHubPullRequestDetails) {
+export function saveCachedPullRequestDetails(owner: string, details: GitHubPullRequestDetails) {
 	const metadata = { ...details, diff: '' }
 	const now = new Date().toISOString()
-	const id = getPullRequestCacheKey(details)
+	const id = getUserScopedPullRequestCacheKey({ ...details, owner })
 	cache.details[id] = {
+		owner,
 		repo: details.repo,
 		pullRequestNumber: details.pullRequestNumber,
 		headSha: details.headSha,
@@ -72,22 +81,25 @@ export function saveCachedPullRequestDetails(details: GitHubPullRequestDetails) 
 }
 
 export function getCachedPullRequestDiff(params: {
+	owner: string
 	repo: string
 	pullRequestNumber: number
 	headSha: string
 }): string | null {
-	return cache.diffs[getPullRequestCacheKey(params)]?.diff ?? null
+	return cache.diffs[getUserScopedPullRequestCacheKey(params)]?.diff ?? null
 }
 
 export function saveCachedPullRequestDiff(params: {
+	owner: string
 	repo: string
 	pullRequestNumber: number
 	headSha: string
 	diff: string
 }) {
 	const now = new Date().toISOString()
-	const id = getPullRequestCacheKey(params)
+	const id = getUserScopedPullRequestCacheKey(params)
 	cache.diffs[id] = {
+		owner: params.owner,
 		repo: params.repo,
 		pullRequestNumber: params.pullRequestNumber,
 		headSha: params.headSha,
@@ -138,12 +150,4 @@ export function clearPullRequestCache(): { removedDetails: number; removedDiffs:
 function pruneCache() {
 	cache.details = pruneRecordByUpdatedAt(cache.details, MAX_PULL_REQUEST_DETAILS)
 	cache.diffs = pruneRecordByUpdatedAt(cache.diffs, MAX_PULL_REQUEST_DIFFS)
-}
-
-function getPullRequestCacheKey(params: {
-	repo: string
-	pullRequestNumber: number
-	headSha: string
-}) {
-	return `${params.repo}#${params.pullRequestNumber}:${params.headSha}`
 }
