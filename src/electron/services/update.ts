@@ -56,8 +56,7 @@ export async function installUpdate(): Promise<UpdateResult> {
 	const result = await runUpdateInstaller(command)
 	if (!result.ok) return result
 
-	app.relaunch()
-	app.quit()
+	restartAppAfterUpdate()
 	return { ok: true, message: 'Update installed. Restarting the app now.' }
 }
 
@@ -83,6 +82,30 @@ async function runUpdateInstaller(command: {
 			resolve({ ok: false, message: `Updater exited with code ${exitCode ?? 'unknown'}.` })
 		})
 	})
+}
+
+function restartAppAfterUpdate() {
+	if (process.platform === 'linux' || process.platform === 'darwin') {
+		const child = spawn(
+			'sh',
+			['-lc', `(sleep 1; ${shellQuote(process.execPath)} >/dev/null 2>&1) &`],
+			{
+				detached: true,
+				stdio: 'ignore',
+				windowsHide: true,
+			},
+		)
+		child.unref()
+		app.quit()
+		return
+	}
+
+	app.relaunch()
+	app.quit()
+}
+
+function shellQuote(value: string) {
+	return `'${value.replaceAll("'", "'\\''")}'`
 }
 
 function getUpdateCommand(): { command: string; args: string[] } | null {
