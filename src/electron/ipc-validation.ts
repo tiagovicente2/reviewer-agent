@@ -14,6 +14,7 @@ const MAX_DIFF_LENGTH = 1_000_000
 const MAX_FINDINGS = 100
 const MAX_REVIEW_THREADS = 100
 const MAX_REVIEW_THREAD_COMMENTS = 20
+const MAX_REVIEWER_INSTRUCTIONS = 50
 
 const validators: Partial<Record<MainRequestName, Validator>> = {
 	getAppSettings: (params) => assertUndefined(params, 'getAppSettings'),
@@ -146,8 +147,20 @@ function assertSaveAppSettings(params: unknown) {
 	assertString(params.model, 'model')
 	if (!['english', 'portuguese'].includes(String(params.reviewLanguage)))
 		throw new Error('Invalid review language.')
-	assertString(params.reviewerInstructions, 'reviewerInstructions', MAX_LONG_TEXT_LENGTH)
+	assertReviewerInstructions(params.reviewerInstructions)
 	assertString(params.reviewExportDirectory, 'reviewExportDirectory')
+}
+
+function assertReviewerInstructions(value: unknown) {
+	if (!Array.isArray(value)) throw new Error('Expected reviewerInstructions to be an array.')
+	if (value.length > MAX_REVIEWER_INSTRUCTIONS) throw new Error('Too many reviewer instructions.')
+	for (const instruction of value) {
+		assertPlainObject(instruction)
+		assertOnlyFields(instruction, ['id', 'name', 'content'], 'reviewerInstructions')
+		assertString(instruction.id, 'reviewerInstructions.id', 200)
+		assertString(instruction.name, 'reviewerInstructions.name', 200)
+		assertString(instruction.content, 'reviewerInstructions.content', MAX_LONG_TEXT_LENGTH)
+	}
 }
 
 function assertSearchParams(params: unknown) {
@@ -185,7 +198,9 @@ function assertSavedReviewLookup(params: unknown) {
 
 function assertGenerateReviewParams(params: unknown) {
 	assertPlainObject(params)
+	assertOnlyFields(params, ['pullRequest', 'instructionId'], 'generateReview')
 	assertPullRequestDetails(params.pullRequest)
+	assertOptionalString(params.instructionId, 'instructionId')
 }
 
 function assertPublishCommentParams(params: unknown) {

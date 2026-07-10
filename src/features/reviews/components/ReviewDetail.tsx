@@ -5,9 +5,10 @@ import { useToast } from '@/app/toast'
 import type { AsyncState, ColorMode } from '@/app/types'
 import { formatDate, getErrorMessage } from '@/app/utils'
 import { StatusCard, TabButton } from '@/components/common'
-import { Badge, Button, Card } from '@/components/ui'
+import { Badge, Button, Card, Select } from '@/components/ui'
 import type { GitHubPullRequestDetails, GitHubReviewRequest } from '@/shared/github'
 import { formatReviewForExport } from '@/shared/review-export'
+import type { ReviewerInstruction } from '@/shared/settings'
 import { useDiffInlineComments } from '../hooks/useDiffInlineComments'
 import { useGeneratedReview } from '../hooks/useGeneratedReview'
 import { usePullRequestDiff } from '../hooks/usePullRequestDiff'
@@ -42,6 +43,28 @@ export function ReviewDetail({
 	const { showToast } = useToast()
 	const { diff, diffError, diffState, loadDiff, setLoadedDiff } = usePullRequestDiff(detail)
 	const handleGenerationStart = useCallback(() => setActiveTab('review'), [])
+	const [instructions, setInstructions] = useState<ReviewerInstruction[]>([])
+	const [selectedInstructionId, setSelectedInstructionId] = useState('')
+
+	useEffect(() => {
+		let cancelled = false
+		appRpc.request
+			.getAppSettings()
+			.then((settings) => {
+				if (cancelled) return
+				setInstructions(settings.reviewerInstructions)
+				setSelectedInstructionId(
+					(current) =>
+						settings.reviewerInstructions.find((instruction) => instruction.id === current)?.id ??
+						settings.reviewerInstructions[0]?.id ??
+						'',
+				)
+			})
+			.catch(Object)
+		return () => {
+			cancelled = true
+		}
+	}, [])
 	const {
 		generateReview,
 		generatedReview,
@@ -57,6 +80,7 @@ export function ReviewDetail({
 		submittingReviewEvent,
 	} = useGeneratedReview({
 		detail,
+		instructionId: selectedInstructionId || undefined,
 		onPullRequestDetailRefresh,
 		onStartGeneration: handleGenerationStart,
 		onSummary: setSummary,
@@ -174,6 +198,19 @@ export function ReviewDetail({
 					</Stack>
 
 					<HStack gap="2">
+						{instructions.length > 1 ? (
+							<Select
+								disabled={generationState === 'loading'}
+								onChange={setSelectedInstructionId}
+								options={instructions.map((instruction) => ({
+									label: instruction.name || 'Untitled',
+									value: instruction.id,
+								}))}
+								placeholder="Instructions"
+								value={selectedInstructionId}
+								width="11rem"
+							/>
+						) : null}
 						<Button
 							disabled={!detail || detailState === 'loading'}
 							loading={generationState === 'loading'}

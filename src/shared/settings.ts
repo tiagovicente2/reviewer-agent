@@ -17,13 +17,19 @@ export type AvailablePiModel = {
 	model: string
 }
 
+export type ReviewerInstruction = {
+	id: string
+	name: string
+	content: string
+}
+
 export type AppSettings = {
 	colorMode: ColorModePreference
 	codeAgent: CodeAgent
 	model: string
 	reviewLanguage: ReviewLanguage
 	reviewExportDirectory: string
-	reviewerInstructions: string
+	reviewerInstructions: ReviewerInstruction[]
 	reviewerInstructionsPath: string
 	onboardingComplete: boolean
 }
@@ -34,5 +40,5 @@ export type SaveAppSettingsParams = {
 	model: string
 	reviewLanguage: ReviewLanguage
 	reviewExportDirectory: string
-	reviewerInstructions: string
+	reviewerInstructions: ReviewerInstruction[]
 }

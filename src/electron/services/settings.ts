@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import type {
@@ -5,6 +6,7 @@ import type {
 	AppSettings,
 	AvailablePiModel,
 	CodeAgent,
+	ReviewerInstruction,
 	ReviewLanguage,
 	SaveAppSettingsParams,
 } from '@/shared/settings'
@@ -13,7 +15,8 @@ import { runCommand } from '../process'
 
 const settingsPath = getSettingsPath()
 const instructionsPath = getInstructionsPath()
-const availableModelsCache = new Map<CodeAgent, AvailablePiModel[]>()
+const AVAILABLE_MODELS_CACHE_TTL_MS = 10 * 60 * 1000
+const availableModelsCache = new Map<CodeAgent, { models: AvailablePiModel[]; fetchedAt: number }>()
 
 export function getAppSettings(): AppSettings {
 	ensureSettingsFiles()
@@ -28,7 +31,7 @@ export function getAppSettings(): AppSettings {
 				? saved.reviewExportDirectory
 				: getDefaultReviewExportDirectory(),
 		onboardingComplete: saved.onboardingComplete === true,
-		reviewerInstructions: readFileSync(instructionsPath, 'utf8'),
+		reviewerInstructions: readReviewerInstructions(),
 		reviewerInstructionsPath: instructionsPath,
 	}
 }
@@ -52,7 +55,7 @@ export function saveAppSettings(params: SaveAppSettingsParams): AppSettings {
 			2,
 		)}\n`,
 	)
-	writeFileSync(instructionsPath, params.reviewerInstructions)
+	writeReviewerInstructions(params.reviewerInstructions)
 	return getAppSettings()
 }
 
@@ -71,9 +74,46 @@ export function getReviewCodeAgent(): CodeAgent {
 	return getCodeAgentValue(readJsonSettings().codeAgent)
 }
 
-export function getReviewerInstructions() {
+export function getReviewerInstructions(instructionId?: string) {
 	ensureSettingsFiles()
-	return readFileSync(instructionsPath, 'utf8').trim()
+	const instructions = readReviewerInstructions()
+	const selected = instructionId
+		? instructions.find((instruction) => instruction.id === instructionId)
+		: instructions[0]
+	return (selected ?? instructions[0])?.content.trim() ?? ''
+}
+
+function readReviewerInstructions(): ReviewerInstruction[] {
+	try {
+		const parsed = JSON.parse(readFileSync(instructionsPath, 'utf8')) as unknown
+		if (!Array.isArray(parsed)) return [defaultReviewerInstruction()]
+		const instructions = parsed
+			.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
+			.map((item) => ({
+				id: typeof item.id === 'string' && item.id ? item.id : randomUUID(),
+				name: typeof item.name === 'string' && item.name.trim() ? item.name.trim() : 'Untitled',
+				content: typeof item.content === 'string' ? item.content : '',
+			}))
+		return instructions.length > 0 ? instructions : [defaultReviewerInstruction()]
+	} catch {
+		return [defaultReviewerInstruction()]
+	}
+}
+
+function writeReviewerInstructions(instructions: ReviewerInstruction[]) {
+	const sanitized = instructions.map((instruction) => ({
+		id: instruction.id || randomUUID(),
+		name: instruction.name.trim() || 'Untitled',
+		content: instruction.content,
+	}))
+	writeFileSync(
+		instructionsPath,
+		`${JSON.stringify(sanitized.length > 0 ? sanitized : [defaultReviewerInstruction()], null, 2)}\n`,
+	)
+}
+
+function defaultReviewerInstruction(content = ''): ReviewerInstruction {
+	return { id: randomUUID(), name: 'Default', content }
 }
 
 export function getReviewModel() {
@@ -114,16 +154,53 @@ export async function listAvailablePiModels(params?: {
 }): Promise<AvailablePiModel[]> {
 	const agent = getCodeAgentValue(params?.agent ?? readJsonSettings().codeAgent)
 	const cached = availableModelsCache.get(agent)
-	if (cached) return cached
+	if (cached && Date.now() - cached.fetchedAt < AVAILABLE_MODELS_CACHE_TTL_MS) {
+		return cached.models
+	}
 
 	let models: AvailablePiModel[] = []
 	if (agent === 'pi') models = await listAvailableModelsForPi()
-	if (agent === 'claude') models = defaultClaudeModels()
+	if (agent === 'claude') models = await listAvailableModelsForClaude()
 	if (agent === 'opencode') models = await listAvailableModelsForOpencode()
 	if (agent === 'codex') models = listAvailableModelsForCodex()
 
-	availableModelsCache.set(agent, models)
+	availableModelsCache.set(agent, { models, fetchedAt: Date.now() })
 	return models
+}
+
+async function listAvailableModelsForClaude(): Promise<AvailablePiModel[]> {
+	const apiModels = await listAnthropicApiModels()
+	// Aliases first — they always work with the CLI and track the latest release.
+	// Full model IDs from the Models API follow, for pinning a specific model.
+	return [...defaultClaudeModels(), ...apiModels]
+}
+
+async function listAnthropicApiModels(): Promise<AvailablePiModel[]> {
+	const apiKey = process.env.ANTHROPIC_API_KEY
+	if (!apiKey) return []
+	try {
+		const response = await fetch('https://api.anthropic.com/v1/models?limit=100', {
+			headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+			signal: AbortSignal.timeout(8000),
+		})
+		if (!response.ok) return []
+		const payload = (await response.json()) as {
+			data?: Array<{ id?: unknown; display_name?: unknown }>
+		}
+		return (payload.data ?? [])
+			.map((model) => {
+				const id = typeof model.id === 'string' ? model.id : ''
+				return {
+					id,
+					label: typeof model.display_name === 'string' ? `${model.display_name} (${id})` : id,
+					provider: 'claude',
+					model: id,
+				}
+			})
+			.filter((model) => model.id)
+	} catch {
+		return []
+	}
 }
 
 async function listAvailableModelsForPi(): Promise<AvailablePiModel[]> {
@@ -238,7 +315,17 @@ function ensureSettingsFiles() {
 		)
 	}
 	if (!existsSync(instructionsPath)) {
-		writeFileSync(instructionsPath, '')
+		// Migrate the legacy single-instruction markdown file into the named list.
+		const legacyContent = readLegacyInstructions()
+		writeReviewerInstructions([defaultReviewerInstruction(legacyContent)])
+	}
+}
+
+function readLegacyInstructions() {
+	try {
+		return readFileSync(getLegacyInstructionsPath(), 'utf8')
+	} catch {
+		return ''
 	}
 }
 
@@ -277,9 +364,11 @@ function defaultPiModels(): AvailablePiModel[] {
 }
 
 function defaultClaudeModels(): AvailablePiModel[] {
-	return ['sonnet', 'opus', 'haiku'].map((model) => ({
+	// CLI aliases resolve to the latest model in each tier (fable → Claude Fable 5,
+	// opus → Opus 4.8, sonnet → Sonnet 5, haiku → Haiku 4.5).
+	return ['fable', 'opus', 'sonnet', 'haiku'].map((model) => ({
 		id: model,
-		label: model,
+		label: `${model} (latest)`,
 		provider: 'claude',
 		model,
 	}))
@@ -336,7 +425,7 @@ function readCodexModelsCache(): AvailablePiModel[] {
 }
 
 function getDefaultModelForAgent(agent: CodeAgent) {
-	if (agent === 'claude') return defaultClaudeModels()[0]?.id ?? 'sonnet'
+	if (agent === 'claude') return 'opus'
 	if (agent === 'opencode') return defaultOpencodeModels()[0]?.id ?? 'opencode/default'
 	if (agent === 'codex') return defaultCodexModels()[0]?.id ?? 'gpt-5.3-codex'
 	return getDefaultPiModel()
@@ -401,6 +490,10 @@ function getSettingsPath() {
 }
 
 function getInstructionsPath() {
+	return join(getConfigDir(), 'reviewer-instructions.json')
+}
+
+function getLegacyInstructionsPath() {
 	return join(getConfigDir(), 'reviewer-instructions.md')
 }
 

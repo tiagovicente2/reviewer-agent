@@ -41,12 +41,14 @@ function getPullRequestIdentity(
 
 export function useGeneratedReview({
 	detail,
+	instructionId,
 	onPullRequestDetailRefresh,
 	onSummary,
 	onStartGeneration,
 	onUpdatedDiff,
 }: {
 	detail: GitHubPullRequestDetails | null
+	instructionId?: string
 	onPullRequestDetailRefresh: (detail: GitHubPullRequestDetails) => void
 	onSummary: (summary: string) => void
 	onStartGeneration: () => void
@@ -209,6 +211,7 @@ export function useGeneratedReview({
 				]),
 			)
 			const job = await appRpc.request.startReviewGeneration({
+				instructionId,
 				pullRequest: { ...latestDetail, diff: loadedDiff },
 			})
 			setGenerationJobId(job.id)
@@ -222,7 +225,14 @@ export function useGeneratedReview({
 			setGenerationState('error')
 			setGenerationOutputText('')
 		}
-	}, [completeGeneration, detail, onPullRequestDetailRefresh, onStartGeneration, onUpdatedDiff])
+	}, [
+		completeGeneration,
+		detail,
+		instructionId,
+		onPullRequestDetailRefresh,
+		onStartGeneration,
+		onUpdatedDiff,
+	])
 
 	const publishFinding = useCallback(
 		async (finding: ReviewFinding) => {

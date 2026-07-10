@@ -44,7 +44,7 @@ export function SettingsPage({
 				if (cancelled) return
 				setSettings(value)
 				if (!instructionsModeInitializedRef.current) {
-					setInstructionsMode(value.reviewerInstructions.trim() ? 'preview' : 'raw')
+					setInstructionsMode(value.reviewerInstructions[0]?.content.trim() ? 'preview' : 'raw')
 					instructionsModeInitializedRef.current = true
 				}
 				setState('idle')

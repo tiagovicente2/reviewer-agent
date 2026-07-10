@@ -41,6 +41,7 @@ export type GeneratedReview = {
 
 export type GenerateReviewParams = {
 	pullRequest: GitHubPullRequestDetails
+	instructionId?: string
 }
 
 export function getReviewGenerationPullRequestKey(pullRequest: {
