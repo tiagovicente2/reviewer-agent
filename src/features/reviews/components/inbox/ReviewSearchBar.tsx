@@ -109,6 +109,7 @@ function SearchIconButton({
 				fontWeight: 'bold',
 				h: '7',
 				justifyContent: 'center',
+				lineHeight: '1',
 				opacity: disabled ? 0.45 : 1,
 				transition: 'all 120ms ease',
 				w: '7',
