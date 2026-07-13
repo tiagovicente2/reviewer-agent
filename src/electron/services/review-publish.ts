@@ -41,20 +41,20 @@ export async function publishReviewComments(
 		)
 	}
 
-	const results: string[] = []
+	const results = await Promise.all(
+		publishableFindings.map(async (finding) => {
+			const result = await publishFinding(params, finding, latestHeadSha)
+			const output = [result.stdout, result.stderr].filter(Boolean).join('\n').trim()
 
-	for (const finding of publishableFindings) {
-		const result = await publishFinding(params, finding, latestHeadSha)
-		const output = [result.stdout, result.stderr].filter(Boolean).join('\n').trim()
+			if (result.exitCode !== 0) {
+				throw new Error(
+					output || `Failed to publish comment for ${finding.filePath}:${finding.lineStart}.`,
+				)
+			}
 
-		if (result.exitCode !== 0) {
-			throw new Error(
-				output || `Failed to publish comment for ${finding.filePath}:${finding.lineStart}.`,
-			)
-		}
-
-		results.push(`Published comment for ${finding.filePath}:${finding.lineStart}`)
-	}
+			return `Published comment for ${finding.filePath}:${finding.lineStart}`
+		}),
+	)
 
 	return { ok: true, output: results.join('\n') }
 }

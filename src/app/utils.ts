@@ -1,3 +1,8 @@
+const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
+	dateStyle: 'medium',
+	timeStyle: 'short',
+})
+
 export function getErrorMessage(error: unknown) {
 	return error instanceof Error ? error.message : String(error)
 }
@@ -8,8 +13,5 @@ export function formatDate(value: string) {
 		return value
 	}
 
-	return new Intl.DateTimeFormat(undefined, {
-		dateStyle: 'medium',
-		timeStyle: 'short',
-	}).format(date)
+	return dateTimeFormatter.format(date)
 }

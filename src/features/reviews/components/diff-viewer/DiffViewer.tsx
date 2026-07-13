@@ -15,8 +15,10 @@ type DiffViewerProps = {
 	settings: DiffDisplaySettings
 }
 
+const EMPTY_INLINE_COMMENTS: ReviewInlineComment[] = []
+
 export const DiffViewer = memo(function DiffViewer({
-	inlineComments = [],
+	inlineComments = EMPTY_INLINE_COMMENTS,
 	onSelectFile,
 	patch,
 	selectedFilePath,

@@ -254,12 +254,14 @@ function TranscriptLine({ line }: { line: TranscriptLineModel }) {
 	)
 }
 
+const transcriptTimestampFormatter = new Intl.DateTimeFormat(undefined, {
+	hour: '2-digit',
+	hour12: false,
+	minute: '2-digit',
+})
+
 function formatTranscriptTimestamp() {
-	return new Intl.DateTimeFormat(undefined, {
-		hour: '2-digit',
-		hour12: false,
-		minute: '2-digit',
-	}).format(new Date())
+	return transcriptTimestampFormatter.format(new Date())
 }
 
 const transcriptLineTone: Record<

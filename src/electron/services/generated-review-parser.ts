@@ -53,12 +53,10 @@ function assembleGeneratedReviewFromEvents(
 		| Record<string, unknown>
 		| undefined
 	const findings = normalizeFindings(
-		events.filter((event) => event.type === 'finding').map((event) => event.finding ?? event),
+		events.flatMap((event) => (event.type === 'finding' ? [event.finding ?? event] : [])),
 	)
 	const inlineComments = normalizeInlineComments(
-		events
-			.filter((event) => event.type === 'inline_comment')
-			.map((event) => event.comment ?? event),
+		events.flatMap((event) => (event.type === 'inline_comment' ? [event.comment ?? event] : [])),
 	)
 	const summary =
 		typeof summaryEvent?.summary === 'string'
@@ -153,26 +151,29 @@ function normalizeFindings(findings: unknown): ReviewFinding[] {
 		return []
 	}
 
-	return findings
-		.filter((finding) => finding && typeof finding === 'object')
-		.map((finding, index) => {
-			const value = finding as Record<string, unknown>
-			return {
-				body: typeof value.body === 'string' ? value.body : '',
-				codeSnippet: typeof value.codeSnippet === 'string' ? value.codeSnippet : undefined,
-				confidence: typeof value.confidence === 'number' ? value.confidence : 0.5,
-				filePath: typeof value.filePath === 'string' ? value.filePath : '',
-				fixSuggestion: typeof value.fixSuggestion === 'string' ? value.fixSuggestion : undefined,
-				id: typeof value.id === 'string' ? value.id : `finding-${index + 1}`,
-				lineEnd: typeof value.lineEnd === 'number' ? value.lineEnd : undefined,
-				lineStart: typeof value.lineStart === 'number' ? value.lineStart : undefined,
-				severity: isSeverity(value.severity) ? value.severity : 'info',
-				suggestedCommentBody:
-					typeof value.suggestedCommentBody === 'string' ? value.suggestedCommentBody : undefined,
-				title: typeof value.title === 'string' ? value.title : 'Untitled finding',
-			}
-		})
-		.filter((finding) => finding.title && finding.body)
+	const normalized: ReviewFinding[] = []
+	let validFindingIndex = 0
+	for (const finding of findings) {
+		if (!finding || typeof finding !== 'object') continue
+		const value = finding as Record<string, unknown>
+		const normalizedFinding: ReviewFinding = {
+			body: typeof value.body === 'string' ? value.body : '',
+			codeSnippet: typeof value.codeSnippet === 'string' ? value.codeSnippet : undefined,
+			confidence: typeof value.confidence === 'number' ? value.confidence : 0.5,
+			filePath: typeof value.filePath === 'string' ? value.filePath : '',
+			fixSuggestion: typeof value.fixSuggestion === 'string' ? value.fixSuggestion : undefined,
+			id: typeof value.id === 'string' ? value.id : `finding-${validFindingIndex + 1}`,
+			lineEnd: typeof value.lineEnd === 'number' ? value.lineEnd : undefined,
+			lineStart: typeof value.lineStart === 'number' ? value.lineStart : undefined,
+			severity: isSeverity(value.severity) ? value.severity : 'info',
+			suggestedCommentBody:
+				typeof value.suggestedCommentBody === 'string' ? value.suggestedCommentBody : undefined,
+			title: typeof value.title === 'string' ? value.title : 'Untitled finding',
+		}
+		validFindingIndex += 1
+		if (normalizedFinding.title && normalizedFinding.body) normalized.push(normalizedFinding)
+	}
+	return normalized
 }
 
 function normalizeInlineComments(comments: unknown): ReviewInlineComment[] {
@@ -180,28 +181,29 @@ function normalizeInlineComments(comments: unknown): ReviewInlineComment[] {
 		return []
 	}
 
-	return comments
-		.filter((comment) => comment && typeof comment === 'object')
-		.map((comment) => {
-			const value = comment as {
-				author?: unknown
-				body?: unknown
-				createdAt?: unknown
-				line?: unknown
-				path?: unknown
-				side?: unknown
-			}
-			const side: ReviewInlineComment['side'] = value.side === 'LEFT' ? 'LEFT' : 'RIGHT'
-			return {
-				author: typeof value.author === 'string' ? value.author : undefined,
-				body: typeof value.body === 'string' ? value.body : '',
-				createdAt: typeof value.createdAt === 'string' ? value.createdAt : undefined,
-				line: typeof value.line === 'number' ? value.line : 1,
-				path: typeof value.path === 'string' ? value.path : '',
-				side,
-			}
-		})
-		.filter((comment) => comment.path && comment.body)
+	const normalized: ReviewInlineComment[] = []
+	for (const comment of comments) {
+		if (!comment || typeof comment !== 'object') continue
+		const value = comment as {
+			author?: unknown
+			body?: unknown
+			createdAt?: unknown
+			line?: unknown
+			path?: unknown
+			side?: unknown
+		}
+		const side: ReviewInlineComment['side'] = value.side === 'LEFT' ? 'LEFT' : 'RIGHT'
+		const normalizedComment: ReviewInlineComment = {
+			author: typeof value.author === 'string' ? value.author : undefined,
+			body: typeof value.body === 'string' ? value.body : '',
+			createdAt: typeof value.createdAt === 'string' ? value.createdAt : undefined,
+			line: typeof value.line === 'number' ? value.line : 1,
+			path: typeof value.path === 'string' ? value.path : '',
+			side,
+		}
+		if (normalizedComment.path && normalizedComment.body) normalized.push(normalizedComment)
+	}
+	return normalized
 }
 
 function isSeverity(value: unknown): value is GeneratedReview['severity'] {
