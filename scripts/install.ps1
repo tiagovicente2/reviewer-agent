@@ -6,28 +6,29 @@ $Artifact = 'reviewer-agent-windows-x64.zip'
 $Url = "https://github.com/$Repo/releases/latest/download/$Artifact"
 $ChecksumUrl = "https://github.com/$Repo/releases/latest/download/SHA256SUMS"
 $TempDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.Guid]::NewGuid().ToString())
-$ZipPath = Join-Path $TempDir $Artifact
 $ChecksumPath = Join-Path $TempDir 'SHA256SUMS'
 
 function Log($Message) { Write-Host "[reviewer-agent] $Message" }
 
 New-Item -ItemType Directory -Force -Path $TempDir | Out-Null
 try {
-  Log "downloading $Url"
-  Invoke-WebRequest -Uri $Url -OutFile $ZipPath
-  try {
-    Invoke-WebRequest -Uri $ChecksumUrl -OutFile $ChecksumPath
-    $ChecksumLine = Get-Content $ChecksumPath | Where-Object { $_ -match "\s$([regex]::Escape($Artifact))$" } | Select-Object -First 1
-    if ($ChecksumLine) {
-      $ExpectedChecksum = ($ChecksumLine -split '\s+')[0].ToLowerInvariant()
-      $ActualChecksum = (Get-FileHash -Algorithm SHA256 -Path $ZipPath).Hash.ToLowerInvariant()
-      if ($ActualChecksum -ne $ExpectedChecksum) { throw "checksum verification failed for $Artifact" }
-      Log "verified checksum for $Artifact"
-    }
-  }
-  catch {
-    Log "checksums unavailable; skipping verification"
-  }
+	if ($env:REVIEWER_AGENT_ARTIFACT_PATH) {
+		$ZipPath = $env:REVIEWER_AGENT_ARTIFACT_PATH
+		if (-not (Test-Path -LiteralPath $ZipPath -PathType Leaf)) { throw 'verified update archive not found' }
+		Log "using verified update archive: $ZipPath"
+	}
+	else {
+		$ZipPath = Join-Path $TempDir $Artifact
+		Log "downloading $Url"
+		Invoke-WebRequest -Uri $Url -OutFile $ZipPath
+		Invoke-WebRequest -Uri $ChecksumUrl -OutFile $ChecksumPath
+		$ChecksumLine = Get-Content $ChecksumPath | Where-Object { $_ -match "\s$([regex]::Escape($Artifact))$" } | Select-Object -First 1
+		if (-not $ChecksumLine) { throw "checksum file did not include $Artifact" }
+		$ExpectedChecksum = ($ChecksumLine -split '\s+')[0].ToLowerInvariant()
+		$ActualChecksum = (Get-FileHash -Algorithm SHA256 -Path $ZipPath).Hash.ToLowerInvariant()
+		if ($ActualChecksum -ne $ExpectedChecksum) { throw "checksum verification failed for $Artifact" }
+		Log "verified checksum for $Artifact"
+	}
 
   if (Test-Path $InstallDir) { Remove-Item -Recurse -Force $InstallDir }
   New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null

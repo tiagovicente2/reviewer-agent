@@ -65,6 +65,14 @@
 			{
 				"from": "assets/icon.png",
 				"to": "assets/icon.png"
+			},
+			{
+				"from": "scripts/install.sh",
+				"to": "scripts/install.sh"
+			},
+			{
+				"from": "scripts/install.ps1",
+				"to": "scripts/install.ps1"
 			}
 		],
 		"directories": {

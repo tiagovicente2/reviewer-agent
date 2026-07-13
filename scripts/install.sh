@@ -30,26 +30,28 @@ artifact="reviewer-agent-${platform}-${arch}.tar.gz"
 url="https://github.com/${REPO}/releases/latest/download/${artifact}"
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
-
 checksum_url="https://github.com/${REPO}/releases/latest/download/SHA256SUMS"
 
-log "downloading ${url}"
-curl -fL "$url" -o "$tmp_dir/$artifact"
-if curl -fsL "$checksum_url" -o "$tmp_dir/SHA256SUMS"; then
-  expected_checksum="$(awk -v artifact="$artifact" '$2 == artifact { print $1 }' "$tmp_dir/SHA256SUMS")"
-  if [[ -n "$expected_checksum" ]]; then
-    if command -v sha256sum >/dev/null 2>&1; then
-      actual_checksum="$(sha256sum "$tmp_dir/$artifact" | awk '{ print $1 }')"
-    else
-      actual_checksum="$(shasum -a 256 "$tmp_dir/$artifact" | awk '{ print $1 }')"
-    fi
-    [[ "$actual_checksum" == "$expected_checksum" ]] || fail "checksum verification failed for $artifact"
-    log "verified checksum for $artifact"
-  else
-    log "checksum file did not include $artifact; skipping verification"
-  fi
+if [[ -n "${REVIEWER_AGENT_ARTIFACT_PATH:-}" ]]; then
+	[[ -f "$REVIEWER_AGENT_ARTIFACT_PATH" ]] || fail "verified update archive not found"
+	archive_path="$REVIEWER_AGENT_ARTIFACT_PATH"
+	log "using verified update archive: $archive_path"
 else
-  log "checksums unavailable; skipping verification"
+	archive_path="$tmp_dir/$artifact"
+	log "downloading ${url}"
+	curl -fL "$url" -o "$archive_path"
+	curl -fsL "$checksum_url" -o "$tmp_dir/SHA256SUMS" || fail "checksums unavailable"
+	expected_checksum="$(awk -v artifact="$artifact" '$2 == artifact { print $1 }' "$tmp_dir/SHA256SUMS")"
+	[[ -n "$expected_checksum" ]] || fail "checksum file did not include $artifact"
+	if command -v sha256sum >/dev/null 2>&1; then
+		actual_checksum="$(sha256sum "$archive_path" | awk '{ print $1 }')"
+	elif command -v shasum >/dev/null 2>&1; then
+		actual_checksum="$(shasum -a 256 "$archive_path" | awk '{ print $1 }')"
+	else
+		fail "sha256sum or shasum is required"
+	fi
+	[[ "$actual_checksum" == "$expected_checksum" ]] || fail "checksum verification failed for $artifact"
+	log "verified checksum for $artifact"
 fi
 
 linux_sandbox_is_configured() {
@@ -71,11 +73,11 @@ mkdir -p "$INSTALL_DIR"
 if [[ "$preserve_existing_linux_sandbox" == "true" ]]; then
   log "preserving existing Chromium SUID sandbox helper"
   find "$INSTALL_DIR" -mindepth 1 ! -name 'chrome-sandbox' -exec rm -rf {} +
-  tar -xzf "$tmp_dir/$artifact" -C "$INSTALL_DIR" --strip-components=1 --exclude='chrome-sandbox' --exclude='*/chrome-sandbox'
+	tar -xzf "$archive_path" -C "$INSTALL_DIR" --strip-components=1 --exclude='chrome-sandbox' --exclude='*/chrome-sandbox'
 else
-  rm -rf "$INSTALL_DIR"
-  mkdir -p "$INSTALL_DIR"
-  tar -xzf "$tmp_dir/$artifact" -C "$INSTALL_DIR" --strip-components=1
+	rm -rf "$INSTALL_DIR"
+	mkdir -p "$INSTALL_DIR"
+	tar -xzf "$archive_path" -C "$INSTALL_DIR" --strip-components=1
 fi
 
 configure_linux_sandbox() {
