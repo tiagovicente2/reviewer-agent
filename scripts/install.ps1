@@ -20,9 +20,9 @@ try {
 	else {
 		$ZipPath = Join-Path $TempDir $Artifact
 		Log "downloading $Url"
-		Invoke-WebRequest -Uri $Url -OutFile $ZipPath
-		Invoke-WebRequest -Uri $ChecksumUrl -OutFile $ChecksumPath
-		$ChecksumLine = Get-Content $ChecksumPath | Where-Object { $_ -match "\s$([regex]::Escape($Artifact))$" } | Select-Object -First 1
+		Invoke-WebRequest -Uri $Url -OutFile $ZipPath -UseBasicParsing
+		Invoke-WebRequest -Uri $ChecksumUrl -OutFile $ChecksumPath -UseBasicParsing
+		$ChecksumLine = Get-Content $ChecksumPath | Where-Object { $_ -match "\s\*?$([regex]::Escape($Artifact))$" } | Select-Object -First 1
 		if (-not $ChecksumLine) { throw "checksum file did not include $Artifact" }
 		$ExpectedChecksum = ($ChecksumLine -split '\s+')[0].ToLowerInvariant()
 		$ActualChecksum = (Get-FileHash -Algorithm SHA256 -Path $ZipPath).Hash.ToLowerInvariant()

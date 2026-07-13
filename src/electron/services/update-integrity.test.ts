@@ -24,4 +24,15 @@ describe('update integrity', () => {
 		).toBeNull()
 		expect(getExpectedChecksum(manifest, 'missing.tar.gz')).toBeNull()
 	})
+
+	it('accepts checksums marked as binary mode', () => {
+		const checksum = 'B'.repeat(64)
+
+		expect(
+			getExpectedChecksum(
+				`${checksum} *reviewer-agent-windows-x64.zip`,
+				'reviewer-agent-windows-x64.zip',
+			),
+		).toBe(checksum.toLowerCase())
+	})
 })

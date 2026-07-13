@@ -41,7 +41,7 @@ else
 	log "downloading ${url}"
 	curl -fL "$url" -o "$archive_path"
 	curl -fsL "$checksum_url" -o "$tmp_dir/SHA256SUMS" || fail "checksums unavailable"
-	expected_checksum="$(awk -v artifact="$artifact" '$2 == artifact { print $1 }' "$tmp_dir/SHA256SUMS")"
+	expected_checksum="$(awk -v artifact="$artifact" '$2 == artifact || $2 == "*"artifact { print $1 }' "$tmp_dir/SHA256SUMS")"
 	[[ -n "$expected_checksum" ]] || fail "checksum file did not include $artifact"
 	if command -v sha256sum >/dev/null 2>&1; then
 		actual_checksum="$(sha256sum "$archive_path" | awk '{ print $1 }')"
