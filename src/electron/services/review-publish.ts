@@ -41,7 +41,7 @@ export async function publishReviewComments(
 		)
 	}
 
-	const results = await Promise.all(
+	const settlements = await Promise.allSettled(
 		publishableFindings.map(async (finding) => {
 			const result = await publishFinding(params, finding, latestHeadSha)
 			const output = [result.stdout, result.stderr].filter(Boolean).join('\n').trim()
@@ -55,6 +55,21 @@ export async function publishReviewComments(
 			return `Published comment for ${finding.filePath}:${finding.lineStart}`
 		}),
 	)
+	const results: string[] = []
+	const failures: string[] = []
+	for (const settlement of settlements) {
+		if (settlement.status === 'fulfilled') {
+			results.push(settlement.value)
+		} else {
+			failures.push(
+				settlement.reason instanceof Error ? settlement.reason.message : String(settlement.reason),
+			)
+		}
+	}
+
+	if (failures.length > 0) {
+		throw new Error([...results, ...failures].join('\n'))
+	}
 
 	return { ok: true, output: results.join('\n') }
 }
