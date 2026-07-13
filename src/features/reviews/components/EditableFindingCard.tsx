@@ -4,12 +4,8 @@ import { Box, HStack, Stack } from 'styled-system/jsx'
 import { MarkdownContent } from '@/components/markdown/MarkdownContent'
 import { Badge, Button, Textarea } from '@/components/ui'
 import type { ReviewFinding, ReviewInlineComment } from '@/shared/review'
-import {
-	DiffFileView,
-	findPatchFile,
-	parsePatch,
-	reviewDiffDisplaySettings,
-} from './diff-viewer/DiffDisplay'
+import { DiffFileView } from './diff-viewer/DiffDisplay'
+import { findPatchFile, parsePatch, reviewDiffDisplaySettings } from './diff-viewer/diffDisplay'
 import { severityColorPalette } from './reviewUtils'
 
 export function EditableFindingCard({

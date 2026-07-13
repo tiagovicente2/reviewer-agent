@@ -2,19 +2,6 @@ import type { ReactNode } from 'react'
 import { css } from 'styled-system/css'
 import { Box } from 'styled-system/jsx'
 
-export function Metric({ label, value }: { label: string; value: number | string }) {
-	return (
-		<Box bg="gray.2" borderRadius="l2" p="3">
-			<Box color="fg.muted" textStyle="xs">
-				{label}
-			</Box>
-			<Box mt="1" fontWeight="bold" textTransform="capitalize">
-				{value}
-			</Box>
-		</Box>
-	)
-}
-
 export function StatusCard({
 	body,
 	title,

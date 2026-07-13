@@ -7,7 +7,7 @@ import { Button, Card } from '@/components/ui'
 import type { GitHubPullRequestDetails } from '@/shared/github'
 import type { GeneratedReview, ReviewFinding, ReviewInlineComment } from '@/shared/review'
 import { ChangedFilesTree } from './changed-files-tree/ChangedFilesTree'
-import type { DiffDisplaySettings } from './diff-viewer/DiffDisplay'
+import type { DiffDisplaySettings } from './diff-viewer/diffDisplay'
 import { DiffViewer } from './diff-viewer/DiffViewer'
 import { GeneratedFindings } from './GeneratedFindings'
 

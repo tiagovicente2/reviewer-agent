@@ -3,7 +3,8 @@ import { Box, HStack, Stack } from 'styled-system/jsx'
 import { StatusCard } from '@/components/common'
 import { Badge } from '@/components/ui'
 import type { ReviewInlineComment } from '@/shared/review'
-import { type DiffDisplaySettings, DiffFileView, parsePatch } from './DiffDisplay'
+import { DiffFileView } from './DiffDisplay'
+import { type DiffDisplaySettings, parsePatch } from './diffDisplay'
 import { getFileDiffKey, getScrollableParent } from './diffViewerUtils'
 
 type DiffViewerProps = {

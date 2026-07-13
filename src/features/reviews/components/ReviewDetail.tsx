@@ -3,16 +3,18 @@ import { Box, Grid, HStack, Stack } from 'styled-system/jsx'
 import { appRpc } from '@/app/rpc'
 import { useToast } from '@/app/toast'
 import type { AsyncState, ColorMode } from '@/app/types'
-import { formatDate, getErrorMessage } from '@/app/utils'
+import { getErrorMessage } from '@/app/utils'
 import { StatusCard, TabButton } from '@/components/common'
-import { Badge, Button, Card, Select } from '@/components/ui'
+import { Button, Card } from '@/components/ui'
 import type { GitHubPullRequestDetails, GitHubReviewRequest } from '@/shared/github'
 import { formatReviewForExport } from '@/shared/review-export'
 import type { ReviewerInstruction } from '@/shared/settings'
 import { useDiffInlineComments } from '../hooks/useDiffInlineComments'
 import { useGeneratedReview } from '../hooks/useGeneratedReview'
 import { usePullRequestDiff } from '../hooks/usePullRequestDiff'
-import { codeDiffDisplaySettings } from './diff-viewer/DiffDisplay'
+import { codeDiffDisplaySettings } from './diff-viewer/diffDisplay'
+import { ReviewDetailEmptyState } from './ReviewDetailEmptyState'
+import { ReviewDetailHeader } from './ReviewDetailHeader'
 import { CodeTab, ReviewTab, SummaryTab } from './ReviewDetailTabs'
 
 type TabId = 'code' | 'summary' | 'review'
@@ -157,14 +159,7 @@ export function ReviewDetail({
 	}
 
 	if (!review) {
-		return (
-			<Grid h="100%" minH="0" overflowY="auto" placeItems="center" p="8">
-				<StatusCard
-					title="Select a pull request"
-					body="Your GitHub review requests will appear in the inbox."
-				/>
-			</Grid>
-		)
+		return <ReviewDetailEmptyState />
 	}
 
 	return (
@@ -176,60 +171,19 @@ export function ReviewDetail({
 			minW="0"
 			overflow="hidden"
 		>
-			<Box bg="gray.1" px="8" py="3">
-				<Grid gridTemplateColumns="minmax(0, 1fr) auto" alignItems="center" gap="4">
-					<Stack gap="1" minW="0">
-						<HStack flexWrap="wrap" gap="2" color="fg.muted" textStyle="sm">
-							<Badge colorPalette="cyan">requested review</Badge>
-							<Badge colorPalette="gray" variant="surface">
-								{detailState === 'loading' ? 'loading' : review.state}
-							</Badge>
-							<Box>{detail?.changedFilesCount ?? '—'} files</Box>
-							<Box color="green.11">+{detail?.additions ?? '—'}</Box>
-							<Box color="red.11">-{detail?.deletions ?? '—'}</Box>
-							{detail?.headSha ? <Box>head {detail.headSha.slice(0, 7)}</Box> : null}
-						</HStack>
-						<Box as="h2" textStyle="xl" fontWeight="bold" letterSpacing="-0.03em" truncate>
-							#{review.pullRequestNumber} {review.title}
-						</Box>
-						<Box color="fg.muted" textStyle="sm" truncate>
-							{review.repo} by @{review.author} · updated {formatDate(review.updatedAt)}
-						</Box>
-					</Stack>
-
-					<HStack gap="2">
-						{instructions.length > 1 ? (
-							<Select
-								disabled={generationState === 'loading'}
-								onChange={setSelectedInstructionId}
-								options={instructions.map((instruction) => ({
-									label: instruction.name || 'Untitled',
-									value: instruction.id,
-								}))}
-								placeholder="Instructions"
-								value={selectedInstructionId}
-								width="11rem"
-							/>
-						) : null}
-						<Button
-							disabled={!detail || detailState === 'loading'}
-							loading={generationState === 'loading'}
-							onClick={generateReview}
-							size="sm"
-						>
-							{generatedReview ? 'Regenerate review' : 'Generate review'}
-						</Button>
-						<Button onClick={handleOpenOnGitHub} size="sm" variant="outline">
-							Open on GitHub
-						</Button>
-					</HStack>
-				</Grid>
-				{detailError ? (
-					<Box mt="4">
-						<StatusCard tone="red" title="Could not load PR details" body={detailError} />
-					</Box>
-				) : null}
-			</Box>
+			<ReviewDetailHeader
+				detail={detail}
+				detailError={detailError}
+				detailState={detailState}
+				generationState={generationState}
+				hasGeneratedReview={Boolean(generatedReview)}
+				instructions={instructions}
+				onGenerateReview={generateReview}
+				onOpenOnGitHub={handleOpenOnGitHub}
+				onSelectInstruction={setSelectedInstructionId}
+				review={review}
+				selectedInstructionId={selectedInstructionId}
+			/>
 
 			<Grid
 				gridTemplateColumns="minmax(0, 1fr)"
