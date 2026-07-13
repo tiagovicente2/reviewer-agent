@@ -93,8 +93,10 @@ export function normalizeJsonStreamOutput(stdout: string, adapter: JsonStreamAda
 	if (finalText) return finalText
 
 	const streamedText = events
-		.map((event) => adapter.getTextDelta?.(event))
-		.filter(Boolean)
+		.flatMap((event) => {
+			const text = adapter.getTextDelta?.(event)
+			return text ? [text] : []
+		})
 		.join('')
 
 	return streamedText || stdout

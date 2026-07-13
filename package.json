@@ -4,7 +4,8 @@
 	"private": true,
 	"description": "Local-first Electron desktop app for AI-assisted GitHub pull request review drafts.",
 	"type": "module",
-	"packageManager": "pnpm@10.23.0",
+	"source": "src/mainview/main.tsx",
+	"packageManager": "pnpm@10.26.0",
 	"main": "build/electron/index.js",
 	"scripts": {
 		"panda:codegen": "panda codegen",
@@ -52,12 +53,6 @@
 		"vite": "^6.0.3",
 		"vitest": "^4.1.6"
 	},
-	"pnpm": {
-		"onlyBuiltDependencies": [
-			"electron",
-			"esbuild"
-		]
-	},
 	"build": {
 		"appId": "dev.local.reviewer-agent",
 		"productName": "Reviewer Agent",
@@ -70,6 +65,14 @@
 			{
 				"from": "assets/icon.png",
 				"to": "assets/icon.png"
+			},
+			{
+				"from": "scripts/install.sh",
+				"to": "scripts/install.sh"
+			},
+			{
+				"from": "scripts/install.ps1",
+				"to": "scripts/install.ps1"
 			}
 		],
 		"directories": {

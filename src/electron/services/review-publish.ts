@@ -41,19 +41,34 @@ export async function publishReviewComments(
 		)
 	}
 
+	const settlements = await Promise.allSettled(
+		publishableFindings.map(async (finding) => {
+			const result = await publishFinding(params, finding, latestHeadSha)
+			const output = [result.stdout, result.stderr].filter(Boolean).join('\n').trim()
+
+			if (result.exitCode !== 0) {
+				throw new Error(
+					output || `Failed to publish comment for ${finding.filePath}:${finding.lineStart}.`,
+				)
+			}
+
+			return `Published comment for ${finding.filePath}:${finding.lineStart}`
+		}),
+	)
 	const results: string[] = []
-
-	for (const finding of publishableFindings) {
-		const result = await publishFinding(params, finding, latestHeadSha)
-		const output = [result.stdout, result.stderr].filter(Boolean).join('\n').trim()
-
-		if (result.exitCode !== 0) {
-			throw new Error(
-				output || `Failed to publish comment for ${finding.filePath}:${finding.lineStart}.`,
+	const failures: string[] = []
+	for (const settlement of settlements) {
+		if (settlement.status === 'fulfilled') {
+			results.push(settlement.value)
+		} else {
+			failures.push(
+				settlement.reason instanceof Error ? settlement.reason.message : String(settlement.reason),
 			)
 		}
+	}
 
-		results.push(`Published comment for ${finding.filePath}:${finding.lineStart}`)
+	if (failures.length > 0) {
+		throw new Error([...results, ...failures].join('\n'))
 	}
 
 	return { ok: true, output: results.join('\n') }

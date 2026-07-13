@@ -1,5 +1,4 @@
-import type { Dispatch, SetStateAction } from 'react'
-import { useEffect, useState } from 'react'
+import { type Dispatch, type SetStateAction, useState } from 'react'
 import { Box, Grid, Stack } from 'styled-system/jsx'
 import type { AsyncState, ColorMode } from '@/app/types'
 import { StatusCard } from '@/components/common'
@@ -8,7 +7,7 @@ import { Button, Card } from '@/components/ui'
 import type { GitHubPullRequestDetails } from '@/shared/github'
 import type { GeneratedReview, ReviewFinding, ReviewInlineComment } from '@/shared/review'
 import { ChangedFilesTree } from './changed-files-tree/ChangedFilesTree'
-import type { DiffDisplaySettings } from './diff-viewer/DiffDisplay'
+import type { DiffDisplaySettings } from './diff-viewer/diffDisplay'
 import { DiffViewer } from './diff-viewer/DiffViewer'
 import { GeneratedFindings } from './GeneratedFindings'
 
@@ -100,15 +99,6 @@ export function CodeTab({
 	onLoadDiff: () => Promise<string>
 }) {
 	const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null)
-
-	useEffect(() => {
-		if (!detail) {
-			setSelectedFilePath(null)
-			return
-		}
-
-		setSelectedFilePath(null)
-	}, [detail])
 
 	if (detailState === 'loading' || !detail || (!diff && !diffError)) {
 		return (

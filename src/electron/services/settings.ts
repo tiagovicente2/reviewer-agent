@@ -187,17 +187,19 @@ async function listAnthropicApiModels(): Promise<AvailablePiModel[]> {
 		const payload = (await response.json()) as {
 			data?: Array<{ id?: unknown; display_name?: unknown }>
 		}
-		return (payload.data ?? [])
-			.map((model) => {
-				const id = typeof model.id === 'string' ? model.id : ''
-				return {
-					id,
-					label: typeof model.display_name === 'string' ? `${model.display_name} (${id})` : id,
-					provider: 'claude',
-					model: id,
-				}
-			})
-			.filter((model) => model.id)
+		return (payload.data ?? []).flatMap((model) => {
+			const id = typeof model.id === 'string' ? model.id : ''
+			return id
+				? [
+						{
+							id,
+							label: typeof model.display_name === 'string' ? `${model.display_name} (${id})` : id,
+							provider: 'claude',
+							model: id,
+						},
+					]
+				: []
+		})
 	} catch {
 		return []
 	}
@@ -406,19 +408,21 @@ function readCodexModelsCache(): AvailablePiModel[] {
 				visibility?: unknown
 			}>
 		}
-		return (cache.models ?? [])
-			.filter((model) => model.visibility === 'list')
-			.filter((model) => model.supported_in_api !== false)
-			.map((model) => {
-				const slug = typeof model.slug === 'string' ? model.slug : ''
-				return {
+		const models: AvailablePiModel[] = []
+		for (const model of cache.models ?? []) {
+			if (model.visibility !== 'list' || model.supported_in_api === false) continue
+			const slug = typeof model.slug === 'string' ? model.slug : ''
+			const label = typeof model.display_name === 'string' ? model.display_name : slug
+			if (slug && label) {
+				models.push({
 					id: slug,
-					label: typeof model.display_name === 'string' ? model.display_name : slug,
+					label,
 					provider: 'codex',
 					model: slug,
-				}
-			})
-			.filter((model) => model.id && model.label)
+				})
+			}
+		}
+		return models
 	} catch {
 		return []
 	}
