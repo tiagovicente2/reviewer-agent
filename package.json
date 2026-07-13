@@ -4,6 +4,7 @@
 	"private": true,
 	"description": "Local-first Electron desktop app for AI-assisted GitHub pull request review drafts.",
 	"type": "module",
+	"source": "src/mainview/main.tsx",
 	"packageManager": "pnpm@10.23.0",
 	"main": "build/electron/index.js",
 	"scripts": {
