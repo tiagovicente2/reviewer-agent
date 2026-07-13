@@ -304,6 +304,7 @@ export function ReviewDetail({
 						<Card.Body minH="0" overflow="hidden" p="0">
 							<Box display={activeTab === 'code' ? 'block' : 'none'} h="100%" minH="0">
 								<CodeTab
+									key={`${detail?.repo ?? review.repo}#${detail?.pullRequestNumber ?? review.pullRequestNumber}`}
 									colorMode={colorMode}
 									detail={detail}
 									detailState={detailState}
