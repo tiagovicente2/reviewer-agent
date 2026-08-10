@@ -840,7 +840,6 @@ export async function getGitHubPullRequestDiff(
 		String(params.pullRequestNumber),
 		'--repo',
 		params.repo,
-		'--patch',
 		'--color=never',
 	])
 	assertSuccess(diff, 'fetch pull request diff')

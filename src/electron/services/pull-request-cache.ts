@@ -32,6 +32,7 @@ mkdirSync(dirname(cachePath), { recursive: true })
 
 const MAX_PULL_REQUEST_DETAILS = 300
 const MAX_PULL_REQUEST_DIFFS = 150
+const PULL_REQUEST_DIFF_CACHE_VERSION = 2
 
 const cache = loadCache()
 let writeQueued = false
@@ -76,7 +77,7 @@ export function getCachedPullRequestDiff(params: {
 	pullRequestNumber: number
 	headSha: string
 }): string | null {
-	return cache.diffs[getPullRequestCacheKey(params)]?.diff ?? null
+	return cache.diffs[getPullRequestDiffCacheKey(params)]?.diff ?? null
 }
 
 export function saveCachedPullRequestDiff(params: {
@@ -86,7 +87,7 @@ export function saveCachedPullRequestDiff(params: {
 	diff: string
 }) {
 	const now = new Date().toISOString()
-	const id = getPullRequestCacheKey(params)
+	const id = getPullRequestDiffCacheKey(params)
 	cache.diffs[id] = {
 		repo: params.repo,
 		pullRequestNumber: params.pullRequestNumber,
@@ -140,10 +141,16 @@ function pruneCache() {
 	cache.diffs = pruneRecordByUpdatedAt(cache.diffs, MAX_PULL_REQUEST_DIFFS)
 }
 
-function getPullRequestCacheKey(params: {
+type DiffIdentity = {
 	repo: string
 	pullRequestNumber: number
 	headSha: string
-}) {
+}
+
+function getPullRequestCacheKey(params: DiffIdentity) {
 	return `${params.repo}#${params.pullRequestNumber}:${params.headSha}`
+}
+
+function getPullRequestDiffCacheKey(params: DiffIdentity) {
+	return `${getPullRequestCacheKey(params)}:diff-v${PULL_REQUEST_DIFF_CACHE_VERSION}`
 }
