@@ -1,0 +1,74 @@
+import { describe, expect, it } from 'vitest'
+import type { ReviewFinding, ReviewInlineComment } from '@/shared/review'
+import {
+	getLocalReviewProgressOutput,
+	getPullRequestIdentity,
+	isFindingInlineComment,
+	reviewPromptLabel,
+} from './reviewGenerationUtils'
+
+const finding: ReviewFinding = {
+	id: 'finding-1',
+	severity: 'high',
+	title: 'Guard the result',
+	filePath: 'src/example.ts',
+	lineStart: 42,
+	body: 'Long explanation',
+	suggestedCommentBody: ' Add a guard here. ',
+	confidence: 0.95,
+}
+
+const inlineComment: ReviewInlineComment = {
+	path: 'src/example.ts',
+	line: 42,
+	side: 'RIGHT',
+	body: 'Add a guard here.',
+}
+
+describe('getLocalReviewProgressOutput', () => {
+	it('formats local progress with the review prompt and transcript markers', () => {
+		expect(getLocalReviewProgressOutput(['Loading the diff...', 'Starting generation...'])).toBe(
+			`${reviewPromptLabel}\n\n:: Loading the diff...\n:: Starting generation...\n`,
+		)
+	})
+
+	it('preserves the empty progress transcript format', () => {
+		expect(getLocalReviewProgressOutput([])).toBe(`${reviewPromptLabel}\n\n\n`)
+	})
+})
+
+describe('getPullRequestIdentity', () => {
+	it('combines the repository and pull request number', () => {
+		expect(
+			getPullRequestIdentity({ repo: 'earendil/reviewer-agent', pullRequestNumber: 123 }),
+		).toBe('earendil/reviewer-agent#123')
+	})
+})
+
+describe('isFindingInlineComment', () => {
+	it('matches the exact path, right-side line, and trimmed suggested body', () => {
+		expect(isFindingInlineComment(finding, inlineComment)).toBe(true)
+		expect(
+			isFindingInlineComment(finding, { ...inlineComment, body: '  Add a guard here.  ' }),
+		).toBe(true)
+	})
+
+	it('rejects comments that differ by path, side, line, or body', () => {
+		expect(isFindingInlineComment(finding, { ...inlineComment, path: 'src/other.ts' })).toBe(false)
+		expect(isFindingInlineComment(finding, { ...inlineComment, side: 'LEFT' })).toBe(false)
+		expect(isFindingInlineComment(finding, { ...inlineComment, line: 43 })).toBe(false)
+		expect(isFindingInlineComment(finding, { ...inlineComment, body: 'Long explanation' })).toBe(
+			false,
+		)
+	})
+
+	it('falls back to the finding body when no suggested body is present', () => {
+		const findingWithoutSuggestion = { ...finding, suggestedCommentBody: undefined }
+		expect(
+			isFindingInlineComment(findingWithoutSuggestion, {
+				...inlineComment,
+				body: ' Long explanation ',
+			}),
+		).toBe(true)
+	})
+})
