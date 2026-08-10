@@ -10,7 +10,7 @@ import { useGeneratedReview } from '../hooks/useGeneratedReview'
 import { usePullRequestDiff } from '../hooks/usePullRequestDiff'
 import { useReviewExport } from '../hooks/useReviewExport'
 import { useReviewerInstructions } from '../hooks/useReviewerInstructions'
-import { codeDiffDisplaySettings } from './diff-viewer/diffDisplay'
+import { codeDiffDisplaySettings } from './diff-viewer/diffDisplayUtils'
 import { ReviewDetailEmptyState } from './ReviewDetailEmptyState'
 import { ReviewDetailHeader } from './ReviewDetailHeader'
 import {

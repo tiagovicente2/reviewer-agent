@@ -4,7 +4,7 @@ import { StatusCard } from '@/components/common'
 import { Badge } from '@/components/ui'
 import type { ReviewInlineComment } from '@/shared/review'
 import { DiffFileView } from './DiffDisplay'
-import { type DiffDisplaySettings, parsePatch } from './diffDisplay'
+import { type DiffDisplaySettings, parsePatch } from './diffDisplayUtils'
 import { getFileDiffKey, getScrollableParent } from './diffViewerUtils'
 
 type DiffViewerProps = {

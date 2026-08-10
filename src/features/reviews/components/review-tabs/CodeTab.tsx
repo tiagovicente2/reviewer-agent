@@ -7,7 +7,7 @@ import type { GitHubPullRequestDetails } from '@/shared/github'
 import type { ReviewInlineComment } from '@/shared/review'
 import { ChangedFilesTree } from '../changed-files-tree/ChangedFilesTree'
 import { DiffViewer } from '../diff-viewer/DiffViewer'
-import type { DiffDisplaySettings } from '../diff-viewer/diffDisplay'
+import type { DiffDisplaySettings } from '../diff-viewer/diffDisplayUtils'
 
 export function CodeTab({
 	colorMode,

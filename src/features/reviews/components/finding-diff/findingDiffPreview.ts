@@ -1,5 +1,5 @@
 import type { FileDiffMetadata } from '@pierre/diffs'
-import { parsePatch } from '../diff-viewer/diffDisplay'
+import { parsePatch } from '../diff-viewer/diffDisplayUtils'
 
 type FocusedPatchLine = {
 	additionLineNumber?: number

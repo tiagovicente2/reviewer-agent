@@ -1,7 +1,7 @@
 import { Box } from 'styled-system/jsx'
 import type { ReviewFinding, ReviewInlineComment } from '@/shared/review'
 import { DiffFileView } from '../diff-viewer/DiffDisplay'
-import { findPatchFile, reviewDiffDisplaySettings } from '../diff-viewer/diffDisplay'
+import { findPatchFile, reviewDiffDisplaySettings } from '../diff-viewer/diffDisplayUtils'
 import { getFocusedFileDiff } from './findingDiffPreview'
 
 export function FindingDiffPreview({
