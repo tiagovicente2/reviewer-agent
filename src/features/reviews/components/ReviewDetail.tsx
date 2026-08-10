@@ -1,26 +1,38 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Box, Grid, HStack, Stack } from 'styled-system/jsx'
 import { appRpc } from '@/app/rpc'
-import { useToast } from '@/app/toast'
 import type { AsyncState, ColorMode } from '@/app/types'
-import { getErrorMessage } from '@/app/utils'
 import { StatusCard, TabButton } from '@/components/common'
-import { Button, Card } from '@/components/ui'
+import { Card } from '@/components/ui'
 import type { GitHubPullRequestDetails, GitHubReviewRequest } from '@/shared/github'
-import { formatReviewForExport } from '@/shared/review-export'
-import type { ReviewerInstruction } from '@/shared/settings'
 import { useDiffInlineComments } from '../hooks/useDiffInlineComments'
 import { useGeneratedReview } from '../hooks/useGeneratedReview'
 import { usePullRequestDiff } from '../hooks/usePullRequestDiff'
+import { useReviewExport } from '../hooks/useReviewExport'
+import { useReviewerInstructions } from '../hooks/useReviewerInstructions'
 import { codeDiffDisplaySettings } from './diff-viewer/diffDisplay'
 import { ReviewDetailEmptyState } from './ReviewDetailEmptyState'
 import { ReviewDetailHeader } from './ReviewDetailHeader'
+import {
+	ConfirmSubmitReviewModal,
+	type PendingSubmitAction,
+} from './review-detail/ConfirmSubmitReviewModal'
+import { ReviewTabActions } from './review-detail/ReviewTabActions'
 import { CodeTab } from './review-tabs/CodeTab'
 import { ReviewTab } from './review-tabs/ReviewTab'
 import { SummaryTab } from './review-tabs/summary/SummaryTab'
 
 type TabId = 'code' | 'summary' | 'review'
-type PendingSubmitAction = 'approve' | 'request_changes' | null
+
+type ReviewDetailProps = {
+	colorMode: ColorMode
+	detail: GitHubPullRequestDetails | null
+	detailError: string
+	detailState: AsyncState
+	onPullRequestDetailRefresh: (detail: GitHubPullRequestDetails) => void
+	review: GitHubReviewRequest | null
+	setSummary: (summary: string) => void
+}
 
 export function ReviewDetail({
 	colorMode,
@@ -30,45 +42,14 @@ export function ReviewDetail({
 	onPullRequestDetailRefresh,
 	review,
 	setSummary,
-}: {
-	colorMode: ColorMode
-	detail: GitHubPullRequestDetails | null
-	detailError: string
-	detailState: AsyncState
-	onPullRequestDetailRefresh: (detail: GitHubPullRequestDetails) => void
-	review: GitHubReviewRequest | null
-	setSummary: (summary: string) => void
-}) {
+}: ReviewDetailProps) {
 	const [activeTab, setActiveTab] = useState<TabId>('summary')
 	const [pendingSubmitAction, setPendingSubmitAction] = useState<PendingSubmitAction>(null)
-	const [exportState, setExportState] = useState<AsyncState>('idle')
-	const [exportError, setExportError] = useState('')
 	const [reviewDecisionBody, setReviewDecisionBody] = useState('')
-	const { showToast } = useToast()
 	const { diff, diffError, diffState, loadDiff, setLoadedDiff } = usePullRequestDiff(detail)
 	const handleGenerationStart = useCallback(() => setActiveTab('review'), [])
-	const [instructions, setInstructions] = useState<ReviewerInstruction[]>([])
-	const [selectedInstructionId, setSelectedInstructionId] = useState('')
-
-	useEffect(() => {
-		let cancelled = false
-		appRpc.request
-			.getAppSettings()
-			.then((settings) => {
-				if (cancelled) return
-				setInstructions(settings.reviewerInstructions)
-				setSelectedInstructionId(
-					(current) =>
-						settings.reviewerInstructions.find((instruction) => instruction.id === current)?.id ??
-						settings.reviewerInstructions[0]?.id ??
-						'',
-				)
-			})
-			.catch(Object)
-		return () => {
-			cancelled = true
-		}
-	}, [])
+	const { instructions, selectedInstructionId, setSelectedInstructionId } =
+		useReviewerInstructions()
 	const {
 		generateReview,
 		generatedReview,
@@ -89,6 +70,10 @@ export function ReviewDetail({
 		onStartGeneration: handleGenerationStart,
 		onSummary: setSummary,
 		onUpdatedDiff: setLoadedDiff,
+	})
+	const { copyReviewToClipboard, exportError, exportState, saveReviewToFile } = useReviewExport({
+		detail,
+		generatedReview,
 	})
 	const diffInlineComments = useDiffInlineComments(generatedReview)
 	const publishableFindings = useMemo(
@@ -125,39 +110,6 @@ export function ReviewDetail({
 		}
 
 		setPendingSubmitAction(null)
-	}
-
-	const copyReviewToClipboard = async () => {
-		if (!detail || !generatedReview) return
-		setExportState('loading')
-		setExportError('')
-		try {
-			await navigator.clipboard.writeText(
-				formatReviewForExport({ pullRequest: detail, review: generatedReview }),
-			)
-			setExportState('idle')
-			showToast({ title: 'Review copied', tone: 'success' })
-		} catch (unknownError) {
-			setExportError(getErrorMessage(unknownError))
-			setExportState('error')
-		}
-	}
-
-	const saveReviewToFile = async () => {
-		if (!detail || !generatedReview) return
-		setExportState('loading')
-		setExportError('')
-		try {
-			const result = await appRpc.request.exportReviewToFile({
-				pullRequest: detail,
-				review: generatedReview,
-			})
-			setExportState('idle')
-			showToast({ title: 'Review exported', description: result.filePath, tone: 'success' })
-		} catch (unknownError) {
-			setExportError(getErrorMessage(unknownError))
-			setExportState('error')
-		}
 	}
 
 	if (!review) {
@@ -216,44 +168,18 @@ export function ReviewDetail({
 									</TabButton>
 								</HStack>
 								{activeTab === 'review' && generatedReview ? (
-									<HStack gap="2">
-										<Button
-											disabled={!detail || exportState === 'loading'}
-											onClick={() => void copyReviewToClipboard()}
-											size="sm"
-											variant="outline"
-										>
-											Copy
-										</Button>
-										<Button
-											disabled={!detail}
-											loading={exportState === 'loading'}
-											onClick={() => void saveReviewToFile()}
-											size="sm"
-											variant="outline"
-										>
-											Export
-										</Button>
-										<Button
-											disabled={!detail || detailState === 'loading'}
-											loading={submittingReviewEvent === 'approve'}
-											onClick={() => setPendingSubmitAction('approve')}
-											size="sm"
-											variant="outline"
-										>
-											Approve
-										</Button>
-										{publishableFindings.length ? (
-											<Button
-												disabled={!detail || detailState === 'loading'}
-												loading={submittingReviewEvent === 'request_changes'}
-												onClick={() => setPendingSubmitAction('request_changes')}
-												size="sm"
-											>
-												Request changes
-											</Button>
-										) : null}
-									</HStack>
+									<ReviewTabActions
+										approving={submittingReviewEvent === 'approve'}
+										canExportReview={Boolean(detail)}
+										exporting={exportState === 'loading'}
+										hasPublishableFindings={Boolean(publishableFindings.length)}
+										onApprove={() => setPendingSubmitAction('approve')}
+										onCopy={() => void copyReviewToClipboard()}
+										onExport={() => void saveReviewToFile()}
+										onRequestChanges={() => setPendingSubmitAction('request_changes')}
+										requestingChanges={submittingReviewEvent === 'request_changes'}
+										submissionDisabled={!detail || detailState === 'loading'}
+									/>
 								) : null}
 							</HStack>
 						</Card.Header>
@@ -318,68 +244,6 @@ export function ReviewDetail({
 					submitting={submittingReviewEvent === pendingSubmitAction}
 				/>
 			) : null}
-		</Box>
-	)
-}
-
-function ConfirmSubmitReviewModal({
-	action,
-	findingsCount,
-	onClose,
-	onConfirm,
-	submitting,
-}: {
-	action: Exclude<PendingSubmitAction, null>
-	findingsCount: number
-	onClose: () => void
-	onConfirm: () => void
-	submitting: boolean
-}) {
-	const isRequestChanges = action === 'request_changes'
-
-	return (
-		<Box
-			alignItems="center"
-			bg="black/40"
-			display="flex"
-			inset="0"
-			justifyContent="center"
-			onClick={submitting ? undefined : onClose}
-			position="fixed"
-			zIndex="modal"
-		>
-			<Box
-				bg="gray.1"
-				borderColor="gray.4"
-				borderRadius="l3"
-				borderWidth="1px"
-				boxShadow="2xl"
-				maxW="28rem"
-				onClick={(event) => event.stopPropagation()}
-				p="6"
-				w="100%"
-			>
-				<Stack gap="4">
-					<Box>
-						<Box fontWeight="bold" textStyle="lg">
-							{isRequestChanges ? 'Request changes?' : 'Approve pull request?'}
-						</Box>
-						<Box color="fg.muted" mt="1" textStyle="sm">
-							{isRequestChanges
-								? `This will submit a request changes review with ${findingsCount} generated inline comment${findingsCount === 1 ? '' : 's'}.`
-								: 'This will approve the pull request on GitHub.'}
-						</Box>
-					</Box>
-					<HStack gap="2" justify="flex-end">
-						<Button disabled={submitting} onClick={onClose} variant="outline">
-							Cancel
-						</Button>
-						<Button loading={submitting} onClick={onConfirm}>
-							{isRequestChanges ? 'Request changes' : 'Approve'}
-						</Button>
-					</HStack>
-				</Stack>
-			</Box>
 		</Box>
 	)
 }
