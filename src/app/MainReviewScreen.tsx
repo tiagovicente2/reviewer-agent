@@ -76,7 +76,10 @@ export function MainReviewScreen({
 }: MainReviewScreenProps) {
 	return (
 		<Grid
-			gridTemplateColumns={{ base: 'minmax(0, 1fr)', lg: '24rem minmax(0, 1fr)' }}
+			gridTemplateColumns={{
+				base: 'minmax(0, 1fr)',
+				lg: 'clamp(24rem, 36vw, 34rem) minmax(0, 1fr)',
+			}}
 			h="100%"
 			minH="0"
 			minW="0"
@@ -95,6 +98,7 @@ export function MainReviewScreen({
 				reviews={displayedReviews}
 				reviewPrState={reviewPrState}
 				reviewsState={reviewsState}
+				searchActive={searchActive}
 				searchMode={searchMode}
 				showResetAction={searchActive && query.trim() === activeSearchQuery}
 				selectedReviewId={selectedReviewId}

@@ -246,18 +246,47 @@ export async function startGitHubLogin(): Promise<GitHubLoginResult> {
 	}
 }
 
-function toReviewRequest(item: {
-	id?: string
-	repository?: unknown
-	number: number
-	title: string
-	author?: unknown
-	url: string
-	updatedAt?: string
-	state: string
-	isDraft?: boolean
-}): GitHubReviewRequest {
+type ReviewRequestReviewer = {
+	__typename?: string
+	login?: string
+	name?: string
+	slug?: string
+	organization?: { login?: string }
+}
+
+function toReviewRequest(
+	item: {
+		id?: string
+		repository?: unknown
+		number: number
+		title: string
+		author?: unknown
+		url: string
+		updatedAt?: string
+		state: string
+		isDraft?: boolean
+		reviewRequests?: { nodes?: Array<{ requestedReviewer?: ReviewRequestReviewer }> }
+	},
+	viewerLogin?: string,
+): GitHubReviewRequest {
 	const repo = getRepoName(item.repository)
+	const requestedReviewers = (item.reviewRequests?.nodes ?? [])
+		.map((request) => request.requestedReviewer)
+		.filter((reviewer): reviewer is ReviewRequestReviewer => Boolean(reviewer))
+	const hasDirectRequest = requestedReviewers.some(
+		(reviewer) =>
+			reviewer.__typename === 'User' &&
+			reviewer.login?.toLowerCase() === viewerLogin?.toLowerCase(),
+	)
+	const requestedTeams = requestedReviewers
+		.filter((reviewer) => reviewer.__typename === 'Team')
+		.map((team) =>
+			team.organization?.login && team.slug
+				? `${team.organization.login}/${team.slug}`
+				: (team.name ?? team.slug),
+		)
+		.filter((team): team is string => Boolean(team))
+
 	return {
 		id: item.id ?? `${repo}#${item.number}`,
 		repo,
@@ -268,6 +297,12 @@ function toReviewRequest(item: {
 		updatedAt: item.updatedAt ?? new Date().toISOString(),
 		state: item.state,
 		isDraft: item.isDraft ?? false,
+		...(item.reviewRequests
+			? {
+					reviewRequestType: hasDirectRequest ? ('direct' as const) : ('team' as const),
+					requestedTeams,
+				}
+			: {}),
 	}
 }
 
@@ -308,30 +343,65 @@ export async function listGitHubReviewRequests(): Promise<GitHubReviewRequest[]>
 		)
 	}
 
-	const result = await runGh([
-		'search',
-		'prs',
-		'--review-requested=@me',
-		'--state=open',
-		'--limit=50',
-		'--json',
-		'repository,number,title,author,url,updatedAt,state,isDraft,id',
-	])
+	const query = `
+query {
+  viewer { login }
+  search(type: ISSUE, first: 50, query: "is:pr is:open review-requested:@me") {
+    nodes {
+      ... on PullRequest {
+        id
+        number
+        title
+        url
+        updatedAt
+        isDraft
+        state
+        author { login }
+        repository { nameWithOwner }
+        reviewRequests(first: 100) {
+          nodes {
+            requestedReviewer {
+              __typename
+              ... on User { login }
+              ... on Team {
+                name
+                slug
+                organization { login }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}`
+	const result = await runGh(['api', 'graphql', '-f', `query=${query}`])
 	assertSuccess(result, 'list pull requests requesting your review')
 
-	const parsed = JSON.parse(result.stdout) as Array<{
-		id?: string
-		repository?: unknown
-		number: number
-		title: string
-		author?: unknown
-		url: string
-		updatedAt: string
-		state: string
-		isDraft?: boolean
-	}>
+	const parsed = JSON.parse(result.stdout) as {
+		data?: {
+			viewer?: { login?: string }
+			search?: {
+				nodes?: Array<{
+					id?: string
+					repository?: unknown
+					number: number
+					title: string
+					author?: unknown
+					url: string
+					updatedAt: string
+					state: string
+					isDraft?: boolean
+					reviewRequests?: {
+						nodes?: Array<{ requestedReviewer?: ReviewRequestReviewer }>
+					}
+				}>
+			}
+		}
+	}
+	const viewerLogin = parsed.data?.viewer?.login ?? authStatus.username
 
-	return parsed.map(toReviewRequest)
+	return (parsed.data?.search?.nodes ?? []).map((item) => toReviewRequest(item, viewerLogin))
 }
 
 export async function searchGitHubPullRequests(params: {

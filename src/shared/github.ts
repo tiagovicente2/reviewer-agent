@@ -22,6 +22,8 @@ export type GitHubReviewRequest = {
 	updatedAt: string
 	state: string
 	isDraft: boolean
+	reviewRequestType?: 'direct' | 'team'
+	requestedTeams?: string[]
 }
 
 export type GitHubPullRequestReview = {

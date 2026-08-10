@@ -20,6 +20,7 @@ export function ReviewInbox({
 	reviews,
 	reviewPrState,
 	reviewsState,
+	searchActive,
 	searchMode,
 	showResetAction,
 	selectedReviewId,
@@ -39,6 +40,7 @@ export function ReviewInbox({
 	reviews: GitHubReviewRequest[]
 	reviewPrState: AsyncState
 	reviewsState: AsyncState
+	searchActive: boolean
 	searchMode: SearchMode
 	showResetAction: boolean
 	selectedReviewId: string | null
@@ -78,6 +80,7 @@ export function ReviewInbox({
 					showResetAction={showResetAction}
 				/>
 				<ReviewRequestList
+					groupByReviewRequest={!searchActive}
 					onSelectReview={onSelectReview}
 					reviews={reviews}
 					reviewsState={reviewsState}
