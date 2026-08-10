@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getTranscriptLines, parseTranscriptLine } from './reviewTranscript'
+import { getTranscriptLines, parseTranscriptLine } from './reviewTranscriptUtils'
 
 describe('parseTranscriptLine', () => {
 	it.each([

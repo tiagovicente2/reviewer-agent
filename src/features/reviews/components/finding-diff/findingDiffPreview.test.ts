@@ -1,7 +1,7 @@
 import type { FileDiffMetadata } from '@pierre/diffs'
 import { describe, expect, it } from 'vitest'
 import { parsePatch } from '../diff-viewer/diffDisplayUtils'
-import { getFocusedFileDiff } from './findingDiffPreview'
+import { getFocusedFileDiff } from './findingDiffPreviewUtils'
 
 function getFileDiff(patch: string) {
 	const fileDiff = parsePatch(patch).files[0]

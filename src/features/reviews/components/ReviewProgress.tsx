@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Box, HStack, Stack } from 'styled-system/jsx'
 import { ReviewTranscript } from './review-progress/ReviewTranscript'
-import { getTranscriptLines } from './review-progress/reviewTranscript'
+import { getTranscriptLines } from './review-progress/reviewTranscriptUtils'
 
 const reviewFrames = ['[ === ]', '[ ==  ]', '[ =   ]', '[ ==  ]', '[ === ]', '[  == ]', '[   = ]']
 

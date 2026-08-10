@@ -1,6 +1,6 @@
 import { useCallback, useLayoutEffect, useRef } from 'react'
 import { Box, HStack, Stack } from 'styled-system/jsx'
-import { type TranscriptLineModel, transcriptLineTone } from './reviewTranscript'
+import { type TranscriptLineModel, transcriptLineTone } from './reviewTranscriptUtils'
 
 export function ReviewTranscript({ lines }: { lines: TranscriptLineModel[] }) {
 	const transcriptRef = useRef<HTMLDivElement | null>(null)
