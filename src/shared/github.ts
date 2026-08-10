@@ -32,6 +32,11 @@ export type GitHubPullRequestReview = {
 	submittedAt?: string
 }
 
+export type GitHubPullRequestReviewRequest = {
+	login: string
+	type: 'user' | 'team'
+}
+
 export type GitHubPullRequestReviewThread = {
 	id: string
 	path?: string
@@ -63,6 +68,7 @@ export type GitHubPullRequestDetails = {
 	deletions: number
 	reviewDecision?: string
 	reviews: GitHubPullRequestReview[]
+	reviewRequests: GitHubPullRequestReviewRequest[]
 	reviewThreads: GitHubPullRequestReviewThread[]
 	files: Array<{
 		path: string

@@ -24,6 +24,7 @@ const pullRequest: GitHubPullRequestDetails = {
 	headSha: 'head-sha',
 	isDraft: false,
 	reviews: [],
+	reviewRequests: [],
 	state: 'OPEN',
 	title: 'Test pull request',
 	url: 'https://github.com/owner/repo/pull/7',

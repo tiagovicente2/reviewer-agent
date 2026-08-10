@@ -12,6 +12,7 @@ const MAX_SHORT_TEXT_LENGTH = 2_000
 const MAX_LONG_TEXT_LENGTH = 100_000
 const MAX_DIFF_LENGTH = 1_000_000
 const MAX_FINDINGS = 100
+const MAX_REVIEW_REQUESTS = 100
 const MAX_REVIEW_THREADS = 100
 const MAX_REVIEW_THREAD_COMMENTS = 20
 const MAX_REVIEWER_INSTRUCTIONS = 50
@@ -264,6 +265,11 @@ function assertPullRequestDetails(value: unknown) {
 	assertNonNegativeInteger(value.deletions, 'pullRequest.deletions')
 	assertOptionalString(value.reviewDecision, 'pullRequest.reviewDecision')
 	if (!Array.isArray(value.reviews)) throw new Error('Expected pullRequest.reviews to be an array.')
+	if (!Array.isArray(value.reviewRequests))
+		throw new Error('Expected pullRequest.reviewRequests to be an array.')
+	if (value.reviewRequests.length > MAX_REVIEW_REQUESTS)
+		throw new Error('Too many pull request review requests.')
+	for (const request of value.reviewRequests) assertReviewRequest(request)
 	if (!Array.isArray(value.reviewThreads))
 		throw new Error('Expected pullRequest.reviewThreads to be an array.')
 	if (value.reviewThreads.length > MAX_REVIEW_THREADS) throw new Error('Too many review threads.')
@@ -317,6 +323,14 @@ function assertPullRequestFile(value: unknown) {
 	assertString(value.path, 'pullRequest.files.path')
 	assertNonNegativeInteger(value.additions, 'pullRequest.files.additions')
 	assertNonNegativeInteger(value.deletions, 'pullRequest.files.deletions')
+}
+
+function assertReviewRequest(value: unknown) {
+	assertPlainObject(value)
+	assertString(value.login, 'pullRequest.reviewRequests.login')
+	if (!['user', 'team'].includes(String(value.type))) {
+		throw new Error('Invalid pull request review request type.')
+	}
 }
 
 function assertReviewThread(value: unknown) {

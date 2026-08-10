@@ -15,7 +15,9 @@ import { usePullRequestDiff } from '../hooks/usePullRequestDiff'
 import { codeDiffDisplaySettings } from './diff-viewer/diffDisplay'
 import { ReviewDetailEmptyState } from './ReviewDetailEmptyState'
 import { ReviewDetailHeader } from './ReviewDetailHeader'
-import { CodeTab, ReviewTab, SummaryTab } from './ReviewDetailTabs'
+import { CodeTab } from './review-tabs/CodeTab'
+import { ReviewTab } from './review-tabs/ReviewTab'
+import { SummaryTab } from './review-tabs/summary/SummaryTab'
 
 type TabId = 'code' | 'summary' | 'review'
 type PendingSubmitAction = 'approve' | 'request_changes' | null
@@ -187,17 +189,17 @@ export function ReviewDetail({
 
 			<Grid
 				gridTemplateColumns="minmax(0, 1fr)"
-				gap="4"
+				gap="2"
 				minH="0"
 				minW="0"
 				overflow="hidden"
-				px="8"
-				pb="8"
-				pt="4"
+				px="4"
+				pb="4"
+				pt="2"
 			>
-				<Stack gap="5" minH="0" minW="0">
+				<Stack gap="2" minH="0" minW="0">
 					<Card.Root bg="transparent" h="100%" minH="0" overflow="hidden" variant="subtle">
-						<Card.Header p="0" pb="4">
+						<Card.Header p="0" pb="2">
 							<HStack justify="space-between" gap="3" w="100%">
 								<HStack gap="0.5" p="0.5" bg="gray.2" borderRadius="l1" width="fit-content">
 									<TabButton
@@ -271,7 +273,7 @@ export function ReviewDetail({
 								/>
 							</Box>
 							<Box display={activeTab === 'summary' ? 'block' : 'none'} h="100%" minH="0">
-								<SummaryTab detail={detail} />
+								<SummaryTab detail={detail} detailState={detailState} />
 							</Box>
 							<Box display={activeTab === 'review' ? 'block' : 'none'} h="100%" minH="0">
 								{exportState === 'error' ? (

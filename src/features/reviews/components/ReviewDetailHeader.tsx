@@ -31,12 +31,14 @@ export function ReviewDetailHeader({
 	review: GitHubReviewRequest
 	selectedInstructionId: string
 }) {
+	const reviewStatus = getPullRequestReviewStatus(detail)
+
 	return (
-		<Box bg="gray.1" px="8" py="3">
+		<Box bg="gray.1" px="4" py="2">
 			<Grid gridTemplateColumns="minmax(0, 1fr) auto" alignItems="center" gap="4">
 				<Stack gap="1" minW="0">
 					<HStack flexWrap="wrap" gap="2" color="fg.muted" textStyle="sm">
-						<Badge colorPalette="cyan">requested review</Badge>
+						<Badge colorPalette={reviewStatus.colorPalette}>{reviewStatus.label}</Badge>
 						<Badge colorPalette="gray" variant="surface">
 							{detailState === 'loading' ? 'loading' : review.state}
 						</Badge>
@@ -87,4 +89,23 @@ export function ReviewDetailHeader({
 			) : null}
 		</Box>
 	)
+}
+
+function getPullRequestReviewStatus(detail: GitHubPullRequestDetails | null): {
+	colorPalette: 'cyan' | 'green' | 'red' | 'gray'
+	label: string
+} {
+	if (detail?.reviewDecision === 'CHANGES_REQUESTED') {
+		return { colorPalette: 'red', label: 'changes requested' }
+	}
+	if (detail?.reviewDecision === 'APPROVED') {
+		return { colorPalette: 'green', label: 'approved' }
+	}
+	if (detail?.reviewRequests.length) {
+		return { colorPalette: 'cyan', label: 'review requested' }
+	}
+	if (detail?.reviews.length) {
+		return { colorPalette: 'gray', label: 'reviewed' }
+	}
+	return { colorPalette: 'cyan', label: 'review requested' }
 }

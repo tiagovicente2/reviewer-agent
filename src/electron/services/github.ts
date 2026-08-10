@@ -5,6 +5,7 @@ import type {
 	GitHubPullRequestDetails,
 	GitHubPullRequestDetailsParams,
 	GitHubPullRequestDiffParams,
+	GitHubPullRequestReviewRequest,
 	GitHubPullRequestReviewThread,
 	GitHubReviewRequest,
 } from '@/shared/github'
@@ -575,7 +576,7 @@ export async function getGitHubPullRequestDetails(
 	params: GitHubPullRequestDetailsParams,
 ): Promise<GitHubPullRequestDetails> {
 	const cached = getCachedPullRequestDetails(params)
-	if (!params.forceRefresh && cached?.reviewThreads) {
+	if (!params.forceRefresh && cached?.reviewThreads && cached.reviewRequests) {
 		return {
 			...cached,
 			body: rewriteGitHubAssetUrls(cached.body, params.repo),
@@ -590,7 +591,7 @@ export async function getGitHubPullRequestDetails(
 		'--repo',
 		params.repo,
 		'--json',
-		'title,author,url,body,state,isDraft,headRefOid,headRefName,baseRefName,changedFiles,additions,deletions,files,number,reviewDecision,reviews',
+		'title,author,url,body,state,isDraft,headRefOid,headRefName,baseRefName,changedFiles,additions,deletions,files,number,reviewDecision,reviewRequests,reviews',
 	])
 	assertSuccess(view, 'fetch pull request details')
 
@@ -610,6 +611,12 @@ export async function getGitHubPullRequestDetails(
 		deletions?: number
 		files?: Array<{ path?: string; additions?: number; deletions?: number }>
 		reviewDecision?: string
+		reviewRequests?: Array<{
+			__typename?: string
+			login?: string
+			name?: string
+			slug?: string
+		}>
 		reviews?: Array<{ author?: unknown; state?: string; submittedAt?: string }>
 	}
 
@@ -640,6 +647,9 @@ export async function getGitHubPullRequestDetails(
 			state: review.state ?? 'UNKNOWN',
 			submittedAt: review.submittedAt,
 		})),
+		reviewRequests: (parsed.reviewRequests ?? [])
+			.map(normalizePullRequestReviewRequest)
+			.filter((request): request is GitHubPullRequestReviewRequest => Boolean(request)),
 		reviewThreads,
 		files: (parsed.files ?? []).map((file) => ({
 			path: file.path ?? 'unknown',
@@ -651,6 +661,24 @@ export async function getGitHubPullRequestDetails(
 
 	saveCachedPullRequestDetails(details)
 	return details
+}
+
+function normalizePullRequestReviewRequest(request: {
+	__typename?: string
+	login?: string
+	name?: string
+	slug?: string
+}): GitHubPullRequestReviewRequest | null {
+	if (request.__typename === 'User' && request.login) {
+		return { login: request.login, type: 'user' }
+	}
+
+	if (request.__typename === 'Team') {
+		const login = request.slug ?? request.name
+		return login ? { login, type: 'team' } : null
+	}
+
+	return null
 }
 
 async function getPullRequestReviewThreads(params: {
