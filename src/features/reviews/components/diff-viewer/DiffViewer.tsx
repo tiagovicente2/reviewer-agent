@@ -29,6 +29,17 @@ export const DiffViewer = memo(function DiffViewer({
 	const fileRefs = useRef(new Map<string, HTMLDivElement>())
 
 	useEffect(() => {
+		const firstFile = parsedPatch.files[0]
+		if (!firstFile) {
+			setExpandedFiles(new Set())
+			return
+		}
+
+		setExpandedFiles(new Set([getFileDiffKey(firstFile)]))
+		onSelectFile?.(firstFile.name)
+	}, [onSelectFile, parsedPatch.files])
+
+	useEffect(() => {
 		if (!selectedFilePath) return
 
 		for (const file of parsedPatch.files) {
