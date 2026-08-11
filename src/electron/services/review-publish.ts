@@ -1,3 +1,4 @@
+import { getFindingCommentBody } from '@/features/reviews/hooks/generated-review/reviewGenerationUtils'
 import type {
 	PublishReviewCommentParams,
 	PublishReviewCommentResult,
@@ -259,7 +260,7 @@ function normalizeCommentBody(body: string) {
 }
 
 function getCommentBody(finding: ReviewFinding) {
-	return finding.suggestedCommentBody || finding.body
+	return getFindingCommentBody(finding).trim()
 }
 
 async function publishFinding(

@@ -33,7 +33,7 @@ const store = loadStore()
 let writeQueued = false
 
 export function saveGeneratedReview(params: {
-	pullRequest: GitHubPullRequestDetails
+	pullRequest: Pick<GitHubPullRequestDetails, 'headSha' | 'pullRequestNumber' | 'repo'>
 	review: GeneratedReview
 }): GeneratedReview {
 	const id = getReviewStoreKey(params.pullRequest)

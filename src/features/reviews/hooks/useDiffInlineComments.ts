@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import type { GeneratedReview } from '@/shared/review'
+import { getFindingCommentBody } from './generated-review/reviewGenerationUtils'
 
 function getCommentIdentity(path: string, side: string, body: string) {
 	return `${path}:${side}:${body.trim()}`
@@ -18,7 +19,7 @@ export function useDiffInlineComments(generatedReview: GeneratedReview | null) {
 		)
 
 		for (const finding of generatedReview.findings) {
-			const body = finding.suggestedCommentBody?.trim()
+			const body = getFindingCommentBody(finding).trim()
 			if (!finding.filePath || !finding.lineStart || !body) continue
 
 			const key = getCommentIdentity(finding.filePath, 'RIGHT', body)

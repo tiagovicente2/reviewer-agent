@@ -40,6 +40,7 @@ export function useReviewGeneration({
 	} | null>(null)
 	const [generationGuard] = useState(createReviewGenerationGuard)
 	const activeGenerationTokenRef = useRef<ReviewGenerationToken | null>(null)
+	const generatedReviewPullRequestIdentityRef = useRef<string | null>(null)
 	const selectedPullRequestIdentity = detail ? getPullRequestIdentity(detail) : null
 	generationGuard.select(selectedPullRequestIdentity)
 	const { showToast } = useToast()
@@ -60,6 +61,7 @@ export function useReviewGeneration({
 		(token: ReviewGenerationToken, review: GeneratedReview) => {
 			if (!generationGuard.complete(token)) return false
 			if (activeGenerationTokenRef.current === token) activeGenerationTokenRef.current = null
+			generatedReviewPullRequestIdentityRef.current = token.pullRequestIdentity
 			setGeneratedReview(review)
 			onSummary(review.publishableBody || review.summary)
 			setGenerationState('idle')
@@ -80,6 +82,7 @@ export function useReviewGeneration({
 		if (isGeneratingPullRequest(detail)) return
 
 		activeGenerationTokenRef.current = null
+		generatedReviewPullRequestIdentityRef.current = null
 		setGeneratedReview(null)
 		setGenerationState('idle')
 		setGenerationError('')
@@ -101,6 +104,9 @@ export function useReviewGeneration({
 		])
 			.then(([savedReview, job]) => {
 				if (cancelled) return
+				generatedReviewPullRequestIdentityRef.current = savedReview
+					? restoredPullRequestIdentity
+					: null
 				setGeneratedReview(savedReview)
 				if (job?.status === 'running') {
 					const token = generationGuard.begin(restoredPullRequestIdentity)
@@ -125,6 +131,26 @@ export function useReviewGeneration({
 			cancelled = true
 		}
 	}, [detail, generationGuard, isGeneratingPullRequest])
+
+	useEffect(() => {
+		if (
+			!detail ||
+			!generatedReview ||
+			generatedReviewPullRequestIdentityRef.current !== getPullRequestIdentity(detail) ||
+			generatedReview.reviewedHeadSha !== detail.headSha
+		) {
+			return
+		}
+
+		void appRpc.request
+			.saveReviewDraft({
+				headSha: detail.headSha,
+				pullRequestNumber: detail.pullRequestNumber,
+				repo: detail.repo,
+				review: generatedReview,
+			})
+			.catch((error) => console.error('Could not persist edited review draft.', error))
+	}, [detail, generatedReview])
 
 	useEffect(() => {
 		if (!generationJob) return

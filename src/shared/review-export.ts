@@ -1,3 +1,4 @@
+import { getFindingCommentBody } from '@/features/reviews/hooks/generated-review/reviewGenerationUtils'
 import type { GitHubPullRequestDetails } from './github'
 import type { GeneratedReview } from './review'
 
@@ -17,7 +18,7 @@ export function formatReviewForExport({ pullRequest, review }: ExportReviewParam
 					const location = finding.lineStart
 						? `${finding.filePath}:${finding.lineStart}${finding.lineEnd ? `-${finding.lineEnd}` : ''}`
 						: finding.filePath
-					const comment = finding.suggestedCommentBody || finding.body
+					const comment = getFindingCommentBody(finding)
 					return [
 						`### ${index + 1}. ${finding.title}`,
 						`- Severity: ${finding.severity}`,

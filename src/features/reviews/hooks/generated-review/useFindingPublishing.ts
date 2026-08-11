@@ -4,7 +4,11 @@ import { appRpc } from '@/app/rpc'
 import { getErrorMessage } from '@/app/utils'
 import type { GitHubPullRequestDetails } from '@/shared/github'
 import type { GeneratedReview, ReviewFinding } from '@/shared/review'
-import { getPullRequestIdentity, isFindingInlineComment } from './reviewGenerationUtils'
+import {
+	getPullRequestIdentity,
+	isFindingInlineComment,
+	updateFindingComment,
+} from './reviewGenerationUtils'
 
 export function useFindingPublishing({
 	detail,
@@ -37,6 +41,16 @@ export function useFindingPublishing({
 			})
 		},
 		[pullRequestIdentity],
+	)
+
+	const changeFindingComment = useCallback(
+		(findingId: string, commentBody: string) => {
+			setPublishErrorState(null)
+			setGeneratedReview((current) =>
+				current ? updateFindingComment(current, findingId, commentBody) : current,
+			)
+		},
+		[setGeneratedReview],
 	)
 
 	const publishFinding = useCallback(
@@ -86,6 +100,7 @@ export function useFindingPublishing({
 	return {
 		clearPublishError,
 		publicState: {
+			changeFindingComment,
 			discardFinding,
 			publishError,
 			publishFinding,

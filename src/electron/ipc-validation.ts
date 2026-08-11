@@ -40,6 +40,7 @@ const validators: Partial<Record<MainRequestName, Validator>> = {
 	startReviewGeneration: assertGenerateReviewParams,
 	getReviewGenerationJob: (params) => assertStringObject(params, 'jobId'),
 	getSavedReview: assertSavedReviewLookup,
+	saveReviewDraft: assertSaveReviewDraftParams,
 	exportReviewToFile: assertExportReviewParams,
 	selectReviewExportDirectory: assertSelectReviewExportDirectoryParams,
 	openExternalUrl: (params) => assertUrlObject(params, 'url'),
@@ -195,6 +196,15 @@ function assertPullRequestDiffLookup(params: unknown) {
 
 function assertSavedReviewLookup(params: unknown) {
 	assertPullRequestDiffLookup(params)
+}
+
+function assertSaveReviewDraftParams(params: unknown) {
+	assertPlainObject(params)
+	assertOnlyFields(params, ['repo', 'pullRequestNumber', 'headSha', 'review'], 'saveReviewDraft')
+	assertRepo(params.repo, 'repo')
+	assertPositiveInteger(params.pullRequestNumber, 'pullRequestNumber')
+	assertString(params.headSha, 'headSha', 100)
+	assertGeneratedReview(params.review)
 }
 
 function assertGenerateReviewParams(params: unknown) {

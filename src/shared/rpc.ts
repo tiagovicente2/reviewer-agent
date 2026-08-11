@@ -15,6 +15,7 @@ import type {
 	PublishReviewCommentResult,
 	PublishReviewCommentsParams,
 	ReviewGenerationJob,
+	SaveReviewDraftParams,
 	SubmitReviewParams,
 	SubmitReviewResult,
 } from './review'
@@ -118,6 +119,10 @@ export type AppRPCSchema = {
 			getSavedReview: {
 				params: GetSavedReviewParams
 				response: GeneratedReview | null
+			}
+			saveReviewDraft: {
+				params: SaveReviewDraftParams
+				response: GeneratedReview
 			}
 			exportReviewToFile: {
 				params: ExportReviewParams

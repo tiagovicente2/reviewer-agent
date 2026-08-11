@@ -78,6 +78,10 @@ export type GetSavedReviewParams = {
 	headSha: string
 }
 
+export type SaveReviewDraftParams = GetSavedReviewParams & {
+	review: GeneratedReview
+}
+
 export type PublishReviewCommentParams = {
 	pullRequest: GitHubPullRequestDetails
 	finding: ReviewFinding

@@ -1,8 +1,8 @@
-import { useState } from 'react'
 import { Box, HStack, Stack } from 'styled-system/jsx'
 import { MarkdownContent } from '@/components/markdown/MarkdownContent'
 import { Badge, Button, Textarea } from '@/components/ui'
 import type { ReviewFinding, ReviewInlineComment } from '@/shared/review'
+import { getFindingCommentBody } from '../hooks/generated-review/reviewGenerationUtils'
 import { FindingDiffPreview } from './finding-diff/FindingDiffPreview'
 import { severityColorPalette } from './reviewUtils'
 
@@ -10,6 +10,7 @@ export function EditableFindingCard({
 	diff,
 	finding,
 	inlineComments,
+	onChangeCommentBody,
 	onDiscardFinding,
 	onPublishFinding,
 	publishing,
@@ -17,18 +18,19 @@ export function EditableFindingCard({
 	diff: string
 	finding: ReviewFinding
 	inlineComments: ReviewInlineComment[]
+	onChangeCommentBody: (findingId: string, commentBody: string) => void
 	onDiscardFinding?: (findingId: string) => void
 	onPublishFinding?: (finding: ReviewFinding) => void
 	publishing: boolean
 }) {
-	const [commentBody, setCommentBody] = useState(finding.suggestedCommentBody || finding.body)
+	const commentBody = getFindingCommentBody(finding)
 	const canPublish = Boolean(finding.filePath && finding.lineStart && commentBody.trim())
 	const publishableFinding = {
 		...finding,
 		suggestedCommentBody: commentBody.trim(),
 	}
 	const referencedInlineComments = inlineComments.filter((comment) => {
-		const findingBody = (finding.suggestedCommentBody || finding.body).trim()
+		const findingBody = getFindingCommentBody(finding).trim()
 		return (
 			comment.path === finding.filePath &&
 			comment.side === 'RIGHT' &&
@@ -84,7 +86,7 @@ export function EditableFindingCard({
 						color="fg.default"
 						display="block"
 						minH="8rem"
-						onChange={(event) => setCommentBody(event.target.value)}
+						onChange={(event) => onChangeCommentBody(finding.id, event.target.value)}
 						placeholder="Edit the comment before publishing..."
 						resize="vertical"
 						value={commentBody}

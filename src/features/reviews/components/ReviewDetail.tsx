@@ -5,6 +5,7 @@ import type { AsyncState, ColorMode } from '@/app/types'
 import { StatusCard, TabButton } from '@/components/common'
 import { Card } from '@/components/ui'
 import type { GitHubPullRequestDetails, GitHubReviewRequest } from '@/shared/github'
+import { getFindingCommentBody } from '../hooks/generated-review/reviewGenerationUtils'
 import { useDiffInlineComments } from '../hooks/useDiffInlineComments'
 import { useGeneratedReview } from '../hooks/useGeneratedReview'
 import { usePullRequestDiff } from '../hooks/usePullRequestDiff'
@@ -51,6 +52,7 @@ export function ReviewDetail({
 	const { instructions, selectedInstructionId, setSelectedInstructionId } =
 		useReviewerInstructions()
 	const {
+		changeFindingComment,
 		generateReview,
 		generatedReview,
 		discardFinding,
@@ -223,6 +225,7 @@ export function ReviewDetail({
 									diff={diff}
 									generatedReview={generatedReview}
 									inlineComments={diffInlineComments}
+									onChangeFindingComment={changeFindingComment}
 									onDiscardFinding={discardFinding}
 									onPublishFinding={publishFinding}
 									publishableFindings={publishableFindings}
@@ -254,7 +257,5 @@ function isPublishableFinding(finding: {
 	suggestedCommentBody?: string
 	body: string
 }) {
-	return Boolean(
-		finding.filePath && finding.lineStart && (finding.suggestedCommentBody || finding.body),
-	)
+	return Boolean(finding.filePath && finding.lineStart && getFindingCommentBody(finding).trim())
 }

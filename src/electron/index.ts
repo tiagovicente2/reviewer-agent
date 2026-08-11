@@ -29,7 +29,7 @@ import {
 	publishReviewComments,
 	submitReview,
 } from './services/review-publish'
-import { getSavedGeneratedReview } from './services/review-store'
+import { getSavedGeneratedReview, saveGeneratedReview } from './services/review-store'
 import {
 	completeOnboarding,
 	getAppSettings,
@@ -82,6 +82,11 @@ const handlers: Handlers = {
 	startReviewGeneration,
 	getReviewGenerationJob,
 	getSavedReview: getSavedGeneratedReview,
+	saveReviewDraft: ({ headSha, pullRequestNumber, repo, review }) =>
+		saveGeneratedReview({
+			pullRequest: { headSha, pullRequestNumber, repo },
+			review,
+		}),
 	exportReviewToFile,
 	selectReviewExportDirectory,
 	openExternalUrl,

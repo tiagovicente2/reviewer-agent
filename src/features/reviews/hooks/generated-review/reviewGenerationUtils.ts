@@ -41,11 +41,31 @@ export function getLocalReviewProgressOutput(messages: string[]) {
 	return `${reviewPromptLabel}\n\n${messages.map((message) => `:: ${message}`).join('\n')}\n`
 }
 
+export function getFindingCommentBody(
+	finding: Pick<ReviewFinding, 'body' | 'suggestedCommentBody'>,
+) {
+	return finding.suggestedCommentBody ?? finding.body
+}
+
+export function updateFindingComment(
+	review: GeneratedReview,
+	findingId: string,
+	commentBody: string,
+): GeneratedReview {
+	let changed = false
+	const findings = review.findings.map((finding) => {
+		if (finding.id !== findingId || finding.suggestedCommentBody === commentBody) return finding
+		changed = true
+		return { ...finding, suggestedCommentBody: commentBody }
+	})
+	return changed ? { ...review, findings } : review
+}
+
 export function isFindingInlineComment(
 	finding: ReviewFinding,
 	comment: GeneratedReview['inlineComments'][number],
 ) {
-	const body = (finding.suggestedCommentBody || finding.body).trim()
+	const body = getFindingCommentBody(finding).trim()
 	return Boolean(
 		finding.filePath &&
 			finding.lineStart &&

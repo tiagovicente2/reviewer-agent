@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import type { ReviewFinding, ReviewInlineComment } from '@/shared/review'
+import type { GeneratedReview, ReviewFinding, ReviewInlineComment } from '@/shared/review'
 import {
 	createReviewGenerationGuard,
+	getFindingCommentBody,
 	getLocalReviewProgressOutput,
 	getPullRequestIdentity,
 	isFindingInlineComment,
-	reviewPromptLabel,
 	type ReviewGenerationToken,
+	reviewPromptLabel,
+	updateFindingComment,
 } from './reviewGenerationUtils'
 
 const finding: ReviewFinding = {
@@ -25,6 +27,29 @@ const inlineComment: ReviewInlineComment = {
 	line: 42,
 	side: 'RIGHT',
 	body: 'Add a guard here.',
+}
+
+const review: GeneratedReview = {
+	summary: 'Summary',
+	publishableBody: 'Publishable summary',
+	verdictRecommendation: 'request_changes',
+	severity: 'high',
+	findings: [
+		finding,
+		{
+			...finding,
+			id: 'finding-2',
+			filePath: 'src/second.ts',
+			lineStart: 7,
+			suggestedCommentBody: 'Second comment',
+		},
+	],
+	inlineComments: [inlineComment],
+	rawOutput: 'raw',
+	modelLabel: 'test-model',
+	generatedAt: '2026-01-01T00:00:00.000Z',
+	reviewedHeadSha: 'abc123',
+	diffWasTruncated: false,
 }
 
 function createDeferred<T>() {
@@ -114,6 +139,49 @@ describe('getPullRequestIdentity', () => {
 	})
 })
 
+describe('finding comment helpers', () => {
+	it('uses an explicit empty comment instead of falling back to the explanation body', () => {
+		expect(getFindingCommentBody({ ...finding, suggestedCommentBody: '' })).toBe('')
+		expect(getFindingCommentBody({ ...finding, suggestedCommentBody: undefined })).toBe(
+			finding.body,
+		)
+	})
+
+	it('immutably updates one finding and preserves exact whitespace', () => {
+		const commentBody = '  Keep this whitespace.  \n'
+		const updated = updateFindingComment(review, finding.id, commentBody)
+
+		expect(updated).not.toBe(review)
+		expect(updated.findings).not.toBe(review.findings)
+		expect(updated.findings[0]).not.toBe(review.findings[0])
+		expect(updated.findings[0]?.suggestedCommentBody).toBe(commentBody)
+		expect(updated.findings[1]).toBe(review.findings[1])
+		expect(review.findings[0]?.suggestedCommentBody).toBe(' Add a guard here. ')
+	})
+
+	it('preserves an explicit empty edit', () => {
+		const updated = updateFindingComment(review, finding.id, '')
+
+		expect(updated.findings[0]?.suggestedCommentBody).toBe('')
+		expect(getFindingCommentBody(updated.findings[0] as ReviewFinding)).toBe('')
+	})
+
+	it('returns the original review for an unknown finding ID or unchanged comment', () => {
+		expect(updateFindingComment(review, 'unknown', 'Comment')).toBe(review)
+		expect(updateFindingComment(review, finding.id, finding.suggestedCommentBody ?? '')).toBe(
+			review,
+		)
+	})
+
+	it('keeps independent edits to two findings', () => {
+		const firstUpdate = updateFindingComment(review, 'finding-1', 'First edit')
+		const secondUpdate = updateFindingComment(firstUpdate, 'finding-2', 'Second edit')
+
+		expect(secondUpdate.findings.map(getFindingCommentBody)).toEqual(['First edit', 'Second edit'])
+		expect(firstUpdate.findings[1]?.suggestedCommentBody).toBe('Second comment')
+	})
+})
+
 describe('isFindingInlineComment', () => {
 	it('matches the exact path, right-side line, and trimmed suggested body', () => {
 		expect(isFindingInlineComment(finding, inlineComment)).toBe(true)
@@ -139,5 +207,11 @@ describe('isFindingInlineComment', () => {
 				body: ' Long explanation ',
 			}),
 		).toBe(true)
+	})
+
+	it('does not match an explicitly empty comment edit', () => {
+		expect(isFindingInlineComment({ ...finding, suggestedCommentBody: '' }, inlineComment)).toBe(
+			false,
+		)
 	})
 })
