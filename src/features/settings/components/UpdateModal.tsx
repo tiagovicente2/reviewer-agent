@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
+import { Dialog } from '@ark-ui/react/dialog'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Box, HStack, Stack } from 'styled-system/jsx'
 import { appRpc } from '@/app/rpc'
 import { useToast } from '@/app/toast'
@@ -8,6 +9,10 @@ import { Button } from '@/components/ui'
 import type { UpdateStatus } from '@/shared/update'
 
 export function UpdateModal({ onClose }: { onClose: () => void }) {
+	const closeRef = useRef<HTMLButtonElement>(null)
+	const contentRef = useRef<HTMLDivElement>(null)
+	const installRef = useRef<HTMLButtonElement>(null)
+	const notNowRef = useRef<HTMLButtonElement>(null)
 	const [status, setStatus] = useState<UpdateStatus | null>(null)
 	const [state, setState] = useState<AsyncState>('loading')
 	const [installing, setInstalling] = useState(false)
@@ -34,9 +39,19 @@ export function UpdateModal({ onClose }: { onClose: () => void }) {
 		void refresh()
 	}, [refresh])
 
+	useEffect(() => {
+		if (confirmingInstall) notNowRef.current?.focus()
+	}, [confirmingInstall])
+
+	const cancelInstall = () => {
+		setConfirmingInstall(false)
+		requestAnimationFrame(() => installRef.current?.focus())
+	}
+
 	const update = async () => {
 		setConfirmingInstall(false)
 		setInstalling(true)
+		requestAnimationFrame(() => contentRef.current?.focus())
 		try {
 			const result = await appRpc.request.installUpdate()
 			showToast({
@@ -61,106 +76,128 @@ export function UpdateModal({ onClose }: { onClose: () => void }) {
 				: 'Checking for updates...'
 
 	return (
-		<Box
-			position="fixed"
-			inset="0"
-			bg="black/40"
-			display="flex"
-			alignItems="center"
-			justifyContent="center"
-			zIndex="modal"
-			onClick={installing ? undefined : onClose}
+		<Dialog.Root
+			initialFocusEl={() => closeRef.current}
+			modal
+			onOpenChange={({ open }) => {
+				if (!open && !installing) onClose()
+			}}
+			open
+			restoreFocus
+			role="dialog"
+			trapFocus
 		>
-			<Box
-				bg="gray.1"
-				borderRadius="l3"
-				borderWidth="1px"
-				borderColor="gray.4"
-				boxShadow="2xl"
-				maxW="24rem"
-				w="100%"
-				p="6"
-				onClick={(e) => e.stopPropagation()}
-			>
-				<Stack gap="4">
-					{installing ? (
+			<Dialog.Backdrop asChild>
+				<Box bg="black/40" inset="0" position="fixed" />
+			</Dialog.Backdrop>
+			<Dialog.Positioner asChild>
+				<Box
+					alignItems="center"
+					display="flex"
+					inset="0"
+					justifyContent="center"
+					position="fixed"
+					zIndex="modal"
+				>
+					<Dialog.Content asChild>
 						<Box
-							bg="cyan.2"
-							borderColor="cyan.6"
-							borderRadius="l2"
+							ref={contentRef}
+							bg="gray.1"
+							borderColor="gray.4"
+							borderRadius="l3"
 							borderWidth="1px"
-							color="cyan.11"
-							p="3"
-							textStyle="sm"
+							boxShadow="2xl"
+							maxW="24rem"
+							p="6"
+							w="100%"
 						>
-							Installing update in the background. The app will restart automatically when the
-							update finishes.
-						</Box>
-					) : null}
-					{confirmingInstall ? (
-						<Box bg="gray.2" borderColor="gray.6" borderRadius="l2" borderWidth="1px" p="3">
-							<Box color="fg.default" fontWeight="medium" textStyle="sm">
-								Install update now?
-							</Box>
-							<Box color="fg.muted" mt="1" textStyle="sm">
-								The update will install in the background. This app will restart automatically when
-								it finishes.
-							</Box>
-							<HStack gap="2" justify="flex-end" mt="3">
-								<Button variant="outline" onClick={() => setConfirmingInstall(false)}>
-									Not now
-								</Button>
-								<Button onClick={() => void update()}>OK</Button>
-							</HStack>
-						</Box>
-					) : null}
-					<HStack justify="space-between" alignItems="flex-start">
-						<Box>
-							<Box fontWeight="bold" textStyle="lg">
-								{title}
-							</Box>
-							<Box color={status?.error ? 'red.11' : 'fg.muted'} mt="1" textStyle="sm">
-								{body}
-							</Box>
-						</Box>
-						<Box
-							bg={status?.available ? 'cyan.3' : 'gray.3'}
-							borderRadius="full"
-							color={status?.available ? 'cyan.11' : 'fg.muted'}
-							fontWeight="medium"
-							px="2.5"
-							py="1"
-							textStyle="xs"
-							whiteSpace="nowrap"
-						>
-							{status?.available ? 'available' : state === 'loading' ? 'checking' : 'current'}
-						</Box>
-					</HStack>
+							<Stack gap="4">
+								{installing ? (
+									<Box
+										bg="cyan.2"
+										borderColor="cyan.6"
+										borderRadius="l2"
+										borderWidth="1px"
+										color="cyan.11"
+										p="3"
+										textStyle="sm"
+									>
+										Installing update in the background. The app will restart automatically when the
+										update finishes.
+									</Box>
+								) : null}
+								{confirmingInstall ? (
+									<Box bg="gray.2" borderColor="gray.6" borderRadius="l2" borderWidth="1px" p="3">
+										<Box color="fg.default" fontWeight="medium" textStyle="sm">
+											Install update now?
+										</Box>
+										<Box color="fg.muted" mt="1" textStyle="sm">
+											The update will install in the background. This app will restart automatically
+											when it finishes.
+										</Box>
+										<HStack gap="2" justify="flex-end" mt="3">
+											<Button ref={notNowRef} variant="outline" onClick={cancelInstall}>
+												Not now
+											</Button>
+											<Button onClick={() => void update()}>OK</Button>
+										</HStack>
+									</Box>
+								) : null}
+								<HStack justify="space-between" alignItems="flex-start">
+									<Box>
+										<Dialog.Title asChild>
+											<Box fontWeight="bold" textStyle="lg">
+												{title}
+											</Box>
+										</Dialog.Title>
+										<Dialog.Description asChild>
+											<Box color={status?.error ? 'red.11' : 'fg.muted'} mt="1" textStyle="sm">
+												{body}
+											</Box>
+										</Dialog.Description>
+									</Box>
+									<Box
+										bg={status?.available ? 'cyan.3' : 'gray.3'}
+										borderRadius="full"
+										color={status?.available ? 'cyan.11' : 'fg.muted'}
+										fontWeight="medium"
+										px="2.5"
+										py="1"
+										textStyle="xs"
+										whiteSpace="nowrap"
+									>
+										{status?.available ? 'available' : state === 'loading' ? 'checking' : 'current'}
+									</Box>
+								</HStack>
 
-					<HStack gap="2" justify="flex-end" mt="2">
-						<Button variant="outline" disabled={installing} onClick={onClose}>
-							Close
-						</Button>
-						<Button
-							variant="outline"
-							disabled={installing}
-							loading={state === 'loading'}
-							onClick={() => void refresh()}
-						>
-							Check again
-						</Button>
-						{status?.available ? (
-							<Button
-								disabled={confirmingInstall}
-								loading={installing}
-								onClick={() => setConfirmingInstall(true)}
-							>
-								{installing ? 'Installing…' : 'Install update'}
-							</Button>
-						) : null}
-					</HStack>
-				</Stack>
-			</Box>
-		</Box>
+								<HStack gap="2" justify="flex-end" mt="2">
+									<Button ref={closeRef} variant="outline" disabled={installing} onClick={onClose}>
+										Close
+									</Button>
+									<Button
+										variant="outline"
+										disabled={installing}
+										loading={state === 'loading'}
+										onClick={() => void refresh()}
+									>
+										Check again
+									</Button>
+									{status?.available ? (
+										<Button
+											ref={installRef}
+											disabled={confirmingInstall}
+											loading={installing}
+											onClick={() => setConfirmingInstall(true)}
+										>
+											{installing ? 'Installing…' : 'Install update'}
+										</Button>
+									) : null}
+								</HStack>
+							</Stack>
+						</Box>
+					</Dialog.Content>
+				</Box>
+			</Dialog.Positioner>
+		</Dialog.Root>
 	)
 }

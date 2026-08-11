@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
+import { Dialog } from '@ark-ui/react/dialog'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Box, HStack, Stack } from 'styled-system/jsx'
 import { appRpc } from '@/app/rpc'
 import { useToast } from '@/app/toast'
@@ -8,6 +9,7 @@ import { Button } from '@/components/ui'
 import type { CacheStats } from '@/shared/cache'
 
 export function CacheModal({ onClose }: { onClose: () => void }) {
+	const closeRef = useRef<HTMLButtonElement>(null)
 	const [stats, setStats] = useState<CacheStats | null>(null)
 	const [state, setState] = useState<AsyncState>('loading')
 	const { showToast } = useToast()
@@ -52,60 +54,85 @@ export function CacheModal({ onClose }: { onClose: () => void }) {
 	}
 
 	return (
-		<Box
-			position="fixed"
-			inset="0"
-			bg="black/40"
-			display="flex"
-			alignItems="center"
-			justifyContent="center"
-			zIndex="modal"
-			onClick={onClose}
+		<Dialog.Root
+			initialFocusEl={() => closeRef.current}
+			modal
+			onOpenChange={({ open }) => {
+				if (!open) onClose()
+			}}
+			open
+			restoreFocus
+			role="dialog"
+			trapFocus
 		>
-			<Box
-				bg="gray.1"
-				borderRadius="l3"
-				borderWidth="1px"
-				borderColor="gray.4"
-				boxShadow="2xl"
-				maxW="24rem"
-				w="100%"
-				p="6"
-				onClick={(e) => e.stopPropagation()}
-			>
-				<Stack gap="4">
-					<Box>
-						<Box fontWeight="bold" textStyle="lg">
-							Local cache
-						</Box>
-						<Box color="fg.muted" mt="1" textStyle="sm">
-							Cached PR details, diffs, and generated review drafts are pruned automatically.
-						</Box>
-					</Box>
-
-					<HStack color="fg.muted" flexWrap="wrap" gap="3" textStyle="sm">
-						<Box>{stats?.pullRequestDetails ?? 0} PR details</Box>
-						<Box>{stats?.pullRequestDiffs ?? 0} diffs</Box>
-						<Box>{stats?.generatedReviews ?? 0} reviews</Box>
-					</HStack>
-
-					<HStack gap="2" justify="flex-end" mt="2">
-						<Button variant="outline" onClick={onClose}>
-							Close
-						</Button>
-						<Button variant="outline" loading={state === 'loading'} onClick={() => void refresh()}>
-							Refresh
-						</Button>
-						<Button
-							variant="outline"
-							loading={state === 'loading'}
-							onClick={() => void clearCache()}
+			<Dialog.Backdrop asChild>
+				<Box bg="black/40" inset="0" position="fixed" />
+			</Dialog.Backdrop>
+			<Dialog.Positioner asChild>
+				<Box
+					alignItems="center"
+					display="flex"
+					inset="0"
+					justifyContent="center"
+					position="fixed"
+					zIndex="modal"
+				>
+					<Dialog.Content asChild>
+						<Box
+							bg="gray.1"
+							borderColor="gray.4"
+							borderRadius="l3"
+							borderWidth="1px"
+							boxShadow="2xl"
+							maxW="24rem"
+							p="6"
+							w="100%"
 						>
-							Clear cache
-						</Button>
-					</HStack>
-				</Stack>
-			</Box>
-		</Box>
+							<Stack gap="4">
+								<Box>
+									<Dialog.Title asChild>
+										<Box fontWeight="bold" textStyle="lg">
+											Local cache
+										</Box>
+									</Dialog.Title>
+									<Dialog.Description asChild>
+										<Box color="fg.muted" mt="1" textStyle="sm">
+											Cached PR details, diffs, and generated review drafts are pruned
+											automatically.
+										</Box>
+									</Dialog.Description>
+								</Box>
+
+								<HStack color="fg.muted" flexWrap="wrap" gap="3" textStyle="sm">
+									<Box>{stats?.pullRequestDetails ?? 0} PR details</Box>
+									<Box>{stats?.pullRequestDiffs ?? 0} diffs</Box>
+									<Box>{stats?.generatedReviews ?? 0} reviews</Box>
+								</HStack>
+
+								<HStack gap="2" justify="flex-end" mt="2">
+									<Button ref={closeRef} variant="outline" onClick={onClose}>
+										Close
+									</Button>
+									<Button
+										variant="outline"
+										loading={state === 'loading'}
+										onClick={() => void refresh()}
+									>
+										Refresh
+									</Button>
+									<Button
+										variant="outline"
+										loading={state === 'loading'}
+										onClick={() => void clearCache()}
+									>
+										Clear cache
+									</Button>
+								</HStack>
+							</Stack>
+						</Box>
+					</Dialog.Content>
+				</Box>
+			</Dialog.Positioner>
+		</Dialog.Root>
 	)
 }
