@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react'
+import { css } from 'styled-system/css'
 import { Box, HStack, Stack } from 'styled-system/jsx'
 import type { AsyncState } from '@/app/types'
 import { StatusCard } from '@/components/common'
@@ -125,13 +126,16 @@ function RequestChangesSection({
 	return (
 		<Stack gap="2" bg="gray.2" borderRadius="l2" p="4">
 			<Stack gap="1">
-				<Box fontWeight="semibold">Review message</Box>
+				<label className={css({ fontWeight: 'semibold' })} htmlFor="review-decision-body">
+					Review message
+				</label>
 				<Box color="fg.muted" textStyle="sm">
 					Request changes will submit {findings.length} generated inline comments. This message is
 					optional.
 				</Box>
 			</Stack>
 			<Textarea
+				id="review-decision-body"
 				boxSizing="border-box"
 				color="fg.default"
 				display="block"

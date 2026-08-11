@@ -1,3 +1,4 @@
+import { css } from 'styled-system/css'
 import { Box, HStack, Stack } from 'styled-system/jsx'
 import { MarkdownContent } from '@/components/markdown/MarkdownContent'
 import { Badge, Button, Textarea } from '@/components/ui'
@@ -24,6 +25,7 @@ export function EditableFindingCard({
 	publishing: boolean
 }) {
 	const commentBody = getFindingCommentBody(finding)
+	const commentFieldId = `finding-comment-${finding.id}`
 	const canPublish = Boolean(finding.filePath && finding.lineStart && commentBody.trim())
 	const publishableFinding = {
 		...finding,
@@ -78,10 +80,14 @@ export function EditableFindingCard({
 					inlineComments={referencedInlineComments}
 				/>
 				<Stack gap="2" minW="0">
-					<Box color="fg.muted" fontWeight="semibold" textStyle="xs">
+					<label
+						className={css({ color: 'fg.muted', fontWeight: 'semibold', textStyle: 'xs' })}
+						htmlFor={commentFieldId}
+					>
 						Comment
-					</Box>
+					</label>
 					<Textarea
+						id={commentFieldId}
 						boxSizing="border-box"
 						color="fg.default"
 						display="block"

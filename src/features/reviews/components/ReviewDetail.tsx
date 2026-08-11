@@ -1,4 +1,6 @@
+import { Tabs } from '@ark-ui/react/tabs'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { css } from 'styled-system/css'
 import { Box, Grid, HStack, Stack } from 'styled-system/jsx'
 import { appRpc } from '@/app/rpc'
 import type { AsyncState, ColorMode } from '@/app/types'
@@ -152,90 +154,97 @@ export function ReviewDetail({
 				pt="2"
 			>
 				<Stack gap="2" minH="0" minW="0">
-					<Card.Root bg="transparent" h="100%" minH="0" overflow="hidden" variant="subtle">
-						<Card.Header p="0" pb="2">
-							<HStack justify="space-between" gap="3" w="100%">
-								<HStack gap="0.5" p="0.5" bg="gray.2" borderRadius="l1" width="fit-content">
-									<TabButton
-										active={activeTab === 'summary'}
-										onClick={() => setActiveTab('summary')}
-									>
-										Summary
-									</TabButton>
-									<TabButton active={activeTab === 'code'} onClick={() => setActiveTab('code')}>
-										Code
-									</TabButton>
-									<TabButton active={activeTab === 'review'} onClick={() => setActiveTab('review')}>
-										Review
-									</TabButton>
+					<Tabs.Root
+						className={css({ h: '100%', minH: '0' })}
+						lazyMount={false}
+						onValueChange={({ value }) => setActiveTab(value as TabId)}
+						unmountOnExit={false}
+						value={activeTab}
+					>
+						<Card.Root bg="transparent" h="100%" minH="0" overflow="hidden" variant="subtle">
+							<Card.Header p="0" pb="2">
+								<HStack justify="space-between" gap="3" w="100%">
+									<Tabs.List aria-label="Pull request review views" asChild>
+										<HStack gap="0.5" p="0.5" bg="gray.2" borderRadius="l1" width="fit-content">
+											<TabButton value="summary">Summary</TabButton>
+											<TabButton value="code">Code</TabButton>
+											<TabButton value="review">Review</TabButton>
+										</HStack>
+									</Tabs.List>
+									{activeTab === 'review' && generatedReview ? (
+										<ReviewTabActions
+											approving={submittingReviewEvent === 'approve'}
+											canExportReview={Boolean(detail)}
+											exporting={exportState === 'loading'}
+											hasPublishableFindings={Boolean(publishableFindings.length)}
+											onApprove={() => setPendingSubmitAction('approve')}
+											onCopy={() => void copyReviewToClipboard()}
+											onExport={() => void saveReviewToFile()}
+											onRequestChanges={() => setPendingSubmitAction('request_changes')}
+											requestingChanges={submittingReviewEvent === 'request_changes'}
+											submissionDisabled={!detail || detailState === 'loading'}
+										/>
+									) : null}
 								</HStack>
-								{activeTab === 'review' && generatedReview ? (
-									<ReviewTabActions
-										approving={submittingReviewEvent === 'approve'}
-										canExportReview={Boolean(detail)}
-										exporting={exportState === 'loading'}
-										hasPublishableFindings={Boolean(publishableFindings.length)}
-										onApprove={() => setPendingSubmitAction('approve')}
-										onCopy={() => void copyReviewToClipboard()}
-										onExport={() => void saveReviewToFile()}
-										onRequestChanges={() => setPendingSubmitAction('request_changes')}
-										requestingChanges={submittingReviewEvent === 'request_changes'}
-										submissionDisabled={!detail || detailState === 'loading'}
-									/>
-								) : null}
-							</HStack>
-						</Card.Header>
-						<Card.Body minH="0" overflow="hidden" p="0">
-							<Box display={activeTab === 'code' ? 'block' : 'none'} h="100%" minH="0">
-								<CodeTab
-									key={`${detail?.repo ?? review.repo}#${detail?.pullRequestNumber ?? review.pullRequestNumber}`}
-									colorMode={colorMode}
-									detail={detail}
-									detailState={detailState}
-									diff={diff}
-									diffError={diffError}
-									diffDisplaySettings={codeDiffDisplaySettings}
-									diffState={diffState}
-									inlineComments={diffInlineComments}
-									onLoadDiff={loadDiff}
-								/>
-							</Box>
-							<Box display={activeTab === 'summary' ? 'block' : 'none'} h="100%" minH="0">
-								<SummaryTab detail={detail} detailState={detailState} />
-							</Box>
-							<Box display={activeTab === 'review' ? 'block' : 'none'} h="100%" minH="0">
-								{exportState === 'error' ? (
-									<Box mb="3">
-										<StatusCard
-											tone="red"
-											title="Could not export review"
-											body={
-												exportError ||
-												'Check clipboard permissions or the export folder in Settings.'
-											}
+							</Card.Header>
+							<Card.Body minH="0" overflow="hidden" p="0">
+								<Tabs.Content asChild value="code">
+									<Box h="100%" minH="0">
+										<CodeTab
+											key={`${detail?.repo ?? review.repo}#${detail?.pullRequestNumber ?? review.pullRequestNumber}`}
+											colorMode={colorMode}
+											detail={detail}
+											detailState={detailState}
+											diff={diff}
+											diffError={diffError}
+											diffDisplaySettings={codeDiffDisplaySettings}
+											diffState={diffState}
+											inlineComments={diffInlineComments}
+											onLoadDiff={loadDiff}
 										/>
 									</Box>
-								) : null}
-								<ReviewTab
-									generationError={generationError}
-									generationMessage={generationMessage}
-									generationOutputText={generationOutputText}
-									generationState={generationState}
-									publishError={publishError}
-									diff={diff}
-									generatedReview={generatedReview}
-									inlineComments={diffInlineComments}
-									onChangeFindingComment={changeFindingComment}
-									onDiscardFinding={discardFinding}
-									onPublishFinding={publishFinding}
-									publishableFindings={publishableFindings}
-									publishingFindingIds={publishingFindingIds}
-									reviewDecisionBody={reviewDecisionBody}
-									setReviewDecisionBody={setReviewDecisionBody}
-								/>
-							</Box>
-						</Card.Body>
-					</Card.Root>
+								</Tabs.Content>
+								<Tabs.Content asChild value="summary">
+									<Box h="100%" minH="0">
+										<SummaryTab detail={detail} detailState={detailState} />
+									</Box>
+								</Tabs.Content>
+								<Tabs.Content asChild value="review">
+									<Box h="100%" minH="0">
+										{exportState === 'error' ? (
+											<Box mb="3">
+												<StatusCard
+													tone="red"
+													title="Could not export review"
+													body={
+														exportError ||
+														'Check clipboard permissions or the export folder in Settings.'
+													}
+												/>
+											</Box>
+										) : null}
+										<ReviewTab
+											generationError={generationError}
+											generationMessage={generationMessage}
+											generationOutputText={generationOutputText}
+											generationState={generationState}
+											publishError={publishError}
+											diff={diff}
+											generatedReview={generatedReview}
+											inlineComments={diffInlineComments}
+											onChangeFindingComment={changeFindingComment}
+											onDiscardFinding={discardFinding}
+											onPublishFinding={publishFinding}
+											publishableFindings={publishableFindings}
+											publishingFindingIds={publishingFindingIds}
+											reviewDecisionBody={reviewDecisionBody}
+											setReviewDecisionBody={setReviewDecisionBody}
+										/>
+									</Box>
+								</Tabs.Content>
+							</Card.Body>
+						</Card.Root>
+					</Tabs.Root>
 				</Stack>
 			</Grid>
 			{pendingSubmitAction ? (

@@ -1,8 +1,9 @@
 import { css } from 'styled-system/css'
 import { Box, HStack } from 'styled-system/jsx'
+import { visuallyHidden } from 'styled-system/patterns'
 import type { AsyncState } from '@/app/types'
 import { Input, Select } from '@/components/ui'
-import { searchModeLabels, searchPlaceholders, type SearchMode } from './types'
+import { type SearchMode, searchModeLabels, searchPlaceholders } from './types'
 
 export function ReviewSearchBar({
 	canReviewPrQuery,
@@ -40,12 +41,16 @@ export function ReviewSearchBar({
 			gridTemplateColumns={{ base: 'minmax(0, 1fr)', sm: '5.75rem minmax(0, 1fr)' }}
 		>
 			<Select
+				label="Search mode"
 				value={searchMode}
 				width="5.75rem"
 				onChange={(mode) => setSearchMode(mode as SearchMode)}
 				options={Object.entries(searchModeLabels).map(([value, label]) => ({ value, label }))}
 			/>
 			<Box position="relative" minW="0">
+				<label className={visuallyHidden()} htmlFor="review-search">
+					Search pull requests
+				</label>
 				<Input
 					id="review-search"
 					onChange={(event) => setQuery(event.target.value)}

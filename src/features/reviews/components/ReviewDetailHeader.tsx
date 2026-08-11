@@ -59,6 +59,7 @@ export function ReviewDetailHeader({
 					{instructions.length > 1 ? (
 						<Select
 							disabled={generationState === 'loading'}
+							label="Reviewer instructions"
 							onChange={onSelectInstruction}
 							options={instructions.map((instruction) => ({
 								label: instruction.name || 'Untitled',

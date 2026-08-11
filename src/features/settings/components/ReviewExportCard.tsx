@@ -26,9 +26,10 @@ export function ReviewExportCard({
 			</Card.Header>
 			<Card.Body minH="0" overflow="visible">
 				<Stack gap="3">
-					<InlineField label="Folder">
+					<InlineField htmlFor="review-export-directory" label="Folder">
 						<Stack direction="row" gap="2" maxW="30rem" w="100%">
 							<Input
+								id="review-export-directory"
 								value={settings.reviewExportDirectory}
 								onChange={(event) =>
 									onChange({ ...settings, reviewExportDirectory: event.currentTarget.value })

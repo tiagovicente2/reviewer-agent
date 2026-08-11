@@ -31,6 +31,7 @@ export function PreferencesCard({
 				<Stack gap="3" minH="100%">
 					<InlineField label="Color mode">
 						<Select
+							label="Color mode"
 							value={settings.colorMode}
 							onChange={(value) =>
 								onChange({ ...settings, colorMode: value as ColorModePreference })
@@ -47,6 +48,7 @@ export function PreferencesCard({
 						}
 					>
 						<Select
+							label="Code agent"
 							value={settings.codeAgent}
 							onChange={(value) =>
 								onChange({ ...settings, codeAgent: value as CodeAgent, model: '' })
@@ -56,6 +58,7 @@ export function PreferencesCard({
 					</InlineField>
 					<InlineField label="Model">
 						<Select
+							label="Model"
 							value={settings.model}
 							onChange={(model) => onChange({ ...settings, model })}
 							options={getModelOptions(settings.model, availableModels)}
@@ -65,6 +68,7 @@ export function PreferencesCard({
 					</InlineField>
 					<InlineField label="Review language">
 						<Select
+							label="Review language"
 							value={settings.reviewLanguage}
 							onChange={(value) =>
 								onChange({ ...settings, reviewLanguage: value as ReviewLanguage })

@@ -1,5 +1,7 @@
+import { Tabs } from '@ark-ui/react/tabs'
 import { useState } from 'react'
 import { Box, HStack } from 'styled-system/jsx'
+import { visuallyHidden } from 'styled-system/patterns'
 import { TabButton } from '@/components/common'
 import { MarkdownContent } from '@/components/markdown/MarkdownContent'
 import { Button, Card, Input, Select, Textarea } from '@/components/ui'
@@ -52,75 +54,87 @@ export function ReviewerInstructionsCard({
 	}
 
 	return (
-		<Card.Root minH="0" minW="0" overflow="visible">
-			<Card.Header>
-				<HStack justify="space-between" gap="4">
-					<Box minW="0">
-						<Card.Title>Reviewer agent instructions</Card.Title>
-						<Card.Description>{path}</Card.Description>
-					</Box>
-					<HStack gap="1" p="0.5" bg="gray.2" borderRadius="l1" flexShrink="0">
-						<TabButton active={mode === 'raw'} onClick={() => onChangeMode('raw')}>
-							Raw
-						</TabButton>
-						<TabButton active={mode === 'preview'} onClick={() => onChangeMode('preview')}>
-							Preview
-						</TabButton>
+		<Tabs.Root
+			lazyMount={false}
+			onValueChange={({ value }) => onChangeMode(value as InstructionsMode)}
+			unmountOnExit={false}
+			value={mode}
+		>
+			<Card.Root minH="0" minW="0" overflow="visible">
+				<Card.Header>
+					<HStack justify="space-between" gap="4">
+						<Box minW="0">
+							<Card.Title>Reviewer agent instructions</Card.Title>
+							<Card.Description>{path}</Card.Description>
+						</Box>
+						<Tabs.List aria-label="Instruction editor view" asChild>
+							<HStack gap="1" p="0.5" bg="gray.2" borderRadius="l1" flexShrink="0">
+								<TabButton value="raw">Raw</TabButton>
+								<TabButton value="preview">Preview</TabButton>
+							</HStack>
+						</Tabs.List>
 					</HStack>
-				</HStack>
-				<HStack gap="2" mt="3">
-					<Select
-						onChange={setSelectedId}
-						options={instructions.map((instruction) => ({
-							label: instruction.name || 'Untitled',
-							value: instruction.id,
-						}))}
-						placeholder="Select instructions"
-						value={selected?.id ?? ''}
-					/>
-					<Input
-						flex="1"
-						minW="0"
-						placeholder="Instruction name"
-						value={selected?.name ?? ''}
-						onChange={(event) => updateSelected({ name: event.target.value })}
-					/>
-					<Button onClick={addInstruction} size="sm" variant="outline">
-						New
-					</Button>
-					<Button
-						disabled={instructions.length <= 1}
-						onClick={deleteSelected}
-						size="sm"
-						variant="outline"
-					>
-						Delete
-					</Button>
-				</HStack>
-			</Card.Header>
-			<Card.Body minH="0" overflow="visible">
-				<Box display={mode === 'raw' ? 'block' : 'none'} minH="0">
-					<Textarea
-						boxSizing="border-box"
-						display="block"
-						minH="24rem"
-						resize="vertical"
-						placeholder="Custom markdown instructions for the reviewer agent."
-						value={selected?.content ?? ''}
-						onChange={(event) => updateSelected({ content: event.target.value })}
-						variant="surface"
-					/>
-				</Box>
-				<Box
-					bg="gray.2"
-					borderRadius="l2"
-					display={mode === 'preview' ? 'block' : 'none'}
-					minH="24rem"
-					p="4"
-				>
-					<MarkdownContent>{selected?.content || '_No instructions yet._'}</MarkdownContent>
-				</Box>
-			</Card.Body>
-		</Card.Root>
+					<HStack gap="2" mt="3">
+						<Select
+							label="Instruction set"
+							onChange={setSelectedId}
+							options={instructions.map((instruction) => ({
+								label: instruction.name || 'Untitled',
+								value: instruction.id,
+							}))}
+							placeholder="Select instructions"
+							value={selected?.id ?? ''}
+						/>
+						<label className={visuallyHidden()} htmlFor="instruction-name">
+							Instruction name
+						</label>
+						<Input
+							id="instruction-name"
+							flex="1"
+							minW="0"
+							placeholder="Instruction name"
+							value={selected?.name ?? ''}
+							onChange={(event) => updateSelected({ name: event.target.value })}
+						/>
+						<Button onClick={addInstruction} size="sm" variant="outline">
+							New
+						</Button>
+						<Button
+							disabled={instructions.length <= 1}
+							onClick={deleteSelected}
+							size="sm"
+							variant="outline"
+						>
+							Delete
+						</Button>
+					</HStack>
+				</Card.Header>
+				<Card.Body minH="0" overflow="visible">
+					<Tabs.Content asChild value="raw">
+						<Box minH="0">
+							<label className={visuallyHidden()} htmlFor="instruction-content">
+								Reviewer instructions markdown
+							</label>
+							<Textarea
+								id="instruction-content"
+								boxSizing="border-box"
+								display="block"
+								minH="24rem"
+								resize="vertical"
+								placeholder="Custom markdown instructions for the reviewer agent."
+								value={selected?.content ?? ''}
+								onChange={(event) => updateSelected({ content: event.target.value })}
+								variant="surface"
+							/>
+						</Box>
+					</Tabs.Content>
+					<Tabs.Content asChild value="preview">
+						<Box bg="gray.2" borderRadius="l2" minH="24rem" p="4">
+							<MarkdownContent>{selected?.content || '_No instructions yet._'}</MarkdownContent>
+						</Box>
+					</Tabs.Content>
+				</Card.Body>
+			</Card.Root>
+		</Tabs.Root>
 	)
 }

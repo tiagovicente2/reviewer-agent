@@ -1,12 +1,15 @@
 import type { ReactNode } from 'react'
+import { css } from 'styled-system/css'
 import { Box, HStack } from 'styled-system/jsx'
 
 export function InlineField({
 	children,
+	htmlFor,
 	label,
 	labelAccessory,
 }: {
 	children: ReactNode
+	htmlFor?: string
 	label: string
 	labelAccessory?: ReactNode
 }) {
@@ -19,9 +22,15 @@ export function InlineField({
 			py="2"
 		>
 			<HStack alignItems="center" gap="1.5">
-				<Box fontWeight="medium" textStyle="sm">
-					{label}
-				</Box>
+				{htmlFor ? (
+					<label className={css({ fontWeight: 'medium', textStyle: 'sm' })} htmlFor={htmlFor}>
+						{label}
+					</label>
+				) : (
+					<Box fontWeight="medium" textStyle="sm">
+						{label}
+					</Box>
+				)}
 				{labelAccessory}
 			</HStack>
 			{children}
