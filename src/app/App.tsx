@@ -237,6 +237,7 @@ function App() {
 					canReviewPrQuery={canReviewPrQuery}
 					colorMode={colorMode}
 					currentAuthStatus={currentAuthStatus}
+					currentUsername={currentAuthStatus.username}
 					detail={detail}
 					detailError={detailError}
 					detailState={detailState}

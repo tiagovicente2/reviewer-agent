@@ -5,6 +5,7 @@ import type {
 	PublishReviewCommentsParams,
 	ReviewFinding,
 	ReviewFindingPublicationFailure,
+	ReviewSubmitEvent,
 	SubmitReviewParams,
 	SubmitReviewResult,
 } from '@/shared/review'
@@ -14,11 +15,14 @@ import {
 	isPublishableFinding,
 	partitionFindingsByReviewThreads,
 } from '@/shared/review-publication'
+import { getReviewSubmissionPolicy } from '@/shared/review-submission'
 import { runCommand } from '../process'
-import { getGitHubPullRequestDetails } from './github'
+import { getGitHubAuthStatus, getGitHubPullRequestDetails } from './github'
 
 const GH_PUBLISH_TIMEOUT_MS = 60 * 1000
 const publicationQueues = new Map<string, Promise<unknown>>()
+const reviewSubmissionLocks = new Set<string>()
+const completedReviewSubmissions = new Map<string, ReviewSubmitEvent>()
 
 type CommandResult = {
 	exitCode: number
@@ -115,79 +119,124 @@ export function publishReviewComments(
 	})
 }
 
-export function submitReview(params: SubmitReviewParams): Promise<SubmitReviewResult> {
-	if (params.event === 'approve') return submitApprovalAfterHeadCheck(params)
+export async function submitReview(params: SubmitReviewParams): Promise<SubmitReviewResult> {
+	const key = getPublicationKey(params.pullRequest)
+	if (reviewSubmissionLocks.has(key)) throw new Error('A review is already being submitted.')
+	if (completedReviewSubmissions.has(key)) {
+		throw new Error('A final review was already submitted for this pull request.')
+	}
 
-	return serializePublication(getPublicationKey(params.pullRequest), async () => {
-		const body = params.body?.trim()
-		const latestPullRequest = await getLatestPullRequest(params.pullRequest)
-		assertReviewTargetsHead(params.reviewedHeadSha, latestPullRequest.headSha)
+	reviewSubmissionLocks.add(key)
+	try {
+		return await serializePublication(key, async () => {
+			const body = params.body?.trim()
+			const [authStatus, latestPullRequest] = await Promise.all([
+				getGitHubAuthStatus(),
+				getLatestPullRequest(params.pullRequest),
+			])
+			assertReviewTargetsHead(params.reviewedHeadSha, latestPullRequest.headSha)
 
-		const markedPublishedIds = getMarkedPublishedFindingIds(params.findings ?? [])
-		const groups = groupPublishableFindings(params.findings ?? [])
-		const { alreadyPublishedFindings, newFindings } = partitionFindingsByReviewThreads(
-			groups.map((group) => group.finding),
-			latestPullRequest.reviewThreads,
-		)
-		const groupsByFinding = new Map(groups.map((group) => [group.finding, group]))
-		const alreadyPublishedFindingIds = [
-			...markedPublishedIds,
-			...alreadyPublishedFindings.flatMap(
-				(finding) => groupsByFinding.get(finding)?.findingIds ?? [finding.id],
-			),
-		]
-
-		validatePublishableFindings(latestPullRequest, newFindings)
-		if (!body && newFindings.length === 0) {
-			throw new Error(
-				'Add a review message or at least one new inline comment before requesting changes.',
+			const markedPublishedIds = getMarkedPublishedFindingIds(params.findings ?? [])
+			const groups = groupPublishableFindings(params.findings ?? [])
+			const { alreadyPublishedFindings, newFindings } = partitionFindingsByReviewThreads(
+				groups.map((group) => group.finding),
+				latestPullRequest.reviewThreads,
 			)
-		}
+			const policy = getReviewSubmissionPolicy({
+				currentUsername: authStatus.authenticated ? authStatus.username : undefined,
+				detail: latestPullRequest,
+				event: params.event,
+				hasReviewBody: Boolean(body),
+				publishableFindingsCount: newFindings.length,
+				reviewedHeadSha: params.reviewedHeadSha,
+				submissionLocked: false,
+				submittedEvent: completedReviewSubmissions.get(key) ?? null,
+			})
+			if (!policy.allowed) throw new Error(policy.reason)
 
-		const comments = newFindings.map((finding) => ({
-			body: getFindingCommentBody(finding).trim(),
-			line: finding.lineStart,
-			path: finding.filePath,
-			side: 'RIGHT' as const,
-		}))
-		const payload: {
-			body?: string
-			comments: typeof comments
-			commit_id?: string
-			event: 'REQUEST_CHANGES'
-		} = { comments, event: 'REQUEST_CHANGES' }
-		if (body) payload.body = body
-		if (comments.length > 0) payload.commit_id = latestPullRequest.headSha
-
-		const result = await runGh(
-			[
-				'api',
-				'--method',
-				'POST',
-				`repos/${params.pullRequest.repo}/pulls/${params.pullRequest.pullRequestNumber}/reviews`,
-				'--input',
-				'-',
-			],
-			JSON.stringify(payload),
-		)
-		const output = commandOutput(result)
-		if (result.exitCode !== 0) throw new Error(output || 'Failed to submit pull request review.')
-
-		return {
-			ok: true,
-			output: output || 'Submitted change request.',
-			publishedFindingIds: newFindings.flatMap(
-				(finding) => groupsByFinding.get(finding)?.findingIds ?? [finding.id],
-			),
-			alreadyPublishedFindingIds,
-		}
-	})
+			const result =
+				params.event === 'approve'
+					? await submitApproval(params, body)
+					: await submitChangeRequest({
+							body,
+							groups,
+							latestPullRequest,
+							markedPublishedIds,
+							newFindings,
+							alreadyPublishedFindings,
+							params,
+						})
+			completedReviewSubmissions.set(key, params.event)
+			return result
+		})
+	} finally {
+		reviewSubmissionLocks.delete(key)
+	}
 }
 
-async function submitApprovalAfterHeadCheck(params: SubmitReviewParams) {
-	const latestPullRequest = await getLatestPullRequest(params.pullRequest)
-	assertReviewTargetsHead(params.reviewedHeadSha, latestPullRequest.headSha)
-	return submitApproval(params, params.body?.trim())
+async function submitChangeRequest({
+	body,
+	groups,
+	latestPullRequest,
+	markedPublishedIds,
+	newFindings,
+	alreadyPublishedFindings,
+	params,
+}: {
+	body: string | undefined
+	groups: FindingGroup[]
+	latestPullRequest: GitHubPullRequestDetails
+	markedPublishedIds: string[]
+	newFindings: ReviewFinding[]
+	alreadyPublishedFindings: ReviewFinding[]
+	params: SubmitReviewParams
+}): Promise<SubmitReviewResult> {
+	const groupsByFinding = new Map(groups.map((group) => [group.finding, group]))
+	const alreadyPublishedFindingIds = [
+		...markedPublishedIds,
+		...alreadyPublishedFindings.flatMap(
+			(finding) => groupsByFinding.get(finding)?.findingIds ?? [finding.id],
+		),
+	]
+	validatePublishableFindings(latestPullRequest, newFindings)
+
+	const comments = newFindings.map((finding) => ({
+		body: getFindingCommentBody(finding).trim(),
+		line: finding.lineStart,
+		path: finding.filePath,
+		side: 'RIGHT' as const,
+	}))
+	const payload: {
+		body?: string
+		comments: typeof comments
+		commit_id?: string
+		event: 'REQUEST_CHANGES'
+	} = { comments, event: 'REQUEST_CHANGES' }
+	if (body) payload.body = body
+	if (comments.length > 0) payload.commit_id = latestPullRequest.headSha
+
+	const result = await runGh(
+		[
+			'api',
+			'--method',
+			'POST',
+			`repos/${params.pullRequest.repo}/pulls/${params.pullRequest.pullRequestNumber}/reviews`,
+			'--input',
+			'-',
+		],
+		JSON.stringify(payload),
+	)
+	const output = commandOutput(result)
+	if (result.exitCode !== 0) throw new Error(output || 'Failed to submit pull request review.')
+
+	return {
+		ok: true,
+		output: output || 'Submitted change request.',
+		publishedFindingIds: newFindings.flatMap(
+			(finding) => groupsByFinding.get(finding)?.findingIds ?? [finding.id],
+		),
+		alreadyPublishedFindingIds,
+	}
 }
 
 async function submitApproval(

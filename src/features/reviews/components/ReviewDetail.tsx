@@ -8,6 +8,7 @@ import { StatusCard, TabButton } from '@/components/common'
 import { Card } from '@/components/ui'
 import type { GitHubPullRequestDetails, GitHubReviewRequest } from '@/shared/github'
 import { isPublishableFinding } from '@/shared/review-publication'
+import { getReviewSubmissionPolicy } from '@/shared/review-submission'
 import { useDiffInlineComments } from '../hooks/useDiffInlineComments'
 import { useGeneratedReview } from '../hooks/useGeneratedReview'
 import { usePullRequestDiff } from '../hooks/usePullRequestDiff'
@@ -29,6 +30,7 @@ type TabId = 'code' | 'summary' | 'review'
 
 type ReviewDetailProps = {
 	colorMode: ColorMode
+	currentUsername?: string
 	detail: GitHubPullRequestDetails | null
 	detailError: string
 	detailState: AsyncState
@@ -39,6 +41,7 @@ type ReviewDetailProps = {
 
 export function ReviewDetail({
 	colorMode,
+	currentUsername,
 	detail,
 	detailError,
 	detailState,
@@ -66,8 +69,10 @@ export function ReviewDetail({
 		publishFinding,
 		publishingFindingIds,
 		submitReview,
+		submittedReviewEvent,
 		submittingReviewEvent,
 	} = useGeneratedReview({
+		currentUsername,
 		detail,
 		instructionId: selectedInstructionId || undefined,
 		onPullRequestDetailRefresh,
@@ -87,6 +92,26 @@ export function ReviewDetail({
 			) ?? [],
 		[generatedReview, publishingFindingIds],
 	)
+	const policyDetail = detailState === 'loading' ? null : detail
+	const approvePolicy = getReviewSubmissionPolicy({
+		currentUsername,
+		detail: policyDetail,
+		event: 'approve',
+		publishableFindingsCount: publishableFindings.length,
+		reviewedHeadSha: generatedReview?.reviewedHeadSha ?? null,
+		submissionLocked: submittingReviewEvent !== null,
+		submittedEvent: submittedReviewEvent,
+	})
+	const requestChangesPolicy = getReviewSubmissionPolicy({
+		currentUsername,
+		detail: policyDetail,
+		event: 'request_changes',
+		hasReviewBody: Boolean(reviewDecisionBody.trim()),
+		publishableFindingsCount: publishableFindings.length,
+		reviewedHeadSha: generatedReview?.reviewedHeadSha ?? null,
+		submissionLocked: submittingReviewEvent !== null,
+		submittedEvent: submittedReviewEvent,
+	})
 	const generatedReviewId = generatedReview?.generatedAt ?? ''
 
 	useEffect(() => {
@@ -100,23 +125,14 @@ export function ReviewDetail({
 		}
 	}
 
-	const confirmSubmitReview = () => {
-		if (pendingSubmitAction === 'approve') {
-			void submitReview({
-				body: '',
-				event: 'approve',
-			})
-		}
-
-		if (pendingSubmitAction === 'request_changes') {
-			void submitReview({
-				body: reviewDecisionBody.trim(),
-				event: 'request_changes',
-				findings: publishableFindings,
-			})
-		}
-
-		setPendingSubmitAction(null)
+	const confirmSubmitReview = async () => {
+		if (!pendingSubmitAction) return
+		const submitted = await submitReview({
+			body: pendingSubmitAction === 'request_changes' ? reviewDecisionBody.trim() : '',
+			event: pendingSubmitAction,
+			findings: pendingSubmitAction === 'request_changes' ? publishableFindings : undefined,
+		})
+		if (submitted) setPendingSubmitAction(null)
 	}
 
 	if (!review) {
@@ -176,18 +192,18 @@ export function ReviewDetail({
 									</Tabs.List>
 									{activeTab === 'review' && generatedReview ? (
 										<ReviewTabActions
+											approveDisabled={!approvePolicy.allowed}
+											approveReason={approvePolicy.reason}
 											approving={submittingReviewEvent === 'approve'}
 											canExportReview={Boolean(detail)}
 											exporting={exportState === 'loading'}
-											hasPublishableFindings={Boolean(
-												publishableFindings.length || reviewDecisionBody.trim(),
-											)}
 											onApprove={() => setPendingSubmitAction('approve')}
 											onCopy={() => void copyReviewToClipboard()}
 											onExport={() => void saveReviewToFile()}
 											onRequestChanges={() => setPendingSubmitAction('request_changes')}
+											requestChangesDisabled={!requestChangesPolicy.allowed}
+											requestChangesReason={requestChangesPolicy.reason}
 											requestingChanges={submittingReviewEvent === 'request_changes'}
-											submissionDisabled={!detail || detailState === 'loading'}
 										/>
 									) : null}
 								</HStack>
@@ -258,7 +274,7 @@ export function ReviewDetail({
 					findingsCount={publishableFindings.length}
 					onClose={() => setPendingSubmitAction(null)}
 					onConfirm={confirmSubmitReview}
-					submitting={submittingReviewEvent === pendingSubmitAction}
+					submitting={submittingReviewEvent !== null}
 				/>
 			) : null}
 		</Box>

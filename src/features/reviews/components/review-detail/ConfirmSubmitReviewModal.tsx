@@ -15,7 +15,7 @@ export function ConfirmSubmitReviewModal({
 	action: Exclude<PendingSubmitAction, null>
 	findingsCount: number
 	onClose: () => void
-	onConfirm: () => void
+	onConfirm: () => Promise<void>
 	submitting: boolean
 }) {
 	const cancelRef = useRef<HTMLButtonElement>(null)
@@ -75,7 +75,7 @@ export function ConfirmSubmitReviewModal({
 									<Button ref={cancelRef} disabled={submitting} onClick={onClose} variant="outline">
 										Cancel
 									</Button>
-									<Button loading={submitting} onClick={onConfirm}>
+									<Button disabled={submitting} loading={submitting} onClick={onConfirm}>
 										{isRequestChanges ? 'Request changes' : 'Approve'}
 									</Button>
 								</HStack>

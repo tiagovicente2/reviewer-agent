@@ -5,7 +5,9 @@ import {
 } from './generated-review/useReviewGeneration'
 import { useReviewSubmission } from './generated-review/useReviewSubmission'
 
-export type UseGeneratedReviewParams = UseReviewGenerationParams
+export type UseGeneratedReviewParams = UseReviewGenerationParams & {
+	currentUsername?: string
+}
 
 export function useGeneratedReview(params: UseGeneratedReviewParams) {
 	const generation = useReviewGeneration(params)
@@ -17,6 +19,7 @@ export function useGeneratedReview(params: UseGeneratedReviewParams) {
 	})
 	const submission = useReviewSubmission({
 		clearPublishError: findings.clearPublishError,
+		currentUsername: params.currentUsername,
 		detail: params.detail,
 		generatedReview: generation.publicState.generatedReview,
 		onPullRequestDetailRefresh: params.onPullRequestDetailRefresh,

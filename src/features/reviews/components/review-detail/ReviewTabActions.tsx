@@ -2,27 +2,31 @@ import { HStack } from 'styled-system/jsx'
 import { Button } from '@/components/ui'
 
 export function ReviewTabActions({
+	approveDisabled,
+	approveReason,
 	approving,
 	canExportReview,
 	exporting,
-	hasPublishableFindings,
 	onApprove,
 	onCopy,
 	onExport,
 	onRequestChanges,
+	requestChangesDisabled,
+	requestChangesReason,
 	requestingChanges,
-	submissionDisabled,
 }: {
+	approveDisabled: boolean
+	approveReason: string
 	approving: boolean
 	canExportReview: boolean
 	exporting: boolean
-	hasPublishableFindings: boolean
 	onApprove: () => void
 	onCopy: () => void
 	onExport: () => void
 	onRequestChanges: () => void
+	requestChangesDisabled: boolean
+	requestChangesReason: string
 	requestingChanges: boolean
-	submissionDisabled: boolean
 }) {
 	return (
 		<HStack gap="2">
@@ -39,24 +43,24 @@ export function ReviewTabActions({
 				Export
 			</Button>
 			<Button
-				disabled={submissionDisabled}
+				disabled={approveDisabled}
 				loading={approving}
 				onClick={onApprove}
 				size="sm"
+				title={approveReason || undefined}
 				variant="outline"
 			>
 				Approve
 			</Button>
-			{hasPublishableFindings ? (
-				<Button
-					disabled={submissionDisabled}
-					loading={requestingChanges}
-					onClick={onRequestChanges}
-					size="sm"
-				>
-					Request changes
-				</Button>
-			) : null}
+			<Button
+				disabled={requestChangesDisabled}
+				loading={requestingChanges}
+				onClick={onRequestChanges}
+				size="sm"
+				title={requestChangesReason || undefined}
+			>
+				Request changes
+			</Button>
 		</HStack>
 	)
 }

@@ -24,6 +24,7 @@ type MainReviewScreenProps = {
 	canReviewPrQuery: boolean
 	colorMode: ColorMode
 	currentAuthStatus: GitHubAuthStatus
+	currentUsername?: string
 	detail: GitHubPullRequestDetails | null
 	detailError: string
 	detailState: AsyncState
@@ -53,6 +54,7 @@ export function MainReviewScreen({
 	canReviewPrQuery,
 	colorMode,
 	currentAuthStatus,
+	currentUsername,
 	detail,
 	detailError,
 	detailState,
@@ -131,6 +133,7 @@ export function MainReviewScreen({
 			>
 				<ReviewDetail
 					colorMode={colorMode}
+					currentUsername={currentUsername}
 					detail={detail}
 					detailError={detailError}
 					detailState={detailState}
