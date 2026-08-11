@@ -1,5 +1,6 @@
 import { HStack } from 'styled-system/jsx'
 import { Button } from '@/components/ui'
+import { getPrimaryReviewAction } from '../editableFindingUtils'
 
 export function ReviewTabActions({
 	approveDisabled,
@@ -7,6 +8,7 @@ export function ReviewTabActions({
 	approving,
 	canExportReview,
 	exporting,
+	hasPublishableFindings,
 	onApprove,
 	onCopy,
 	onExport,
@@ -20,6 +22,7 @@ export function ReviewTabActions({
 	approving: boolean
 	canExportReview: boolean
 	exporting: boolean
+	hasPublishableFindings: boolean
 	onApprove: () => void
 	onCopy: () => void
 	onExport: () => void
@@ -28,9 +31,11 @@ export function ReviewTabActions({
 	requestChangesReason: string
 	requestingChanges: boolean
 }) {
+	const primaryAction = getPrimaryReviewAction(hasPublishableFindings)
+
 	return (
 		<HStack gap="2">
-			<Button disabled={!canExportReview || exporting} onClick={onCopy} size="sm" variant="outline">
+			<Button disabled={!canExportReview || exporting} onClick={onCopy} size="sm" variant="plain">
 				Copy
 			</Button>
 			<Button
@@ -48,9 +53,9 @@ export function ReviewTabActions({
 				onClick={onApprove}
 				size="sm"
 				title={approveReason || undefined}
-				variant="outline"
+				variant={primaryAction === 'approve' ? undefined : 'outline'}
 			>
-				Approve
+				Approve…
 			</Button>
 			<Button
 				disabled={requestChangesDisabled}
@@ -58,8 +63,9 @@ export function ReviewTabActions({
 				onClick={onRequestChanges}
 				size="sm"
 				title={requestChangesReason || undefined}
+				variant={primaryAction === 'request_changes' ? undefined : 'outline'}
 			>
-				Request changes
+				Request changes…
 			</Button>
 		</HStack>
 	)

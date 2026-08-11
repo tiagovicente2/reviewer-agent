@@ -197,6 +197,7 @@ export function ReviewDetail({
 											approving={submittingReviewEvent === 'approve'}
 											canExportReview={Boolean(detail)}
 											exporting={exportState === 'loading'}
+											hasPublishableFindings={publishableFindings.length > 0}
 											onApprove={() => setPendingSubmitAction('approve')}
 											onCopy={() => void copyReviewToClipboard()}
 											onExport={() => void saveReviewToFile()}
