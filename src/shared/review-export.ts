@@ -1,6 +1,6 @@
-import { getFindingCommentBody } from '@/features/reviews/hooks/generated-review/reviewGenerationUtils'
 import type { GitHubPullRequestDetails } from './github'
 import type { GeneratedReview } from './review'
+import { getFindingCommentBody } from './review-publication'
 
 export type ExportReviewParams = {
 	pullRequest: GitHubPullRequestDetails

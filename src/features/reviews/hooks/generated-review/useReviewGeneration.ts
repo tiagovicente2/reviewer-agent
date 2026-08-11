@@ -5,6 +5,7 @@ import type { AsyncState } from '@/app/types'
 import { getErrorMessage } from '@/app/utils'
 import type { GitHubPullRequestDetails } from '@/shared/github'
 import { type GeneratedReview, getReviewGenerationJobId } from '@/shared/review'
+import { reconcilePublishedFindings } from '@/shared/review-publication'
 import {
 	createReviewGenerationGuard,
 	getLocalReviewProgressOutput,
@@ -41,6 +42,7 @@ export function useReviewGeneration({
 	const [generationGuard] = useState(createReviewGenerationGuard)
 	const activeGenerationTokenRef = useRef<ReviewGenerationToken | null>(null)
 	const generatedReviewPullRequestIdentityRef = useRef<string | null>(null)
+	const generatedReviewHeadShaRef = useRef<string | null>(null)
 	const selectedPullRequestIdentity = detail ? getPullRequestIdentity(detail) : null
 	generationGuard.select(selectedPullRequestIdentity)
 	const { showToast } = useToast()
@@ -62,6 +64,7 @@ export function useReviewGeneration({
 			if (!generationGuard.complete(token)) return false
 			if (activeGenerationTokenRef.current === token) activeGenerationTokenRef.current = null
 			generatedReviewPullRequestIdentityRef.current = token.pullRequestIdentity
+			generatedReviewHeadShaRef.current = review.reviewedHeadSha
 			setGeneratedReview(review)
 			onSummary(review.publishableBody || review.summary)
 			setGenerationState('idle')
@@ -80,16 +83,24 @@ export function useReviewGeneration({
 
 	useEffect(() => {
 		if (isGeneratingPullRequest(detail)) return
+		if (
+			detail &&
+			generatedReviewPullRequestIdentityRef.current === selectedPullRequestIdentity &&
+			generatedReviewHeadShaRef.current === detail.headSha
+		) {
+			return
+		}
 
 		activeGenerationTokenRef.current = null
 		generatedReviewPullRequestIdentityRef.current = null
+		generatedReviewHeadShaRef.current = null
 		setGeneratedReview(null)
 		setGenerationState('idle')
 		setGenerationError('')
 		setGenerationMessage('')
 		setGenerationOutputText('')
 		setGenerationJob(null)
-		if (!detail) return
+		if (!detail || !selectedPullRequestIdentity) return
 
 		let cancelled = false
 		const restoredPullRequestIdentity = getPullRequestIdentity(detail)
@@ -107,7 +118,10 @@ export function useReviewGeneration({
 				generatedReviewPullRequestIdentityRef.current = savedReview
 					? restoredPullRequestIdentity
 					: null
-				setGeneratedReview(savedReview)
+				generatedReviewHeadShaRef.current = savedReview ? detail.headSha : null
+				setGeneratedReview(
+					savedReview ? reconcilePublishedFindings(savedReview, detail.reviewThreads) : savedReview,
+				)
 				if (job?.status === 'running') {
 					const token = generationGuard.begin(restoredPullRequestIdentity)
 					activeGenerationTokenRef.current = token
@@ -130,14 +144,32 @@ export function useReviewGeneration({
 		return () => {
 			cancelled = true
 		}
-	}, [detail, generationGuard, isGeneratingPullRequest])
+	}, [detail, generationGuard, isGeneratingPullRequest, selectedPullRequestIdentity])
+
+	const reconciledGeneratedReview =
+		generatedReview && detail
+			? reconcilePublishedFindings(generatedReview, detail.reviewThreads)
+			: generatedReview
+	const reconciledFindingIds = getNewlyReconciledFindingIds(
+		generatedReview,
+		reconciledGeneratedReview,
+	)
+
+	useEffect(() => {
+		if (!reconciledFindingIds) return
+		showToast({
+			title: 'Existing comments reconciled',
+			description: 'Published GitHub comments were matched to this review draft.',
+			tone: 'info',
+		})
+	}, [reconciledFindingIds, showToast])
 
 	useEffect(() => {
 		if (
 			!detail ||
-			!generatedReview ||
+			!reconciledGeneratedReview ||
 			generatedReviewPullRequestIdentityRef.current !== getPullRequestIdentity(detail) ||
-			generatedReview.reviewedHeadSha !== detail.headSha
+			reconciledGeneratedReview.reviewedHeadSha !== detail.headSha
 		) {
 			return
 		}
@@ -147,10 +179,10 @@ export function useReviewGeneration({
 				headSha: detail.headSha,
 				pullRequestNumber: detail.pullRequestNumber,
 				repo: detail.repo,
-				review: generatedReview,
+				review: reconciledGeneratedReview,
 			})
 			.catch((error) => console.error('Could not persist edited review draft.', error))
-	}, [detail, generatedReview])
+	}, [detail, reconciledGeneratedReview])
 
 	useEffect(() => {
 		if (!generationJob) return
@@ -273,7 +305,7 @@ export function useReviewGeneration({
 	return {
 		publicState: {
 			generateReview,
-			generatedReview,
+			generatedReview: reconciledGeneratedReview,
 			generationError,
 			generationMessage,
 			generationOutputText,
@@ -281,4 +313,21 @@ export function useReviewGeneration({
 		},
 		setGeneratedReview,
 	}
+}
+
+function getNewlyReconciledFindingIds(
+	original: GeneratedReview | null,
+	reconciled: GeneratedReview | null,
+) {
+	if (!original || !reconciled || original === reconciled) return ''
+	const findingIds: string[] = []
+	for (const [index, finding] of reconciled.findings.entries()) {
+		if (
+			finding.publication?.state === 'published' &&
+			original.findings[index]?.publication?.state !== 'published'
+		) {
+			findingIds.push(finding.id)
+		}
+	}
+	return findingIds.join(':')
 }

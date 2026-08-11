@@ -2,6 +2,12 @@ import type { GitHubPullRequestDetails } from './github'
 
 export type ReviewSeverity = 'critical' | 'high' | 'medium' | 'low' | 'info'
 
+export type ReviewFindingPublication = {
+	state: 'published'
+	publishedAt?: string
+	commentUrl?: string
+}
+
 export type ReviewFinding = {
 	id: string
 	severity: ReviewSeverity
@@ -14,6 +20,7 @@ export type ReviewFinding = {
 	suggestedCommentBody?: string
 	fixSuggestion?: string
 	confidence: number
+	publication?: ReviewFindingPublication
 }
 
 export type ReviewInlineComment = {
@@ -104,9 +111,22 @@ export type SubmitReviewParams = {
 	reviewedHeadSha: string
 }
 
-export type PublishReviewCommentResult = {
-	ok: true
-	output: string
+export type ReviewFindingPublicationFailure = {
+	findingId: string
+	message: string
 }
 
-export type SubmitReviewResult = PublishReviewCommentResult
+export type PublishReviewCommentResult = {
+	ok: boolean
+	output: string
+	publishedFindingIds: string[]
+	alreadyPublishedFindingIds: string[]
+	failures: ReviewFindingPublicationFailure[]
+}
+
+export type SubmitReviewResult = {
+	ok: true
+	output: string
+	publishedFindingIds: string[]
+	alreadyPublishedFindingIds: string[]
+}

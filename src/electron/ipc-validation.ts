@@ -304,6 +304,14 @@ function assertFinding(value: unknown) {
 	if (value.confidence < 0 || value.confidence > 1) throw new Error('Invalid finding confidence.')
 	if (value.lineStart !== undefined) assertPositiveInteger(value.lineStart, 'finding.lineStart')
 	if (value.lineEnd !== undefined) assertPositiveInteger(value.lineEnd, 'finding.lineEnd')
+	if (value.publication !== undefined) assertFindingPublication(value.publication)
+}
+
+function assertFindingPublication(value: unknown) {
+	assertPlainObject(value)
+	if (value.state !== 'published') throw new Error('Invalid finding publication state.')
+	assertOptionalString(value.publishedAt, 'finding.publication.publishedAt')
+	assertOptionalString(value.commentUrl, 'finding.publication.commentUrl')
 }
 
 function assertGeneratedReview(value: unknown) {

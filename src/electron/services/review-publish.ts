@@ -1,15 +1,24 @@
-import { getFindingCommentBody } from '@/features/reviews/hooks/generated-review/reviewGenerationUtils'
+import type { GitHubPullRequestDetails } from '@/shared/github'
 import type {
 	PublishReviewCommentParams,
 	PublishReviewCommentResult,
 	PublishReviewCommentsParams,
 	ReviewFinding,
+	ReviewFindingPublicationFailure,
 	SubmitReviewParams,
 	SubmitReviewResult,
 } from '@/shared/review'
+import {
+	getFindingCommentBody,
+	getReviewCommentKey,
+	isPublishableFinding,
+	partitionFindingsByReviewThreads,
+} from '@/shared/review-publication'
 import { runCommand } from '../process'
+import { getGitHubPullRequestDetails } from './github'
 
 const GH_PUBLISH_TIMEOUT_MS = 60 * 1000
+const publicationQueues = new Map<string, Promise<unknown>>()
 
 type CommandResult = {
 	exitCode: number
@@ -17,7 +26,12 @@ type CommandResult = {
 	stderr: string
 }
 
-export async function publishReviewComment(
+type FindingGroup = {
+	finding: ReviewFinding
+	findingIds: string[]
+}
+
+export function publishReviewComment(
 	params: PublishReviewCommentParams,
 ): Promise<PublishReviewCommentResult> {
 	return publishReviewComments({
@@ -27,118 +41,153 @@ export async function publishReviewComment(
 	})
 }
 
-export async function publishReviewComments(
+export function publishReviewComments(
 	params: PublishReviewCommentsParams,
 ): Promise<PublishReviewCommentResult> {
-	const latestHeadSha = await assertReviewTargetsLatestHead(params)
-	const publishableFindings = filterNewFindings(
-		params.pullRequest,
-		dedupeFindings(params.findings.filter(isPublishableFinding)),
-	)
-	validatePublishableFindings(params, publishableFindings)
-	if (publishableFindings.length === 0) {
-		throw new Error(
-			'No new publishable inline findings. Findings need filePath, lineStart, and a comment body that is not already present on the PR.',
+	return serializePublication(getPublicationKey(params.pullRequest), async () => {
+		const latestPullRequest = await getLatestPullRequest(params.pullRequest)
+		assertReviewTargetsHead(params.reviewedHeadSha, latestPullRequest.headSha)
+
+		const markedPublishedIds = getMarkedPublishedFindingIds(params.findings)
+		const groups = groupPublishableFindings(params.findings)
+		const { alreadyPublishedFindings, newFindings } = partitionFindingsByReviewThreads(
+			groups.map((group) => group.finding),
+			latestPullRequest.reviewThreads,
 		)
-	}
+		const groupsByFinding = new Map(groups.map((group) => [group.finding, group]))
+		const alreadyPublishedFindingIds = [
+			...markedPublishedIds,
+			...alreadyPublishedFindings.flatMap(
+				(finding) => groupsByFinding.get(finding)?.findingIds ?? [finding.id],
+			),
+		]
 
-	const settlements = await Promise.allSettled(
-		publishableFindings.map(async (finding) => {
-			const result = await publishFinding(params, finding, latestHeadSha)
-			const output = [result.stdout, result.stderr].filter(Boolean).join('\n').trim()
-
-			if (result.exitCode !== 0) {
-				throw new Error(
-					output || `Failed to publish comment for ${finding.filePath}:${finding.lineStart}.`,
-				)
+		const failures = getUnpublishableFindingFailures(params.findings)
+		if (newFindings.length === 0) {
+			return {
+				ok: failures.length === 0,
+				output:
+					failures.length > 0
+						? failures.map((failure) => failure.message).join('\n')
+						: 'All requested inline comments are already published.',
+				publishedFindingIds: [],
+				alreadyPublishedFindingIds,
+				failures,
 			}
-
-			return `Published comment for ${finding.filePath}:${finding.lineStart}`
-		}),
-	)
-	const results: string[] = []
-	const failures: string[] = []
-	for (const settlement of settlements) {
-		if (settlement.status === 'fulfilled') {
-			results.push(settlement.value)
-		} else {
-			failures.push(
-				settlement.reason instanceof Error ? settlement.reason.message : String(settlement.reason),
-			)
 		}
-	}
 
-	if (failures.length > 0) {
-		throw new Error([...results, ...failures].join('\n'))
-	}
+		const settlements = await Promise.allSettled(
+			newFindings.map(async (finding) => {
+				validatePublishableFinding(latestPullRequest, finding)
+				const result = await publishFinding(params, finding, latestPullRequest.headSha)
+				const output = commandOutput(result)
+				if (result.exitCode !== 0) {
+					throw new Error(
+						output || `Failed to publish comment for ${finding.filePath}:${finding.lineStart}.`,
+					)
+				}
+				return `Published comment for ${finding.filePath}:${finding.lineStart}`
+			}),
+		)
 
-	return { ok: true, output: results.join('\n') }
+		const outputs: string[] = []
+		const publishedFindingIds: string[] = []
+		for (const [index, settlement] of settlements.entries()) {
+			const finding = newFindings[index]
+			if (!finding) continue
+			const findingIds = groupsByFinding.get(finding)?.findingIds ?? [finding.id]
+			if (settlement.status === 'fulfilled') {
+				outputs.push(settlement.value)
+				publishedFindingIds.push(...findingIds)
+			} else {
+				const message = getErrorMessage(settlement.reason)
+				for (const findingId of findingIds) failures.push({ findingId, message })
+			}
+		}
+
+		return {
+			ok: failures.length === 0,
+			output: [...outputs, ...failures.map((failure) => failure.message)].join('\n'),
+			publishedFindingIds,
+			alreadyPublishedFindingIds,
+			failures,
+		}
+	})
 }
 
-export async function submitReview(params: SubmitReviewParams): Promise<SubmitReviewResult> {
-	const body = params.body?.trim()
-	const latestHeadSha = await assertReviewTargetsLatestHead(params)
-	if (params.event === 'approve') return submitApproval(params, body)
+export function submitReview(params: SubmitReviewParams): Promise<SubmitReviewResult> {
+	if (params.event === 'approve') return submitApprovalAfterHeadCheck(params)
 
-	const reviewFindings = filterNewFindings(
-		params.pullRequest,
-		dedupeFindings((params.findings ?? []).filter(isPublishableFinding)),
-	)
-	validatePublishableFindings(
-		{ pullRequest: params.pullRequest, findings: reviewFindings },
-		reviewFindings,
-	)
+	return serializePublication(getPublicationKey(params.pullRequest), async () => {
+		const body = params.body?.trim()
+		const latestPullRequest = await getLatestPullRequest(params.pullRequest)
+		assertReviewTargetsHead(params.reviewedHeadSha, latestPullRequest.headSha)
 
-	const comments =
-		params.event === 'request_changes'
-			? reviewFindings.map((finding) => ({
-					body: getCommentBody(finding),
-					line: finding.lineStart,
-					path: finding.filePath,
-					side: 'RIGHT' as const,
-				}))
-			: []
+		const markedPublishedIds = getMarkedPublishedFindingIds(params.findings ?? [])
+		const groups = groupPublishableFindings(params.findings ?? [])
+		const { alreadyPublishedFindings, newFindings } = partitionFindingsByReviewThreads(
+			groups.map((group) => group.finding),
+			latestPullRequest.reviewThreads,
+		)
+		const groupsByFinding = new Map(groups.map((group) => [group.finding, group]))
+		const alreadyPublishedFindingIds = [
+			...markedPublishedIds,
+			...alreadyPublishedFindings.flatMap(
+				(finding) => groupsByFinding.get(finding)?.findingIds ?? [finding.id],
+			),
+		]
 
-	const payload: {
-		body?: string
-		comments: Array<{
-			body: string | undefined
-			line: number | undefined
-			path: string
-			side: 'RIGHT'
-		}>
-		commit_id?: string
-		event: 'APPROVE' | 'REQUEST_CHANGES'
-	} = {
-		comments,
-		event: 'REQUEST_CHANGES',
-	}
-	if (body) Object.assign(payload, { body })
-	if (comments.length > 0) {
-		payload.commit_id = latestHeadSha
-	}
+		validatePublishableFindings(latestPullRequest, newFindings)
+		if (!body && newFindings.length === 0) {
+			throw new Error(
+				'Add a review message or at least one new inline comment before requesting changes.',
+			)
+		}
 
-	const result = await runGh(
-		[
-			'api',
-			'--method',
-			'POST',
-			`repos/${params.pullRequest.repo}/pulls/${params.pullRequest.pullRequestNumber}/reviews`,
-			'--input',
-			'-',
-		],
-		JSON.stringify(payload),
-	)
-	const output = [result.stdout, result.stderr].filter(Boolean).join('\n').trim()
+		const comments = newFindings.map((finding) => ({
+			body: getFindingCommentBody(finding).trim(),
+			line: finding.lineStart,
+			path: finding.filePath,
+			side: 'RIGHT' as const,
+		}))
+		const payload: {
+			body?: string
+			comments: typeof comments
+			commit_id?: string
+			event: 'REQUEST_CHANGES'
+		} = { comments, event: 'REQUEST_CHANGES' }
+		if (body) payload.body = body
+		if (comments.length > 0) payload.commit_id = latestPullRequest.headSha
 
-	if (result.exitCode !== 0) {
-		throw new Error(output || 'Failed to submit pull request review.')
-	}
+		const result = await runGh(
+			[
+				'api',
+				'--method',
+				'POST',
+				`repos/${params.pullRequest.repo}/pulls/${params.pullRequest.pullRequestNumber}/reviews`,
+				'--input',
+				'-',
+			],
+			JSON.stringify(payload),
+		)
+		const output = commandOutput(result)
+		if (result.exitCode !== 0) throw new Error(output || 'Failed to submit pull request review.')
 
-	return {
-		ok: true,
-		output: output || 'Submitted change request.',
-	}
+		return {
+			ok: true,
+			output: output || 'Submitted change request.',
+			publishedFindingIds: newFindings.flatMap(
+				(finding) => groupsByFinding.get(finding)?.findingIds ?? [finding.id],
+			),
+			alreadyPublishedFindingIds,
+		}
+	})
+}
+
+async function submitApprovalAfterHeadCheck(params: SubmitReviewParams) {
+	const latestPullRequest = await getLatestPullRequest(params.pullRequest)
+	assertReviewTargetsHead(params.reviewedHeadSha, latestPullRequest.headSha)
+	return submitApproval(params, params.body?.trim())
 }
 
 async function submitApproval(
@@ -156,111 +205,108 @@ async function submitApproval(
 	if (body) args.push('--body', body)
 
 	const result = await runGh(args)
-	const output = [result.stdout, result.stderr].filter(Boolean).join('\n').trim()
+	const output = commandOutput(result)
+	if (result.exitCode !== 0) throw new Error(output || 'Failed to approve pull request.')
 
-	if (result.exitCode !== 0) {
-		throw new Error(output || 'Failed to approve pull request.')
+	return {
+		ok: true,
+		output: output || 'Submitted approval.',
+		publishedFindingIds: [],
+		alreadyPublishedFindingIds: [],
 	}
-
-	return { ok: true, output: output || 'Submitted approval.' }
 }
 
-async function assertReviewTargetsLatestHead(
-	params: Pick<SubmitReviewParams, 'pullRequest' | 'reviewedHeadSha'>,
+function serializePublication<T>(key: string, work: () => Promise<T>): Promise<T> {
+	const previous = publicationQueues.get(key) ?? Promise.resolve()
+	const next = previous.catch(() => undefined).then(work)
+	publicationQueues.set(key, next)
+	return next.finally(() => {
+		if (publicationQueues.get(key) === next) publicationQueues.delete(key)
+	})
+}
+
+function getPublicationKey(
+	pullRequest: Pick<GitHubPullRequestDetails, 'pullRequestNumber' | 'repo'>,
 ) {
-	const latestHeadSha = await getLatestPullRequestHeadSha(params)
-	const reviewedHeadSha = params.reviewedHeadSha || params.pullRequest.headSha
-	if (latestHeadSha && reviewedHeadSha && latestHeadSha !== reviewedHeadSha) {
+	return `${pullRequest.repo}#${pullRequest.pullRequestNumber}`
+}
+
+async function getLatestPullRequest(
+	pullRequest: Pick<GitHubPullRequestDetails, 'pullRequestNumber' | 'repo'>,
+) {
+	return getGitHubPullRequestDetails({
+		forceRefresh: true,
+		pullRequestNumber: pullRequest.pullRequestNumber,
+		repo: pullRequest.repo,
+	})
+}
+
+function assertReviewTargetsHead(reviewedHeadSha: string, latestHeadSha: string) {
+	if (reviewedHeadSha && latestHeadSha && latestHeadSha !== reviewedHeadSha) {
 		throw new Error(
 			`This draft review was generated for ${reviewedHeadSha.slice(0, 12)}, but the PR is now at ${latestHeadSha.slice(0, 12)}. Regenerate the review before publishing.`,
 		)
 	}
-	return latestHeadSha
-}
-
-async function getLatestPullRequestHeadSha(params: Pick<SubmitReviewParams, 'pullRequest'>) {
-	const result = await runGh([
-		'api',
-		`repos/${params.pullRequest.repo}/pulls/${params.pullRequest.pullRequestNumber}`,
-		'--jq',
-		'.head.sha',
-	])
-	const output = [result.stdout, result.stderr].filter(Boolean).join('\n').trim()
-	if (result.exitCode !== 0) {
-		throw new Error(output || 'Failed to load latest pull request head SHA.')
-	}
-
-	return result.stdout.trim() || params.pullRequest.headSha
-}
-
-function isPublishableFinding(finding: ReviewFinding) {
-	return Boolean(finding.filePath && finding.lineStart && getCommentBody(finding))
 }
 
 function validatePublishableFindings(
-	params: Pick<PublishReviewCommentsParams, 'findings' | 'pullRequest'>,
+	pullRequest: GitHubPullRequestDetails,
 	findings: ReviewFinding[],
 ) {
-	const changedFiles = new Set(params.pullRequest.files.map((file) => file.path))
-	for (const finding of findings) {
-		if (!changedFiles.has(finding.filePath)) {
-			throw new Error(`Cannot publish comment for unchanged file: ${finding.filePath}.`)
-		}
-		if (!Number.isInteger(finding.lineStart) || !finding.lineStart || finding.lineStart < 1) {
-			throw new Error(`Cannot publish comment with invalid line for ${finding.filePath}.`)
-		}
+	for (const finding of findings) validatePublishableFinding(pullRequest, finding)
+}
+
+function validatePublishableFinding(pullRequest: GitHubPullRequestDetails, finding: ReviewFinding) {
+	if (!pullRequest.files.some((file) => file.path === finding.filePath)) {
+		throw new Error(`Cannot publish comment for unchanged file: ${finding.filePath}.`)
+	}
+	if (!Number.isInteger(finding.lineStart) || !finding.lineStart || finding.lineStart < 1) {
+		throw new Error(`Cannot publish comment with invalid line for ${finding.filePath}.`)
 	}
 }
 
-function dedupeFindings(findings: ReviewFinding[]) {
-	const seen = new Set<string>()
-	return findings.filter((finding) => {
-		const key = `${finding.filePath}:${finding.lineStart}:${getCommentBody(finding)}`
-		if (seen.has(key)) return false
-		seen.add(key)
-		return true
-	})
+function getUnpublishableFindingFailures(findings: ReviewFinding[]) {
+	const failures: ReviewFindingPublicationFailure[] = []
+	for (const finding of findings) {
+		if (finding.publication?.state === 'published' || isPublishableFinding(finding)) continue
+		failures.push({
+			findingId: finding.id,
+			message: `Finding ${finding.id} is missing a file path, line number, or comment body.`,
+		})
+	}
+	return failures
 }
 
-function filterNewFindings(
-	pullRequest: PublishReviewCommentsParams['pullRequest'],
-	findings: ReviewFinding[],
-) {
-	const existingCommentKeys = new Set(
-		pullRequest.reviewThreads.flatMap((thread) =>
-			thread.comments.map((comment) =>
-				getCommentKey({
-					body: comment.body,
-					line: thread.line,
-					path: thread.path,
-				}),
-			),
-		),
-	)
-
-	return findings.filter((finding) => {
-		const body = getCommentBody(finding)
-		if (!body) return true
-		return !existingCommentKeys.has(
-			getCommentKey({
-				body,
-				line: finding.lineStart,
-				path: finding.filePath,
-			}),
-		)
-	})
+function getMarkedPublishedFindingIds(findings: ReviewFinding[]) {
+	const findingIds: string[] = []
+	for (const finding of findings) {
+		if (finding.publication?.state === 'published') findingIds.push(finding.id)
+	}
+	return findingIds
 }
 
-function getCommentKey(params: { body?: string; line?: number; path?: string }) {
-	return `${params.path ?? ''}:${params.line ?? ''}:${normalizeCommentBody(params.body ?? '')}`
+function groupPublishableFindings(findings: ReviewFinding[]): FindingGroup[] {
+	const groups = new Map<string, FindingGroup>()
+	for (const finding of findings) {
+		if (!isPublishableFinding(finding)) continue
+		const key = getReviewCommentKey({
+			body: getFindingCommentBody(finding),
+			line: finding.lineStart,
+			path: finding.filePath,
+		})
+		const existing = groups.get(key)
+		if (existing) existing.findingIds.push(finding.id)
+		else groups.set(key, { finding, findingIds: [finding.id] })
+	}
+	return [...groups.values()]
 }
 
-function normalizeCommentBody(body: string) {
-	return body.trim().replace(/\s+/g, ' ').toLowerCase()
+function commandOutput(result: CommandResult) {
+	return [result.stdout, result.stderr].filter(Boolean).join('\n').trim()
 }
 
-function getCommentBody(finding: ReviewFinding) {
-	return getFindingCommentBody(finding).trim()
+function getErrorMessage(error: unknown) {
+	return error instanceof Error ? error.message : String(error)
 }
 
 async function publishFinding(
@@ -268,10 +314,9 @@ async function publishFinding(
 	finding: ReviewFinding,
 	commitId: string,
 ): Promise<CommandResult> {
-	const body = getCommentBody(finding)
-	if (!body || !finding.lineStart) {
+	const body = getFindingCommentBody(finding).trim()
+	if (!body || !finding.lineStart)
 		throw new Error('Finding is missing a comment body or line number.')
-	}
 
 	return runGh([
 		'api',

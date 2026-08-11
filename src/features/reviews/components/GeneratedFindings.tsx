@@ -46,7 +46,7 @@ export function GeneratedFindings({
 		return <ReviewProgress message={generationMessage} outputText={generationOutputText} />
 	}
 
-	if (error) {
+	if (error && !review) {
 		return <StatusCard tone="red" title={errorTitle ?? 'Review failed'} body={error} />
 	}
 
@@ -61,6 +61,7 @@ export function GeneratedFindings({
 
 	return (
 		<Stack gap="5">
+			{error ? <StatusCard tone="red" title={errorTitle ?? 'Review failed'} body={error} /> : null}
 			<Stack gap="2">
 				<HStack gap="2">
 					<Badge colorPalette={severityColorPalette(review.severity)}>{review.severity}</Badge>
@@ -78,13 +79,11 @@ export function GeneratedFindings({
 					body="The PR diff was too large to send in full. Review the raw diff before publishing anything."
 				/>
 			) : null}
-			{publishableFindings?.length ? (
-				<RequestChangesSection
-					findings={publishableFindings}
-					reviewDecisionBody={reviewDecisionBody}
-					setReviewDecisionBody={setReviewDecisionBody}
-				/>
-			) : null}
+			<RequestChangesSection
+				findings={publishableFindings ?? []}
+				reviewDecisionBody={reviewDecisionBody}
+				setReviewDecisionBody={setReviewDecisionBody}
+			/>
 			{review.findings.length === 0 ? (
 				<StatusCard
 					title="No concrete findings"
@@ -130,8 +129,9 @@ function RequestChangesSection({
 					Review message
 				</label>
 				<Box color="fg.muted" textStyle="sm">
-					Request changes will submit {findings.length} generated inline comments. This message is
-					optional.
+					Request changes will submit {findings.length} generated inline comment
+					{findings.length === 1 ? '' : 's'}. This message is{' '}
+					{findings.length ? 'optional' : 'required'}.
 				</Box>
 			</Stack>
 			<Textarea

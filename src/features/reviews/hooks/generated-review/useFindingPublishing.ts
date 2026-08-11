@@ -1,10 +1,13 @@
 import type { Dispatch, SetStateAction } from 'react'
 import { useCallback, useState } from 'react'
 import { appRpc } from '@/app/rpc'
+import { useToast } from '@/app/toast'
 import { getErrorMessage } from '@/app/utils'
 import type { GitHubPullRequestDetails } from '@/shared/github'
 import type { GeneratedReview, ReviewFinding } from '@/shared/review'
+import { markFindingsPublished, reconcilePublishedFindings } from '@/shared/review-publication'
 import {
+	createPullRequestSelectionGuard,
 	getPullRequestIdentity,
 	isFindingInlineComment,
 	updateFindingComment,
@@ -13,10 +16,12 @@ import {
 export function useFindingPublishing({
 	detail,
 	generatedReview,
+	onPullRequestDetailRefresh,
 	setGeneratedReview,
 }: {
 	detail: GitHubPullRequestDetails | null
 	generatedReview: GeneratedReview | null
+	onPullRequestDetailRefresh: (detail: GitHubPullRequestDetails) => void
 	setGeneratedReview: Dispatch<SetStateAction<GeneratedReview | null>>
 }) {
 	const [publishErrorState, setPublishErrorState] = useState<{
@@ -25,6 +30,9 @@ export function useFindingPublishing({
 	} | null>(null)
 	const [publishingFindingIds, setPublishingFindingIds] = useState<Set<string>>(() => new Set())
 	const pullRequestIdentity = detail ? getPullRequestIdentity(detail) : null
+	const [selectionGuard] = useState(createPullRequestSelectionGuard)
+	selectionGuard.select(pullRequestIdentity)
+	const { showToast } = useToast()
 	const publishError =
 		publishErrorState?.pullRequestIdentity === pullRequestIdentity ? publishErrorState.message : ''
 
@@ -55,17 +63,43 @@ export function useFindingPublishing({
 
 	const publishFinding = useCallback(
 		async (finding: ReviewFinding) => {
-			if (!detail || !generatedReview) return
+			if (!detail || !generatedReview || !pullRequestIdentity) return
+			const operationIdentity = pullRequestIdentity
 			setPublishErrorState(null)
 			setPublishingFindingIds((current) => new Set(current).add(finding.id))
 			try {
-				await appRpc.request.publishReviewComment({
+				const result = await appRpc.request.publishReviewComment({
 					finding,
 					pullRequest: detail,
 					reviewedHeadSha: generatedReview.reviewedHeadSha,
 				})
+				if (!selectionGuard.isSelected(operationIdentity)) return
+
+				const publishedIds = [...result.publishedFindingIds, ...result.alreadyPublishedFindingIds]
+				setGeneratedReview((current) =>
+					current
+						? markFindingsPublished(current, publishedIds, new Date().toISOString())
+						: current,
+				)
+				showPublicationToasts(result, showToast)
+				if (result.failures.length > 0) {
+					reportPublishError(
+						new Error(result.failures.map((failure) => failure.message).join('\n')),
+					)
+				}
+
+				const refreshedDetail = await appRpc.request.getGitHubPullRequestDetails({
+					forceRefresh: true,
+					pullRequestNumber: detail.pullRequestNumber,
+					repo: detail.repo,
+				})
+				if (!selectionGuard.isSelected(operationIdentity)) return
+				onPullRequestDetailRefresh(refreshedDetail)
+				setGeneratedReview((current) =>
+					current ? reconcilePublishedFindings(current, refreshedDetail.reviewThreads) : current,
+				)
 			} catch (error) {
-				reportPublishError(error)
+				if (selectionGuard.isSelected(operationIdentity)) reportPublishError(error)
 			} finally {
 				setPublishingFindingIds((current) => {
 					const next = new Set(current)
@@ -74,7 +108,16 @@ export function useFindingPublishing({
 				})
 			}
 		},
-		[detail, generatedReview, reportPublishError],
+		[
+			detail,
+			generatedReview,
+			onPullRequestDetailRefresh,
+			pullRequestIdentity,
+			reportPublishError,
+			selectionGuard,
+			setGeneratedReview,
+			showToast,
+		],
 	)
 
 	const discardFinding = useCallback(
@@ -83,7 +126,7 @@ export function useFindingPublishing({
 			setGeneratedReview((current) => {
 				if (!current) return current
 				const finding = current.findings.find((item) => item.id === findingId)
-				if (!finding) return current
+				if (!finding || finding.publication?.state === 'published') return current
 
 				return {
 					...current,
@@ -107,5 +150,28 @@ export function useFindingPublishing({
 			publishingFindingIds,
 		},
 		reportPublishError,
+	}
+}
+
+function showPublicationToasts(
+	result: {
+		publishedFindingIds: string[]
+		alreadyPublishedFindingIds: string[]
+	},
+	showToast: ReturnType<typeof useToast>['showToast'],
+) {
+	if (result.publishedFindingIds.length > 0) {
+		showToast({
+			title: 'Comment published',
+			description: 'The inline review comment was published on GitHub.',
+			tone: 'success',
+		})
+	}
+	if (result.alreadyPublishedFindingIds.length > 0) {
+		showToast({
+			title: 'Comment already published',
+			description: 'The existing GitHub comment was reconciled with this finding.',
+			tone: 'info',
+		})
 	}
 }

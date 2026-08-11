@@ -7,7 +7,7 @@ import type { AsyncState, ColorMode } from '@/app/types'
 import { StatusCard, TabButton } from '@/components/common'
 import { Card } from '@/components/ui'
 import type { GitHubPullRequestDetails, GitHubReviewRequest } from '@/shared/github'
-import { getFindingCommentBody } from '../hooks/generated-review/reviewGenerationUtils'
+import { isPublishableFinding } from '@/shared/review-publication'
 import { useDiffInlineComments } from '../hooks/useDiffInlineComments'
 import { useGeneratedReview } from '../hooks/useGeneratedReview'
 import { usePullRequestDiff } from '../hooks/usePullRequestDiff'
@@ -81,8 +81,11 @@ export function ReviewDetail({
 	})
 	const diffInlineComments = useDiffInlineComments(generatedReview)
 	const publishableFindings = useMemo(
-		() => generatedReview?.findings.filter(isPublishableFinding) ?? [],
-		[generatedReview],
+		() =>
+			generatedReview?.findings.filter(
+				(finding) => isPublishableFinding(finding) && !publishingFindingIds.has(finding.id),
+			) ?? [],
+		[generatedReview, publishingFindingIds],
 	)
 	const generatedReviewId = generatedReview?.generatedAt ?? ''
 
@@ -176,7 +179,9 @@ export function ReviewDetail({
 											approving={submittingReviewEvent === 'approve'}
 											canExportReview={Boolean(detail)}
 											exporting={exportState === 'loading'}
-											hasPublishableFindings={Boolean(publishableFindings.length)}
+											hasPublishableFindings={Boolean(
+												publishableFindings.length || reviewDecisionBody.trim(),
+											)}
 											onApprove={() => setPendingSubmitAction('approve')}
 											onCopy={() => void copyReviewToClipboard()}
 											onExport={() => void saveReviewToFile()}
@@ -258,13 +263,4 @@ export function ReviewDetail({
 			) : null}
 		</Box>
 	)
-}
-
-function isPublishableFinding(finding: {
-	filePath: string
-	lineStart?: number
-	suggestedCommentBody?: string
-	body: string
-}) {
-	return Boolean(finding.filePath && finding.lineStart && getFindingCommentBody(finding).trim())
 }

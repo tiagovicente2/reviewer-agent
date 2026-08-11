@@ -1,7 +1,22 @@
 import type { GitHubPullRequestDetails } from '@/shared/github'
 import type { GeneratedReview, ReviewFinding } from '@/shared/review'
+import { getFindingCommentBody } from '@/shared/review-publication'
+
+export { getFindingCommentBody } from '@/shared/review-publication'
 
 export const reviewPromptLabel = 'Generate a draft GitHub pull request review'
+
+export function createPullRequestSelectionGuard() {
+	let selectedPullRequestIdentity: string | null = null
+	return {
+		select(pullRequestIdentity: string | null) {
+			selectedPullRequestIdentity = pullRequestIdentity
+		},
+		isSelected(pullRequestIdentity: string) {
+			return selectedPullRequestIdentity === pullRequestIdentity
+		},
+	}
+}
 
 export type ReviewGenerationToken = {
 	pullRequestIdentity: string
@@ -39,12 +54,6 @@ export function createReviewGenerationGuard() {
 
 export function getLocalReviewProgressOutput(messages: string[]) {
 	return `${reviewPromptLabel}\n\n${messages.map((message) => `:: ${message}`).join('\n')}\n`
-}
-
-export function getFindingCommentBody(
-	finding: Pick<ReviewFinding, 'body' | 'suggestedCommentBody'>,
-) {
-	return finding.suggestedCommentBody ?? finding.body
 }
 
 export function updateFindingComment(

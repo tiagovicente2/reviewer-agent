@@ -12,13 +12,16 @@ export function useGeneratedReview(params: UseGeneratedReviewParams) {
 	const findings = useFindingPublishing({
 		detail: params.detail,
 		generatedReview: generation.publicState.generatedReview,
+		onPullRequestDetailRefresh: params.onPullRequestDetailRefresh,
 		setGeneratedReview: generation.setGeneratedReview,
 	})
 	const submission = useReviewSubmission({
 		clearPublishError: findings.clearPublishError,
 		detail: params.detail,
 		generatedReview: generation.publicState.generatedReview,
+		onPullRequestDetailRefresh: params.onPullRequestDetailRefresh,
 		reportPublishError: findings.reportPublishError,
+		setGeneratedReview: generation.setGeneratedReview,
 	})
 
 	return {

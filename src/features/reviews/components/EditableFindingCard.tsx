@@ -3,7 +3,11 @@ import { Box, HStack, Stack } from 'styled-system/jsx'
 import { MarkdownContent } from '@/components/markdown/MarkdownContent'
 import { Badge, Button, Textarea } from '@/components/ui'
 import type { ReviewFinding, ReviewInlineComment } from '@/shared/review'
-import { getFindingCommentBody } from '../hooks/generated-review/reviewGenerationUtils'
+import {
+	getFindingCommentBody,
+	getReviewCommentKey,
+	isPublishableFinding,
+} from '@/shared/review-publication'
 import { FindingDiffPreview } from './finding-diff/FindingDiffPreview'
 import { severityColorPalette } from './reviewUtils'
 
@@ -26,20 +30,22 @@ export function EditableFindingCard({
 }) {
 	const commentBody = getFindingCommentBody(finding)
 	const commentFieldId = `finding-comment-${finding.id}`
-	const canPublish = Boolean(finding.filePath && finding.lineStart && commentBody.trim())
+	const published = finding.publication?.state === 'published'
+	const canPublish = isPublishableFinding(finding)
 	const publishableFinding = {
 		...finding,
 		suggestedCommentBody: commentBody.trim(),
 	}
-	const referencedInlineComments = inlineComments.filter((comment) => {
-		const findingBody = getFindingCommentBody(finding).trim()
-		return (
-			comment.path === finding.filePath &&
+	const referencedInlineComments = inlineComments.filter(
+		(comment) =>
 			comment.side === 'RIGHT' &&
-			comment.line === finding.lineStart &&
-			comment.body.trim() === findingBody
-		)
-	})
+			getReviewCommentKey(comment) ===
+				getReviewCommentKey({
+					body: getFindingCommentBody(finding),
+					line: finding.lineStart,
+					path: finding.filePath,
+				}),
+	)
 
 	return (
 		<Box borderTopWidth="1px" maxW="100%" overflow="visible" py="5">
@@ -47,28 +53,33 @@ export function EditableFindingCard({
 				<Stack gap="3">
 					<HStack justify="space-between" gap="3" alignItems="flex-start">
 						<Stack gap="2" minW="0">
-							<Badge alignSelf="flex-start" colorPalette={severityColorPalette(finding.severity)}>
-								{finding.severity}
-							</Badge>
+							<HStack gap="2">
+								<Badge colorPalette={severityColorPalette(finding.severity)}>
+									{finding.severity}
+								</Badge>
+								{published ? <Badge colorPalette="green">Published</Badge> : null}
+							</HStack>
 							<Box fontWeight="semibold">{finding.title}</Box>
 						</Stack>
 						<HStack gap="2">
+							{published ? null : (
+								<Button
+									colorPalette="red"
+									disabled={publishing}
+									onClick={() => onDiscardFinding?.(finding.id)}
+									size="xs"
+									variant="outline"
+								>
+									Discard comment
+								</Button>
+							)}
 							<Button
-								colorPalette="red"
-								disabled={publishing}
-								onClick={() => onDiscardFinding?.(finding.id)}
-								size="xs"
-								variant="outline"
-							>
-								Discard comment
-							</Button>
-							<Button
-								disabled={!canPublish}
+								disabled={published || !canPublish}
 								loading={publishing}
 								onClick={() => onPublishFinding?.(publishableFinding)}
 								size="xs"
 							>
-								Publish comment
+								{published ? 'Published' : 'Publish comment'}
 							</Button>
 						</HStack>
 					</HStack>
@@ -87,6 +98,7 @@ export function EditableFindingCard({
 						Comment
 					</label>
 					<Textarea
+						disabled={published}
 						id={commentFieldId}
 						boxSizing="border-box"
 						color="fg.default"
