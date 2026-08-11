@@ -3,6 +3,40 @@ import type { GeneratedReview, ReviewFinding } from '@/shared/review'
 
 export const reviewPromptLabel = 'Generate a draft GitHub pull request review'
 
+export type ReviewGenerationToken = {
+	pullRequestIdentity: string
+	requestId: number
+}
+
+export function createReviewGenerationGuard() {
+	let nextRequestId = 0
+	let selectedPullRequestIdentity: string | null = null
+	let activeToken: ReviewGenerationToken | null = null
+
+	return {
+		select(pullRequestIdentity: string | null) {
+			selectedPullRequestIdentity = pullRequestIdentity
+			if (activeToken?.pullRequestIdentity !== pullRequestIdentity) activeToken = null
+		},
+		begin(pullRequestIdentity: string) {
+			const token = { pullRequestIdentity, requestId: ++nextRequestId }
+			selectedPullRequestIdentity = pullRequestIdentity
+			activeToken = token
+			return token
+		},
+		isCurrent(token: ReviewGenerationToken) {
+			return activeToken === token && selectedPullRequestIdentity === token.pullRequestIdentity
+		},
+		complete(token: ReviewGenerationToken) {
+			const current =
+				activeToken === token && selectedPullRequestIdentity === token.pullRequestIdentity
+			if (!current) return false
+			activeToken = null
+			return true
+		},
+	}
+}
+
 export function getLocalReviewProgressOutput(messages: string[]) {
 	return `${reviewPromptLabel}\n\n${messages.map((message) => `:: ${message}`).join('\n')}\n`
 }

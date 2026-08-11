@@ -5,7 +5,12 @@ import type { AsyncState } from '@/app/types'
 import { getErrorMessage } from '@/app/utils'
 import type { GitHubPullRequestDetails } from '@/shared/github'
 import { type GeneratedReview, getReviewGenerationJobId } from '@/shared/review'
-import { getLocalReviewProgressOutput, getPullRequestIdentity } from './reviewGenerationUtils'
+import {
+	createReviewGenerationGuard,
+	getLocalReviewProgressOutput,
+	getPullRequestIdentity,
+	type ReviewGenerationToken,
+} from './reviewGenerationUtils'
 
 export type UseReviewGenerationParams = {
 	detail: GitHubPullRequestDetails | null
@@ -29,47 +34,62 @@ export function useReviewGeneration({
 	const [generationError, setGenerationError] = useState('')
 	const [generationMessage, setGenerationMessage] = useState('')
 	const [generationOutputText, setGenerationOutputText] = useState('')
-	const [generationJobId, setGenerationJobId] = useState<string | null>(null)
-	const generatingPullRequestIdentityRef = useRef<string | null>(null)
+	const [generationJob, setGenerationJob] = useState<{
+		jobId: string
+		token: ReviewGenerationToken
+	} | null>(null)
+	const [generationGuard] = useState(createReviewGenerationGuard)
+	const activeGenerationTokenRef = useRef<ReviewGenerationToken | null>(null)
+	const selectedPullRequestIdentity = detail ? getPullRequestIdentity(detail) : null
+	generationGuard.select(selectedPullRequestIdentity)
 	const { showToast } = useToast()
 
 	const isGeneratingPullRequest = useCallback(
-		(pullRequest: GitHubPullRequestDetails | null) =>
-			Boolean(
+		(pullRequest: GitHubPullRequestDetails | null) => {
+			const token = activeGenerationTokenRef.current
+			return Boolean(
 				pullRequest &&
-					generatingPullRequestIdentityRef.current === getPullRequestIdentity(pullRequest),
-			),
-		[],
+					token?.pullRequestIdentity === getPullRequestIdentity(pullRequest) &&
+					generationGuard.isCurrent(token),
+			)
+		},
+		[generationGuard],
 	)
 
 	const completeGeneration = useCallback(
-		(review: GeneratedReview) => {
-			generatingPullRequestIdentityRef.current = null
+		(token: ReviewGenerationToken, review: GeneratedReview) => {
+			if (!generationGuard.complete(token)) return false
+			if (activeGenerationTokenRef.current === token) activeGenerationTokenRef.current = null
 			setGeneratedReview(review)
 			onSummary(review.publishableBody || review.summary)
 			setGenerationState('idle')
+			setGenerationMessage('')
 			setGenerationOutputText('')
+			setGenerationJob(null)
 			showToast({
 				title: 'Review completed',
 				description: 'A draft review was generated.',
 				tone: 'success',
 			})
+			return true
 		},
-		[onSummary, showToast],
+		[generationGuard, onSummary, showToast],
 	)
 
 	useEffect(() => {
 		if (isGeneratingPullRequest(detail)) return
 
+		activeGenerationTokenRef.current = null
 		setGeneratedReview(null)
 		setGenerationState('idle')
 		setGenerationError('')
 		setGenerationMessage('')
 		setGenerationOutputText('')
-		setGenerationJobId(null)
+		setGenerationJob(null)
 		if (!detail) return
 
 		let cancelled = false
+		const restoredPullRequestIdentity = getPullRequestIdentity(detail)
 		const jobId = getReviewGenerationJobId(detail)
 		Promise.all([
 			appRpc.request.getSavedReview({
@@ -83,8 +103,10 @@ export function useReviewGeneration({
 				if (cancelled) return
 				setGeneratedReview(savedReview)
 				if (job?.status === 'running') {
+					const token = generationGuard.begin(restoredPullRequestIdentity)
+					activeGenerationTokenRef.current = token
 					setGenerationState('loading')
-					setGenerationJobId(job.id)
+					setGenerationJob({ jobId: job.id, token })
 					setGenerationMessage(job.statusMessage ?? '')
 					setGenerationOutputText(job.outputText ?? '')
 				} else if (job?.status === 'failed') {
@@ -92,7 +114,7 @@ export function useReviewGeneration({
 					setGenerationError(job.error ?? 'Review generation failed.')
 				} else {
 					setGenerationState('idle')
-					setGenerationJobId(null)
+					setGenerationJob(null)
 				}
 			})
 			.catch(() => {
@@ -102,38 +124,42 @@ export function useReviewGeneration({
 		return () => {
 			cancelled = true
 		}
-	}, [detail, isGeneratingPullRequest])
+	}, [detail, generationGuard, isGeneratingPullRequest])
 
 	useEffect(() => {
-		if (!generationJobId) return
+		if (!generationJob) return
 
 		let cancelled = false
 		const interval = window.setInterval(async () => {
 			try {
-				const job = await appRpc.request.getReviewGenerationJob({ jobId: generationJobId })
-				if (cancelled || !job) return
+				const job = await appRpc.request.getReviewGenerationJob({ jobId: generationJob.jobId })
+				if (cancelled || !generationGuard.isCurrent(generationJob.token) || !job) return
 				setGenerationMessage(job.statusMessage ?? '')
 				setGenerationOutputText(job.outputText ?? '')
 
 				if (job.status === 'completed' && job.review) {
-					completeGeneration(job.review)
-					setGenerationJobId(null)
+					completeGeneration(generationJob.token, job.review)
 				}
 
 				if (job.status === 'failed') {
-					generatingPullRequestIdentityRef.current = null
+					if (!generationGuard.complete(generationJob.token)) return
+					if (activeGenerationTokenRef.current === generationJob.token) {
+						activeGenerationTokenRef.current = null
+					}
 					setGenerationError(job.error ?? 'Review generation failed.')
 					setGenerationState('error')
 					setGenerationOutputText('')
-					setGenerationJobId(null)
+					setGenerationJob(null)
 				}
 			} catch (error) {
-				if (!cancelled) {
-					setGenerationError(getErrorMessage(error))
-					setGenerationState('error')
-					setGenerationOutputText('')
-					setGenerationJobId(null)
+				if (cancelled || !generationGuard.complete(generationJob.token)) return
+				if (activeGenerationTokenRef.current === generationJob.token) {
+					activeGenerationTokenRef.current = null
 				}
+				setGenerationError(getErrorMessage(error))
+				setGenerationState('error')
+				setGenerationOutputText('')
+				setGenerationJob(null)
 			}
 		}, 1500)
 
@@ -141,7 +167,7 @@ export function useReviewGeneration({
 			cancelled = true
 			window.clearInterval(interval)
 		}
-	}, [completeGeneration, generationJobId])
+	}, [completeGeneration, generationGuard, generationJob])
 
 	const generateReview = useCallback(async () => {
 		if (!detail) {
@@ -150,8 +176,10 @@ export function useReviewGeneration({
 			return
 		}
 
+		const pullRequestIdentity = getPullRequestIdentity(detail)
+		const token = generationGuard.begin(pullRequestIdentity)
+		activeGenerationTokenRef.current = token
 		onStartGeneration()
-		generatingPullRequestIdentityRef.current = getPullRequestIdentity(detail)
 		setGenerationState('loading')
 		setGenerationError('')
 		setGenerationMessage('Loading the latest PR diff before starting review generation...')
@@ -160,6 +188,7 @@ export function useReviewGeneration({
 				'Loading the latest PR diff before starting review generation...',
 			]),
 		)
+		setGenerationJob(null)
 
 		try {
 			const latestDetail = await appRpc.request.getGitHubPullRequestDetails({
@@ -167,6 +196,7 @@ export function useReviewGeneration({
 				pullRequestNumber: detail.pullRequestNumber,
 				repo: detail.repo,
 			})
+			if (!generationGuard.isCurrent(token)) return
 			onPullRequestDetailRefresh(latestDetail)
 			const { diff: loadedDiff } = await appRpc.request.getGitHubPullRequestDiff({
 				forceRefresh: true,
@@ -174,6 +204,7 @@ export function useReviewGeneration({
 				pullRequestNumber: latestDetail.pullRequestNumber,
 				repo: latestDetail.repo,
 			})
+			if (!generationGuard.isCurrent(token)) return
 			onUpdatedDiff(loadedDiff)
 			setGenerationMessage('Starting review generation...')
 			setGenerationOutputText(
@@ -186,20 +217,27 @@ export function useReviewGeneration({
 				instructionId,
 				pullRequest: { ...latestDetail, diff: loadedDiff },
 			})
-			setGenerationJobId(job.id)
+			if (!generationGuard.isCurrent(token)) return
+			setGenerationJob({ jobId: job.id, token })
 			setGenerationMessage(job.statusMessage ?? '')
 			setGenerationOutputText(job.outputText ?? '')
-			if (job.status === 'completed' && job.review) completeGeneration(job.review)
+			if (job.status === 'completed' && job.review) completeGeneration(token, job.review)
 		} catch (error) {
-			generatingPullRequestIdentityRef.current = null
+			if (!generationGuard.isCurrent(token)) return
+			generationGuard.complete(token)
+			if (activeGenerationTokenRef.current === token) activeGenerationTokenRef.current = null
 			setGenerationMessage('')
 			setGenerationError(getErrorMessage(error))
 			setGenerationState('error')
 			setGenerationOutputText('')
+			setGenerationJob((currentJob) =>
+				currentJob?.token && currentJob.token !== token ? currentJob : null,
+			)
 		}
 	}, [
 		completeGeneration,
 		detail,
+		generationGuard,
 		instructionId,
 		onPullRequestDetailRefresh,
 		onStartGeneration,
