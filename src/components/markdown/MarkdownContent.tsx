@@ -15,12 +15,18 @@ const markdownContentClassName = css({
 	color: 'fg.muted',
 	lineHeight: '1.7',
 	textStyle: 'sm',
+	'& > :where(h1, h2, h3, h4, p, ul, ol, blockquote)': {
+		maxWidth: '72ch',
+	},
 	'& h1, & h2, & h3, & h4': {
 		color: 'fg.default',
 		fontWeight: 'semibold',
 		marginBottom: '2',
-		marginTop: '4',
 	},
+	'& h1': { marginTop: '7', textStyle: '2xl' },
+	'& h2': { marginTop: '6', textStyle: 'xl' },
+	'& h3': { marginTop: '5', textStyle: 'lg' },
+	'& h4': { marginTop: '4', textStyle: 'md' },
 	'& p': { marginY: '2' },
 	'& ul, & ol': { marginY: '2', paddingLeft: '5' },
 	'& li': { marginY: '1' },
@@ -35,6 +41,7 @@ const markdownContentClassName = css({
 	'& pre': {
 		backgroundColor: 'gray.2',
 		borderRadius: 'l2',
+		maxWidth: '100%',
 		overflowX: 'auto',
 		padding: '3',
 	},
@@ -48,6 +55,7 @@ const markdownContentClassName = css({
 	'& table': {
 		borderCollapse: 'collapse',
 		display: 'block',
+		maxWidth: '100%',
 		overflowX: 'auto',
 		width: '100%',
 	},
@@ -66,6 +74,9 @@ const markdownContentClassName = css({
 
 const commentMarkdownContentClassName = css({
 	color: 'black',
+	'& > :where(h1, h2, h3, h4, p, ul, ol, blockquote)': {
+		maxWidth: 'none',
+	},
 	'& h1, & h2, & h3, & h4': {
 		color: 'black',
 	},
