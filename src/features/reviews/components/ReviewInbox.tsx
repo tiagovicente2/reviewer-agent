@@ -88,6 +88,7 @@ export function ReviewInbox({
 				/>
 				<ReviewRequestList
 					groupByReviewRequest={!searchActive}
+					onRetry={onRefresh}
 					onSelectReview={onSelectReview}
 					reviews={reviews}
 					reviewsState={reviewsState}

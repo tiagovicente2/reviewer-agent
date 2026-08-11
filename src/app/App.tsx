@@ -240,7 +240,7 @@ function App() {
 					detail={detail}
 					detailError={detailError}
 					detailState={detailState}
-					displayedReviews={displayedReviews}
+					displayedReviews={reviewsState === 'error' ? reviews : displayedReviews}
 					loadReviewRequests={loadReviewRequests}
 					onClearSearch={handleClearSearch}
 					onOpenSettings={() => setShowSettings(true)}

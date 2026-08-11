@@ -3,17 +3,21 @@ import { css } from 'styled-system/css'
 import { Box, Stack } from 'styled-system/jsx'
 import type { AsyncState } from '@/app/types'
 import { StatusCard } from '@/components/common'
+import { Button } from '@/components/ui'
 import type { GitHubReviewRequest } from '@/shared/github'
 import { ReviewRequestCard } from './ReviewRequestCard'
+import { getReviewRequestListState } from './reviewRequestListState'
 
 export function ReviewRequestList({
 	groupByReviewRequest,
+	onRetry,
 	onSelectReview,
 	reviews,
 	reviewsState,
 	selectedReviewId,
 }: {
 	groupByReviewRequest: boolean
+	onRetry: () => void
 	onSelectReview: (id: string) => void
 	reviews: GitHubReviewRequest[]
 	reviewsState: AsyncState
@@ -28,7 +32,9 @@ export function ReviewRequestList({
 		[reviews],
 	)
 
-	if (reviewsState === 'loading') {
+	const listState = getReviewRequestListState(reviewsState, reviews.length)
+
+	if (listState === 'loading') {
 		return (
 			<StatusCard
 				title="Loading GitHub PRs"
@@ -37,7 +43,7 @@ export function ReviewRequestList({
 		)
 	}
 
-	if (reviews.length === 0) {
+	if (listState === 'empty') {
 		return (
 			<StatusCard
 				title="No requested reviews found"
@@ -46,18 +52,30 @@ export function ReviewRequestList({
 		)
 	}
 
-	if (!groupByReviewRequest) {
-		return (
-			<ReviewRequestGroup
-				title="Pull requests"
-				reviews={reviews}
-				onSelectReview={onSelectReview}
-				selectedReviewId={selectedReviewId}
-			/>
-		)
-	}
+	const errorStatus =
+		listState === 'error-empty' || listState === 'error-with-reviews' ? (
+			<Stack gap="3" role="alert">
+				<StatusCard
+					body="Check your GitHub connection and try again."
+					title="Could not load GitHub PRs"
+					tone="red"
+				/>
+				<Button alignSelf="flex-start" onClick={onRetry} size="sm">
+					Retry
+				</Button>
+			</Stack>
+		) : null
 
-	return (
+	if (listState === 'error-empty') return errorStatus
+
+	const reviewList = !groupByReviewRequest ? (
+		<ReviewRequestGroup
+			title="Pull requests"
+			reviews={reviews}
+			onSelectReview={onSelectReview}
+			selectedReviewId={selectedReviewId}
+		/>
+	) : (
 		<Stack gap="5">
 			<ReviewRequestGroup
 				title="Needs your review"
@@ -73,6 +91,17 @@ export function ReviewRequestList({
 			/>
 		</Stack>
 	)
+
+	if (listState === 'error-with-reviews') {
+		return (
+			<Stack gap="5">
+				{errorStatus}
+				{reviewList}
+			</Stack>
+		)
+	}
+
+	return reviewList
 }
 
 function ReviewRequestGroup({
