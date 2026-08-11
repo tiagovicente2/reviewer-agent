@@ -130,9 +130,13 @@ export function SettingsPage({
 	}
 
 	return (
-		<Box boxSizing="border-box" h="100%" overflow="hidden" px="8" py="6">
-			<Stack gap="4" h="100%" minH="0" mx="auto" w="100%">
-				<HStack alignItems="flex-start" justify="space-between">
+		<Box boxSizing="border-box" h="100%" minH="0" overflowY="auto" px="8" py="6">
+			<Stack gap="4" minH="100%" mx="auto" w="100%">
+				<HStack
+					alignItems={{ base: 'stretch', md: 'flex-start' }}
+					flexDirection={{ base: 'column', md: 'row' }}
+					justify="space-between"
+				>
 					<Box>
 						<Box as="h1" fontWeight="bold" textStyle="3xl">
 							Settings
@@ -141,7 +145,7 @@ export function SettingsPage({
 							Configure local review generation.
 						</Box>
 					</Box>
-					<HStack gap="2" flexShrink="0">
+					<HStack flexShrink="0" flexWrap="wrap" gap="2">
 						<IconButton ariaLabel="Local cache" onClick={() => setIsCacheModalOpen(true)}>
 							<CacheIcon />
 						</IconButton>
@@ -176,17 +180,15 @@ export function SettingsPage({
 				{error ? <StatusCard tone="red" title="Could not save settings" body={error} /> : null}
 				{settings ? (
 					<Box
+						alignItems="start"
 						display="grid"
 						gap="4"
 						gridTemplateColumns={{
 							base: 'minmax(0, 1fr)',
 							xl: '32rem minmax(0, 1fr)',
 						}}
-						h="100%"
-						minH="0"
-						overflow="hidden"
 					>
-						<Stack gap="4" h="100%" minH="0" overflowY="auto">
+						<Stack gap="4" minW="0">
 							<PreferencesCard
 								availableModels={availableModels}
 								onChange={setSettings}

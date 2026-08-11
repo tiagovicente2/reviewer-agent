@@ -52,13 +52,7 @@ export function ReviewerInstructionsCard({
 	}
 
 	return (
-		<Card.Root
-			h="100%"
-			minH="0"
-			overflow="hidden"
-			display="grid"
-			gridTemplateRows="auto minmax(0, 1fr)"
-		>
+		<Card.Root minH="0" minW="0" overflow="visible">
 			<Card.Header>
 				<HStack justify="space-between" gap="4">
 					<Box minW="0">
@@ -104,14 +98,13 @@ export function ReviewerInstructionsCard({
 					</Button>
 				</HStack>
 			</Card.Header>
-			<Card.Body minH="0" overflow="hidden">
-				<Box display={mode === 'raw' ? 'block' : 'none'} h="100%" minH="0">
+			<Card.Body minH="0" overflow="visible">
+				<Box display={mode === 'raw' ? 'block' : 'none'} minH="0">
 					<Textarea
 						boxSizing="border-box"
 						display="block"
-						h="100%"
-						minH="0"
-						resize="none"
+						minH="24rem"
+						resize="vertical"
 						placeholder="Custom markdown instructions for the reviewer agent."
 						value={selected?.content ?? ''}
 						onChange={(event) => updateSelected({ content: event.target.value })}
@@ -122,9 +115,7 @@ export function ReviewerInstructionsCard({
 					bg="gray.2"
 					borderRadius="l2"
 					display={mode === 'preview' ? 'block' : 'none'}
-					h="100%"
-					minH="0"
-					overflowY="auto"
+					minH="24rem"
 					p="4"
 				>
 					<MarkdownContent>{selected?.content || '_No instructions yet._'}</MarkdownContent>
