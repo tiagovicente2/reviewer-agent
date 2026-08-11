@@ -3,11 +3,13 @@ import type { AsyncState } from '@/app/types'
 import { Button } from '@/components/ui'
 
 export function ReviewInboxHeader({
+	onCollapse,
 	onOpenSettings,
 	onRefresh,
 	reviewsState,
 	username,
 }: {
+	onCollapse: () => void
 	onOpenSettings: () => void
 	onRefresh: () => void
 	reviewsState: AsyncState
@@ -15,22 +17,38 @@ export function ReviewInboxHeader({
 }) {
 	return (
 		<Stack gap="3">
-			<HStack justify="space-between" alignItems="flex-start" gap="3">
-				<Box as="h1" textStyle="4xl" fontWeight="bold" letterSpacing="-0.04em">
-					Review inbox
-				</Box>
-				<Button size="sm" variant="outline" onClick={onOpenSettings}>
+			<Box as="h1" textStyle="4xl" fontWeight="bold" letterSpacing="-0.04em">
+				Review inbox
+			</Box>
+			<Box color="fg.muted" textStyle="sm" truncate>
+				Connected as @{username ?? 'unknown'}
+			</Box>
+			<HStack gap="3">
+				<Button flex="1" size="sm" variant="outline" onClick={onOpenSettings}>
 					Settings
 				</Button>
-			</HStack>
-			<HStack justify="space-between" gap="3">
-				<Box color="fg.muted" textStyle="sm">
-					Connected as @{username ?? 'unknown'}
-				</Box>
-				<Button size="sm" variant="plain" onClick={onRefresh} loading={reviewsState === 'loading'}>
+				<Button
+					flex="1"
+					loading={reviewsState === 'loading'}
+					onClick={onRefresh}
+					size="sm"
+					variant="plain"
+				>
 					Refresh
 				</Button>
 			</HStack>
+			<Button
+				aria-controls="review-inbox-content"
+				aria-expanded={true}
+				aria-label="Collapse review inbox"
+				onClick={onCollapse}
+				size="xs"
+				variant="plain"
+				w="full"
+			>
+				<Box aria-hidden="true">‹</Box>
+				Collapse review inbox
+			</Button>
 		</Stack>
 	)
 }

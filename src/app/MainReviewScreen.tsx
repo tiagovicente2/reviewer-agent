@@ -1,8 +1,10 @@
-import { lazy, Suspense } from 'react'
+import { type CSSProperties, lazy, Suspense, useState } from 'react'
 import { Grid } from 'styled-system/jsx'
 import { StatusCard } from '@/components/common'
 import type { SearchMode } from '@/features/reviews/components/inbox/types'
+import { PaneResizeHandle } from '@/features/reviews/components/PaneResizeHandle'
 import { ReviewInbox } from '@/features/reviews/components/ReviewInbox'
+import { inboxPane } from '@/features/reviews/components/workspaceLayoutUtils'
 import type {
 	GitHubAuthStatus,
 	GitHubPullRequestDetails,
@@ -74,11 +76,15 @@ export function MainReviewScreen({
 	setSummary,
 	updateStatus,
 }: MainReviewScreenProps) {
+	const [inboxWidth, setInboxWidth] = useState<number>(inboxPane.defaultWidth)
+	const [inboxCollapsed, setInboxCollapsed] = useState(false)
+
 	return (
 		<Grid
+			style={{ '--inbox-width': `${inboxWidth}px` } as CSSProperties}
 			gridTemplateColumns={{
 				base: 'minmax(0, 1fr)',
-				lg: 'clamp(24rem, 36vw, 34rem) minmax(0, 1fr)',
+				lg: inboxCollapsed ? '2.5rem minmax(0, 1fr)' : 'var(--inbox-width) 0.5rem minmax(0, 1fr)',
 			}}
 			h="100%"
 			minH="0"
@@ -88,7 +94,9 @@ export function MainReviewScreen({
 		>
 			<ReviewInbox
 				canReviewPrQuery={canReviewPrQuery}
+				collapsed={inboxCollapsed}
 				onClearSearch={onClearSearch}
+				onCollapse={() => setInboxCollapsed((collapsed) => !collapsed)}
 				onOpenSettings={onOpenSettings}
 				onRefresh={loadReviewRequests}
 				onReviewPr={onReviewPr}
@@ -107,6 +115,15 @@ export function MainReviewScreen({
 				updateStatus={updateStatus}
 				username={currentAuthStatus.username}
 			/>
+			{inboxCollapsed ? null : (
+				<PaneResizeHandle
+					ariaLabel="Resize review inbox"
+					controls="review-inbox-pane"
+					limits={inboxPane}
+					onChange={setInboxWidth}
+					value={inboxWidth}
+				/>
+			)}
 			<Suspense
 				fallback={
 					<StatusCard title="Loading review panel" body="Preparing pull request details..." />

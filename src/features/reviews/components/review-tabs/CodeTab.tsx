@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { type CSSProperties, useState } from 'react'
 import { Box, Grid, Stack } from 'styled-system/jsx'
 import type { AsyncState, ColorMode } from '@/app/types'
 import { StatusCard } from '@/components/common'
@@ -8,6 +8,8 @@ import type { ReviewInlineComment } from '@/shared/review'
 import { ChangedFilesTree } from '../changed-files-tree/ChangedFilesTree'
 import { DiffViewer } from '../diff-viewer/DiffViewer'
 import type { DiffDisplaySettings } from '../diff-viewer/diffDisplayUtils'
+import { PaneResizeHandle } from '../PaneResizeHandle'
+import { filesPane } from '../workspaceLayoutUtils'
 
 export function CodeTab({
 	colorMode,
@@ -31,6 +33,8 @@ export function CodeTab({
 	onLoadDiff: () => Promise<string>
 }) {
 	const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null)
+	const [filesWidth, setFilesWidth] = useState<number>(filesPane.defaultWidth)
+	const [filesCollapsed, setFilesCollapsed] = useState(false)
 
 	if (detailState === 'loading' || !detail || (!diff && !diffError)) {
 		return (
@@ -45,25 +49,46 @@ export function CodeTab({
 
 	return (
 		<Grid
-			gridTemplateColumns={{ base: 'minmax(0, 1fr)', xl: '24rem minmax(0, 1fr)' }}
-			gap="5"
+			style={{ '--files-width': `${filesWidth}px` } as CSSProperties}
+			gridTemplateColumns={{
+				base: 'minmax(0, 1fr)',
+				lg: filesCollapsed ? '2.5rem minmax(0, 1fr)' : 'var(--files-width) 0.5rem minmax(0, 1fr)',
+			}}
+			gap={{ base: '3', lg: '0' }}
 			h="100%"
 			minH="0"
 			minW="0"
 			overflow="hidden"
 		>
 			<Card.Root
+				display={filesCollapsed ? 'none' : 'flex'}
 				h="100%"
-				maxH={{ base: '24rem', xl: '100%' }}
+				id="changed-files-pane"
+				maxH={{ base: '24rem', lg: '100%' }}
 				minH="0"
 				overflow="hidden"
 				variant="outline"
 			>
-				<Card.Header>
-					<Card.Title>Changed files</Card.Title>
+				<Card.Header position="relative">
+					<Card.Title pr="8" truncate>
+						Changed files
+					</Card.Title>
 					<Card.Description truncate>{detail?.files.length ?? 0} edited files</Card.Description>
+					<Button
+						aria-controls="changed-files-tree"
+						aria-expanded={true}
+						aria-label="Collapse changed files"
+						onClick={() => setFilesCollapsed(true)}
+						position="absolute"
+						right="4"
+						size="2xs"
+						top="4"
+						variant="plain"
+					>
+						<Box aria-hidden="true">‹</Box>
+					</Button>
 				</Card.Header>
-				<Card.Body minH="0" overflow="hidden">
+				<Card.Body id="changed-files-tree" minH="0" overflow="hidden">
 					{detail ? (
 						<ChangedFilesTree
 							colorMode={colorMode}
@@ -75,9 +100,48 @@ export function CodeTab({
 				</Card.Body>
 			</Card.Root>
 
+			<Box
+				alignItems="center"
+				bg="gray.2"
+				borderRightWidth={{ base: '0', lg: '1px' }}
+				display={filesCollapsed ? 'flex' : 'none'}
+				h={{ base: '2.5rem', lg: '100%' }}
+				justifyContent="center"
+				minH="0"
+			>
+				<Button
+					aria-controls="changed-files-tree"
+					aria-expanded={false}
+					aria-label="Show changed files"
+					h="full"
+					onClick={() => setFilesCollapsed(false)}
+					px="0"
+					size="2xs"
+					variant="plain"
+					w="full"
+				>
+					<Box aria-hidden="true" fontSize="lg">
+						›
+					</Box>
+					<Box as="span" display={{ base: 'inline', lg: 'none' }}>
+						Show changed files
+					</Box>
+				</Button>
+			</Box>
+
+			{filesCollapsed ? null : (
+				<PaneResizeHandle
+					ariaLabel="Resize changed files"
+					controls="changed-files-pane"
+					limits={filesPane}
+					onChange={setFilesWidth}
+					value={filesWidth}
+				/>
+			)}
+
 			<Card.Root
 				h="100%"
-				maxH={{ base: '70vh', xl: '100%' }}
+				maxH={{ base: '70vh', lg: '100%' }}
 				maxW="100%"
 				minH="0"
 				minW="0"
