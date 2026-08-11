@@ -9,6 +9,7 @@ import { StatusCard } from '@/components/common'
 import { Button } from '@/components/ui'
 import type { AgentAvailability, AppSettings, AvailablePiModel } from '@/shared/settings'
 import type { UpdateStatus } from '@/shared/update'
+import { hasUnsavedSettings } from '../settingsDirtyState'
 import { AgentStatusCard } from './AgentStatusCard'
 import { CacheModal } from './CacheModal'
 import { PreferencesCard } from './PreferencesCard'
@@ -26,6 +27,7 @@ export function SettingsPage({
 	onSaved: (settings: AppSettings) => void
 }) {
 	const [settings, setSettings] = useState<AppSettings | null>(null)
+	const [persistedSettings, setPersistedSettings] = useState<AppSettings | null>(null)
 	const [state, setState] = useState<AsyncState>('loading')
 	const [error, setError] = useState('')
 	const [availableModels, setAvailableModels] = useState<AvailablePiModel[]>([])
@@ -43,6 +45,7 @@ export function SettingsPage({
 			.then((value) => {
 				if (cancelled) return
 				setSettings(value)
+				setPersistedSettings(value)
 				if (!instructionsModeInitializedRef.current) {
 					setInstructionsMode(value.reviewerInstructions[0]?.content.trim() ? 'preview' : 'raw')
 					instructionsModeInitializedRef.current = true
@@ -113,13 +116,27 @@ export function SettingsPage({
 		appRpc.request.getUpdateStatus().then(setUpdateStatus).catch(Object)
 	}, [])
 
+	const isDirty = hasUnsavedSettings(settings, persistedSettings)
+
+	const requestLeave = (leave: () => void) => {
+		if (state === 'loading') return
+		if (
+			isDirty &&
+			!window.confirm('Discard unsaved settings changes? Your last saved settings will be kept.')
+		) {
+			return
+		}
+		leave()
+	}
+
 	const save = async () => {
-		if (!settings) return
+		if (!settings || !isDirty) return
 		setState('loading')
 		setError('')
 		try {
 			const saved = await appRpc.request.saveAppSettings(settings)
 			setSettings(saved)
+			setPersistedSettings(saved)
 			onSaved(saved)
 			setState('idle')
 			showToast({ title: 'Settings saved', tone: 'success' })
@@ -144,6 +161,18 @@ export function SettingsPage({
 						<Box color="fg.muted" textStyle="sm">
 							Configure local review generation.
 						</Box>
+						{settings ? (
+							<Box
+								aria-live="polite"
+								color={isDirty ? 'cyan.11' : 'fg.muted'}
+								fontWeight={isDirty ? 'semibold' : 'normal'}
+								mt="1"
+								role="status"
+								textStyle="xs"
+							>
+								{isDirty ? 'Unsaved changes' : 'All changes saved'}
+							</Box>
+						) : null}
 					</Box>
 					<HStack flexShrink="0" flexWrap="wrap" gap="2">
 						<IconButton ariaLabel="Local cache" onClick={() => setIsCacheModalOpen(true)}>
@@ -165,13 +194,21 @@ export function SettingsPage({
 								/>
 							)}
 						</Box>
-						<Button variant="outline" onClick={onOpenErrorLog}>
+						<Button
+							disabled={state === 'loading'}
+							variant="outline"
+							onClick={() => requestLeave(onOpenErrorLog)}
+						>
 							Error log
 						</Button>
-						<Button variant="outline" onClick={onBack}>
+						<Button
+							disabled={state === 'loading'}
+							variant="outline"
+							onClick={() => requestLeave(onBack)}
+						>
 							Back
 						</Button>
-						<Button loading={state === 'loading'} onClick={save} disabled={!settings}>
+						<Button disabled={!settings || !isDirty} loading={state === 'loading'} onClick={save}>
 							Save
 						</Button>
 					</HStack>
