@@ -21,13 +21,11 @@ export function ReviewProgress({ message, outputText }: { message?: string; outp
 
 	return (
 		<Stack
-			bg="gray.2"
 			borderRadius="l2"
-			gap="4"
+			gap="2"
 			h="100%"
 			minH="18rem"
 			overflow="hidden"
-			p="6"
 			textAlign="left"
 		>
 			<HStack alignItems="center" justify="space-between" gap="3">

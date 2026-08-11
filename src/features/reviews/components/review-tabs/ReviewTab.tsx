@@ -38,7 +38,7 @@ export function ReviewTab({
 }) {
 	return (
 		<Card.Root h="100%" minH="0" overflow="hidden" variant="outline">
-			<Card.Body minH="0" overflow="hidden" py="4">
+			<Card.Body minH="0" overflow="hidden" p="3">
 				<Box
 					boxSizing="border-box"
 					h="100%"

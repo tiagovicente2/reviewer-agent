@@ -34,7 +34,6 @@ export function ReviewTranscript({ lines }: { lines: TranscriptLineModel[] }) {
 			minH="0"
 			onScroll={updateTranscriptFollowState}
 			overflowY="auto"
-			py="3"
 			ref={transcriptRef}
 			scrollbarGutter="stable"
 			w="100%"
