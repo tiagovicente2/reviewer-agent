@@ -1,6 +1,6 @@
 # 021 — Add accessible control semantics
 
-- **Status**: TODO
+- **Status**: DONE
 - **Commit**: `a283d84`
 - **Severity**: HIGH
 - **Category**: Accessibility

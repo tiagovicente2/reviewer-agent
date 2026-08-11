@@ -1,6 +1,6 @@
 # 027 — Improve async accessibility
 
-- **Status**: TODO
+- **Status**: DONE
 - **Commit**: `a283d84`
 - **Severity**: HIGH
 - **Category**: Accessibility

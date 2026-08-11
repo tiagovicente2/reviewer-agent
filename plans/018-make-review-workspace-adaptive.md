@@ -1,6 +1,6 @@
 # 018 — Make the review workspace adaptive
 
-- **Status**: TODO
+- **Status**: DONE
 - **Commit**: `a283d84`
 - **Severity**: HIGH
 - **Category**: Accessibility

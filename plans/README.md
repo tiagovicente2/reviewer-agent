@@ -2,24 +2,24 @@
 
 Current UX/UI audit baseline: commit `a283d84`.
 
-## Current UX/UI audit
+## Completed UX/UI audit
 
 | Order | Plan | Severity | Category | Status | Depends on |
 | --- | --- | --- | --- | --- | --- |
-| 1 | [015 — Isolate generation by pull request](015-isolate-generation-by-pull-request.md) | HIGH | Bugs & correctness | TODO | none |
-| 2 | [018 — Make the review workspace adaptive](018-make-review-workspace-adaptive.md) | HIGH | Accessibility | TODO | none |
-| 3 | [020 — Add accessible modal behavior](020-add-accessible-modal-behavior.md) | HIGH | Accessibility | TODO | none |
-| 4 | [022 — Show inbox error state](022-show-inbox-error-state.md) | HIGH | Bugs & correctness | TODO | none |
-| 5 | [023 — Fix settings responsive scrolling](023-fix-settings-responsive-scrolling.md) | HIGH | Bugs & correctness | TODO | none |
-| 6 | [026 — Improve long-form markdown typography](026-improve-long-form-typography.md) | MEDIUM | Accessibility | TODO | none |
-| 7 | [014 — Preserve edited review comments](014-preserve-edited-review-comments.md) | HIGH | Bugs & correctness | TODO | after 015 |
-| 8 | [021 — Add accessible control semantics](021-add-accessible-control-semantics.md) | HIGH | Accessibility | TODO | after 020 |
-| 9 | [024 — Guard unsaved settings changes](024-guard-unsaved-settings.md) | HIGH | Bugs & correctness | TODO | after 020 and 023 |
-| 10 | [025 — Confirm destructive cache clearing](025-confirm-cache-clearing.md) | HIGH | Bugs & correctness | TODO | after 020 |
-| 11 | [016 — Reconcile published findings](016-reconcile-published-findings.md) | HIGH | Bugs & correctness | TODO | after 014 |
-| 12 | [019 — Clarify finding action hierarchy](019-clarify-finding-action-hierarchy.md) | HIGH | Bugs & correctness | TODO | after 014 and 016 |
-| 13 | [027 — Improve async accessibility](027-improve-async-accessibility.md) | HIGH | Accessibility | TODO | after 021 |
-| 14 | [017 — Lock review submission](017-lock-review-submission.md) | HIGH | Bugs & correctness | TODO | after 014 and 016 |
+| 1 | [015 — Isolate generation by pull request](015-isolate-generation-by-pull-request.md) | HIGH | Bugs & correctness | DONE | none |
+| 2 | [018 — Make the review workspace adaptive](018-make-review-workspace-adaptive.md) | HIGH | Accessibility | DONE | none |
+| 3 | [020 — Add accessible modal behavior](020-add-accessible-modal-behavior.md) | HIGH | Accessibility | DONE | none |
+| 4 | [022 — Show inbox error state](022-show-inbox-error-state.md) | HIGH | Bugs & correctness | DONE | none |
+| 5 | [023 — Fix settings responsive scrolling](023-fix-settings-responsive-scrolling.md) | HIGH | Bugs & correctness | DONE | none |
+| 6 | [026 — Improve long-form markdown typography](026-improve-long-form-typography.md) | MEDIUM | Accessibility | DONE | none |
+| 7 | [014 — Preserve edited review comments](014-preserve-edited-review-comments.md) | HIGH | Bugs & correctness | DONE | after 015 |
+| 8 | [021 — Add accessible control semantics](021-add-accessible-control-semantics.md) | HIGH | Accessibility | DONE | after 020 |
+| 9 | [024 — Guard unsaved settings changes](024-guard-unsaved-settings.md) | HIGH | Bugs & correctness | DONE | after 020 and 023 |
+| 10 | [025 — Confirm destructive cache clearing](025-confirm-cache-clearing.md) | HIGH | Bugs & correctness | DONE | after 020 |
+| 11 | [016 — Reconcile published findings](016-reconcile-published-findings.md) | HIGH | Bugs & correctness | DONE | after 014 |
+| 12 | [019 — Clarify finding action hierarchy](019-clarify-finding-action-hierarchy.md) | HIGH | Bugs & correctness | DONE | after 014 and 016 |
+| 13 | [027 — Improve async accessibility](027-improve-async-accessibility.md) | HIGH | Accessibility | DONE | after 021 |
+| 14 | [017 — Lock review submission](017-lock-review-submission.md) | HIGH | Bugs & correctness | DONE | after 014 and 016 |
 
 ## Completed previous audit
 

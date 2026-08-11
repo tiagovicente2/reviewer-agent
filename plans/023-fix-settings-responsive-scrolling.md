@@ -1,6 +1,6 @@
 # 023 — Fix settings responsive scrolling
 
-- **Status**: TODO
+- **Status**: DONE
 - **Commit**: `a283d84`
 - **Severity**: HIGH
 - **Category**: Bugs & correctness

@@ -1,6 +1,6 @@
 # 015 — Isolate generation by pull request
 
-- **Status**: TODO
+- **Status**: DONE
 - **Commit**: `a283d84`
 - **Severity**: HIGH
 - **Category**: Bugs & correctness

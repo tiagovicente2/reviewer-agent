@@ -1,6 +1,6 @@
 # 026 — Improve long-form markdown typography
 
-- **Status**: TODO
+- **Status**: DONE
 - **Commit**: `a283d84`
 - **Severity**: MEDIUM
 - **Category**: Accessibility

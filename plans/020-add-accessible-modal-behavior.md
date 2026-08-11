@@ -1,6 +1,6 @@
 # 020 — Add accessible modal behavior
 
-- **Status**: TODO
+- **Status**: DONE
 - **Commit**: `a283d84`
 - **Severity**: HIGH
 - **Category**: Accessibility

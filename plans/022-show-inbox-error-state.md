@@ -1,6 +1,6 @@
 # 022 — Show inbox error state
 
-- **Status**: TODO
+- **Status**: DONE
 - **Commit**: `a283d84`
 - **Severity**: HIGH
 - **Category**: Bugs & correctness

@@ -1,6 +1,6 @@
 # 016 — Reconcile published findings
 
-- **Status**: TODO
+- **Status**: DONE
 - **Commit**: `a283d84`
 - **Severity**: HIGH
 - **Category**: Bugs & correctness
