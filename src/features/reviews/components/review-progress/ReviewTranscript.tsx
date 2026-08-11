@@ -25,6 +25,9 @@ export function ReviewTranscript({ lines }: { lines: TranscriptLineModel[] }) {
 
 	return (
 		<Stack
+			aria-label="Review generation transcript"
+			aria-live="polite"
+			aria-relevant="additions text"
 			bg="gray.1"
 			borderColor="border.default"
 			borderRadius="l2"
@@ -35,6 +38,7 @@ export function ReviewTranscript({ lines }: { lines: TranscriptLineModel[] }) {
 			onScroll={updateTranscriptFollowState}
 			overflowY="auto"
 			ref={transcriptRef}
+			role="log"
 			scrollbarGutter="stable"
 			w="100%"
 		>

@@ -9,7 +9,10 @@ type Toast = {
 	title: string
 	description?: string
 	tone: ToastTone
-	onClick?: () => void
+	action?: {
+		label: string
+		onClick: () => void
+	}
 }
 
 type ToastContextValue = {
@@ -61,16 +64,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 			>
 				{toasts.map((toast) => (
 					<Box
+						aria-atomic="true"
 						className={toastToneClassNames[toast.tone]}
 						borderLeftWidth="4px"
 						borderRadius="l2"
 						boxShadow="xl"
-						cursor={toast.onClick ? 'pointer' : 'default'}
 						key={toast.id}
-						onClick={toast.onClick}
 						p="4"
-						role={toast.onClick ? 'button' : 'status'}
-						tabIndex={toast.onClick ? 0 : undefined}
+						role={toast.tone === 'error' ? 'alert' : 'status'}
 					>
 						<Box alignItems="flex-start" display="flex" gap="3" justifyContent="space-between">
 							<Box minW="0">
@@ -81,18 +82,32 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 									</Box>
 								) : null}
 							</Box>
-							<Box
-								as="button"
+							<button
 								aria-label="Dismiss notification"
-								onClick={(event) => {
-									event.stopPropagation()
-									removeToast(toast.id)
-								}}
 								className={cx(toastDescriptionClassNames[toast.tone], css({ fontWeight: 'bold' }))}
+								onClick={() => removeToast(toast.id)}
+								type="button"
 							>
 								×
-							</Box>
+							</button>
 						</Box>
+						{toast.action ? (
+							<button
+								className={cx(
+									toastDescriptionClassNames[toast.tone],
+									css({
+										cursor: 'pointer',
+										fontWeight: 'semibold',
+										marginTop: '2',
+										textDecoration: 'underline',
+									}),
+								)}
+								onClick={toast.action.onClick}
+								type="button"
+							>
+								{toast.action.label}
+							</button>
+						) : null}
 					</Box>
 				))}
 			</Stack>

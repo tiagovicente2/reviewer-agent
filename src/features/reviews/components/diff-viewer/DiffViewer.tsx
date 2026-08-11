@@ -50,8 +50,11 @@ export const DiffViewer = memo(function DiffViewer({
 					const node = fileRefs.current.get(fileKey)
 					const scrollParent = node ? getScrollableParent(node) : null
 					if (node && scrollParent) {
+						const prefersReducedMotion = window.matchMedia(
+							'(prefers-reduced-motion: reduce)',
+						).matches
 						scrollParent.scrollTo({
-							behavior: 'smooth',
+							behavior: prefersReducedMotion ? 'auto' : 'smooth',
 							top: node.offsetTop - scrollParent.offsetTop,
 						})
 					}

@@ -19,8 +19,8 @@ export function useErrorLog(openErrorLog: () => void) {
 			}
 			setErrors((current) => [entry, ...current])
 			showToast({
-				description: 'Click to open the error log.',
-				onClick: openErrorLog,
+				action: { label: 'Open error log', onClick: openErrorLog },
+				description: 'Open the error log for details.',
 				title,
 				tone: 'error',
 			})
