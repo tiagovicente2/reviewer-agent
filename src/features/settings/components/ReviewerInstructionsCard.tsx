@@ -1,5 +1,6 @@
 import { Tabs } from '@ark-ui/react/tabs'
 import { useState } from 'react'
+import { css } from 'styled-system/css'
 import { Box, HStack } from 'styled-system/jsx'
 import { visuallyHidden } from 'styled-system/patterns'
 import { TabButton } from '@/components/common'
@@ -55,12 +56,20 @@ export function ReviewerInstructionsCard({
 
 	return (
 		<Tabs.Root
+			className={css({ h: { base: 'auto', xl: '100%' }, minH: '0' })}
 			lazyMount={false}
 			onValueChange={({ value }) => onChangeMode(value as InstructionsMode)}
 			unmountOnExit={false}
 			value={mode}
 		>
-			<Card.Root minH="0" minW="0" overflow="visible">
+			<Card.Root
+				display="grid"
+				gridTemplateRows="auto minmax(0, 1fr)"
+				h={{ base: 'auto', xl: '100%' }}
+				minH="0"
+				minW="0"
+				overflow="hidden"
+			>
 				<Card.Header>
 					<HStack justify="space-between" gap="4">
 						<Box minW="0">
@@ -109,9 +118,9 @@ export function ReviewerInstructionsCard({
 						</Button>
 					</HStack>
 				</Card.Header>
-				<Card.Body minH="0" overflow="visible">
+				<Card.Body minH="0" overflow="hidden">
 					<Tabs.Content asChild value="raw">
-						<Box minH="0">
+						<Box h={{ base: '24rem', xl: '100%' }} minH="0">
 							<label className={visuallyHidden()} htmlFor="instruction-content">
 								Reviewer instructions markdown
 							</label>
@@ -119,8 +128,10 @@ export function ReviewerInstructionsCard({
 								id="instruction-content"
 								boxSizing="border-box"
 								display="block"
-								minH="24rem"
-								resize="vertical"
+								h="100%"
+								minH="0"
+								overflowY="auto"
+								resize="none"
 								placeholder="Custom markdown instructions for the reviewer agent."
 								value={selected?.content ?? ''}
 								onChange={(event) => updateSelected({ content: event.target.value })}
@@ -129,7 +140,14 @@ export function ReviewerInstructionsCard({
 						</Box>
 					</Tabs.Content>
 					<Tabs.Content asChild value="preview">
-						<Box bg="gray.2" borderRadius="l2" minH="24rem" p="4">
+						<Box
+							bg="gray.2"
+							borderRadius="l2"
+							h={{ base: '24rem', xl: '100%' }}
+							minH="0"
+							overflowY="auto"
+							p="4"
+						>
 							<MarkdownContent>{selected?.content || '_No instructions yet._'}</MarkdownContent>
 						</Box>
 					</Tabs.Content>

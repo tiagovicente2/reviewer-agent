@@ -1,4 +1,4 @@
-export const inboxPane = { defaultWidth: 288, minWidth: 240, maxWidth: 384, step: 16 } as const
+export const inboxPane = { defaultWidth: 384, minWidth: 240, maxWidth: 384, step: 16 } as const
 export const filesPane = { defaultWidth: 224, minWidth: 176, maxWidth: 320, step: 16 } as const
 
 export function clampPaneWidth(width: number, minWidth: number, maxWidth: number) {

@@ -7,6 +7,12 @@ import {
 	resizePaneFromPointer,
 } from './workspaceLayoutUtils'
 
+describe('pane defaults', () => {
+	it('opens the review inbox at its maximum width', () => {
+		expect(inboxPane.defaultWidth).toBe(inboxPane.maxWidth)
+	})
+})
+
 describe('clampPaneWidth', () => {
 	it('clamps widths at both limits and preserves widths inside them', () => {
 		expect(clampPaneWidth(200, inboxPane.minWidth, inboxPane.maxWidth)).toBe(240)

@@ -77,7 +77,7 @@ export const DiffViewer = memo(function DiffViewer({
 	}
 
 	return (
-		<Stack gap="4" pr="1">
+		<Stack gap="4">
 			{parsedPatch.files.map((fileDiff) => {
 				const fileKey = getFileDiffKey(fileDiff)
 				const expanded = expandedFiles.has(fileKey)

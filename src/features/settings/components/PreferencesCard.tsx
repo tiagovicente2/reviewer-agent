@@ -22,7 +22,13 @@ export function PreferencesCard({
 	settings: AppSettings
 }) {
 	return (
-		<Card.Root minH="0" overflow="visible" display="grid" gridTemplateRows="auto minmax(0, 1fr)">
+		<Card.Root
+			display="grid"
+			flexShrink="0"
+			gridTemplateRows="auto minmax(0, 1fr)"
+			minH="0"
+			overflow="visible"
+		>
 			<Card.Header>
 				<Card.Title>Preferences</Card.Title>
 				<Card.Description>Local UI and agent selection.</Card.Description>

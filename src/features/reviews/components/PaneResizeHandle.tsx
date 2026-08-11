@@ -37,10 +37,10 @@ const resizeHandleClassName = css({
 		bg: 'gray.6',
 		content: '""',
 		insetBlock: '0',
-		left: '3px',
+		left: '0',
 		position: 'absolute',
 		transition: 'background-color 150ms ease, box-shadow 150ms ease',
-		w: '2px',
+		w: '1px',
 	},
 	'&:hover::before': {
 		bg: 'cyan.8',

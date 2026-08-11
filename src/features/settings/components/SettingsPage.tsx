@@ -147,8 +147,8 @@ export function SettingsPage({
 	}
 
 	return (
-		<Box boxSizing="border-box" h="100%" minH="0" overflowY="auto" px="8" py="6">
-			<Stack gap="4" minH="100%" mx="auto" w="100%">
+		<Box boxSizing="border-box" h="100%" minH="0" overflow="hidden" px="8" py="6">
+			<Stack gap="4" h="100%" minH="0" mx="auto" w="100%">
 				<HStack
 					alignItems={{ base: 'stretch', md: 'flex-start' }}
 					flexDirection={{ base: 'column', md: 'row' }}
@@ -219,13 +219,23 @@ export function SettingsPage({
 					<Box
 						alignItems="start"
 						display="grid"
+						flex="1"
 						gap="4"
 						gridTemplateColumns={{
 							base: 'minmax(0, 1fr)',
 							xl: '32rem minmax(0, 1fr)',
 						}}
+						h="100%"
+						minH="0"
+						overflow={{ base: 'auto', xl: 'hidden' }}
 					>
-						<Stack gap="4" minW="0">
+						<Stack
+							gap="4"
+							h={{ base: 'auto', xl: '100%' }}
+							minH="0"
+							minW="0"
+							overflow={{ base: 'visible', xl: 'hidden' }}
+						>
 							<PreferencesCard
 								availableModels={availableModels}
 								onChange={setSettings}

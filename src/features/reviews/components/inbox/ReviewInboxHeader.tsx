@@ -1,6 +1,7 @@
 import { Box, HStack, Stack } from 'styled-system/jsx'
 import type { AsyncState } from '@/app/types'
 import { Button } from '@/components/ui'
+import { ChevronLeftIcon, RefreshIcon, SettingsIcon } from './InboxIcons'
 
 export function ReviewInboxHeader({
 	onCollapse,
@@ -17,38 +18,71 @@ export function ReviewInboxHeader({
 }) {
 	return (
 		<Stack gap="3">
-			<Box as="h1" textStyle="4xl" fontWeight="bold" letterSpacing="-0.04em">
-				Review inbox
-			</Box>
-			<Box color="fg.muted" textStyle="sm" truncate>
-				Connected as @{username ?? 'unknown'}
-			</Box>
-			<HStack gap="3">
-				<Button flex="1" size="sm" variant="outline" onClick={onOpenSettings}>
-					Settings
-				</Button>
-				<Button
-					flex="1"
-					loading={reviewsState === 'loading'}
-					onClick={onRefresh}
-					size="sm"
-					variant="plain"
-				>
-					Refresh
-				</Button>
+			<HStack alignItems="flex-start" gap="3" justify="space-between">
+				<Box minW="0">
+					<Box as="h1" textStyle="4xl" fontWeight="bold" letterSpacing="-0.04em">
+						Review inbox
+					</Box>
+					<Box color="fg.muted" mt="1" textStyle="sm" truncate>
+						Connected as @{username ?? 'unknown'}
+					</Box>
+				</Box>
+				<HStack flexShrink="0" gap="1">
+					<HeaderIconButton ariaLabel="Settings" onClick={onOpenSettings}>
+						<SettingsIcon />
+					</HeaderIconButton>
+					<HeaderIconButton
+						ariaLabel="Refresh review inbox"
+						loading={reviewsState === 'loading'}
+						onClick={onRefresh}
+					>
+						<RefreshIcon />
+					</HeaderIconButton>
+					<HeaderIconButton
+						ariaControls="review-inbox-content"
+						ariaExpanded={true}
+						ariaLabel="Collapse review inbox"
+						onClick={onCollapse}
+					>
+						<ChevronLeftIcon />
+					</HeaderIconButton>
+				</HStack>
 			</HStack>
-			<Button
-				aria-controls="review-inbox-content"
-				aria-expanded={true}
-				aria-label="Collapse review inbox"
-				onClick={onCollapse}
-				size="xs"
-				variant="plain"
-				w="full"
-			>
-				<Box aria-hidden="true">‹</Box>
-				Collapse review inbox
-			</Button>
 		</Stack>
+	)
+}
+
+function HeaderIconButton({
+	ariaControls,
+	ariaExpanded,
+	ariaLabel,
+	children,
+	loading,
+	onClick,
+}: {
+	ariaControls?: string
+	ariaExpanded?: boolean
+	ariaLabel: string
+	children: React.ReactNode
+	loading?: boolean
+	onClick: () => void
+}) {
+	return (
+		<Button
+			aria-controls={ariaControls}
+			aria-expanded={ariaExpanded}
+			aria-label={ariaLabel}
+			h="8"
+			loading={loading}
+			minW="8"
+			onClick={onClick}
+			p="0"
+			size="xs"
+			title={ariaLabel}
+			variant="plain"
+			w="8"
+		>
+			{children}
+		</Button>
 	)
 }

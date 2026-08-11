@@ -8,6 +8,7 @@ import type { ReviewInlineComment } from '@/shared/review'
 import { ChangedFilesTree } from '../changed-files-tree/ChangedFilesTree'
 import { DiffViewer } from '../diff-viewer/DiffViewer'
 import type { DiffDisplaySettings } from '../diff-viewer/diffDisplayUtils'
+import { ChevronLeftIcon, ChevronRightIcon } from '../inbox/InboxIcons'
 import { PaneResizeHandle } from '../PaneResizeHandle'
 import { filesPane } from '../workspaceLayoutUtils'
 
@@ -61,6 +62,7 @@ export function CodeTab({
 			overflow="hidden"
 		>
 			<Card.Root
+				borderRightWidth="0"
 				display={filesCollapsed ? 'none' : 'flex'}
 				h="100%"
 				id="changed-files-pane"
@@ -85,10 +87,10 @@ export function CodeTab({
 						top="4"
 						variant="plain"
 					>
-						<Box aria-hidden="true">‹</Box>
+						<ChevronLeftIcon />
 					</Button>
 				</Card.Header>
-				<Card.Body id="changed-files-tree" minH="0" overflow="hidden">
+				<Card.Body id="changed-files-tree" minH="0" overflow="hidden" p="0">
 					{detail ? (
 						<ChangedFilesTree
 							colorMode={colorMode}
@@ -120,9 +122,7 @@ export function CodeTab({
 					variant="plain"
 					w="full"
 				>
-					<Box aria-hidden="true" fontSize="lg">
-						›
-					</Box>
+					<ChevronRightIcon />
 					<Box as="span" display={{ base: 'inline', lg: 'none' }}>
 						Show changed files
 					</Box>
@@ -139,42 +139,37 @@ export function CodeTab({
 				/>
 			)}
 
-			<Card.Root
+			<Box
 				h="100%"
 				maxH={{ base: '70vh', lg: '100%' }}
 				maxW="100%"
 				minH="0"
 				minW="0"
-				overflow="hidden"
-				variant="outline"
+				overflow="auto"
 			>
-				<Card.Body minH="0" overflow="hidden" py="4">
-					<Box h="100%" minH="0" overflow="auto" pr="3" scrollbarGutter="stable">
-						{diff ? (
-							<DiffViewer
-								inlineComments={inlineComments}
-								onSelectFile={setSelectedFilePath}
-								patch={diff}
-								selectedFilePath={selectedFilePath}
-								settings={diffDisplaySettings}
-							/>
-						) : (
-							<Stack h="100%" placeContent="center" alignItems="center" gap="4" textAlign="center">
-								<StatusCard
-									tone={diffError ? 'red' : 'gray'}
-									title={diffError ? 'Could not load diff' : 'Loading diff'}
-									body={diffError || 'Loading the patch in the background...'}
-								/>
-								{diffError ? (
-									<Button loading={diffState === 'loading'} onClick={() => void onLoadDiff()}>
-										Retry loading diff
-									</Button>
-								) : null}
-							</Stack>
-						)}
-					</Box>
-				</Card.Body>
-			</Card.Root>
+				{diff ? (
+					<DiffViewer
+						inlineComments={inlineComments}
+						onSelectFile={setSelectedFilePath}
+						patch={diff}
+						selectedFilePath={selectedFilePath}
+						settings={diffDisplaySettings}
+					/>
+				) : (
+					<Stack h="100%" placeContent="center" alignItems="center" gap="4" textAlign="center">
+						<StatusCard
+							tone={diffError ? 'red' : 'gray'}
+							title={diffError ? 'Could not load diff' : 'Loading diff'}
+							body={diffError || 'Loading the patch in the background...'}
+						/>
+						{diffError ? (
+							<Button loading={diffState === 'loading'} onClick={() => void onLoadDiff()}>
+								Retry loading diff
+							</Button>
+						) : null}
+					</Stack>
+				)}
+			</Box>
 		</Grid>
 	)
 }

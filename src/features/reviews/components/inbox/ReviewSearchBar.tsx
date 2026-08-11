@@ -3,6 +3,7 @@ import { Box, HStack } from 'styled-system/jsx'
 import { visuallyHidden } from 'styled-system/patterns'
 import type { AsyncState } from '@/app/types'
 import { Input, Select } from '@/components/ui'
+import { ArrowRightIcon, CloseIcon } from './InboxIcons'
 import { type SearchMode, searchModeLabels, searchPlaceholders } from './types'
 
 export function ReviewSearchBar({
@@ -69,7 +70,7 @@ export function ReviewSearchBar({
 							disabled={reviewsState === 'loading'}
 							onClick={onClearSearch}
 						>
-							×
+							<CloseIcon />
 						</SearchIconButton>
 					) : (
 						<SearchIconButton
@@ -77,7 +78,7 @@ export function ReviewSearchBar({
 							disabled={!trimmedQuery || reviewPrState === 'loading' || reviewsState === 'loading'}
 							onClick={primaryAction}
 						>
-							→
+							<ArrowRightIcon />
 						</SearchIconButton>
 					)}
 				</HStack>

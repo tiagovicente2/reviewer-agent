@@ -19,7 +19,7 @@ export function ReviewExportCard({
 	}
 
 	return (
-		<Card.Root minH="0" overflow="visible">
+		<Card.Root flexShrink="0" minH="0" overflow="visible">
 			<Card.Header>
 				<Card.Title>Review export</Card.Title>
 				<Card.Description>Default folder for saved review files.</Card.Description>

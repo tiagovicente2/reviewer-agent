@@ -84,6 +84,7 @@ export function MainReviewScreen({
 	return (
 		<Grid
 			style={{ '--inbox-width': `${inboxWidth}px` } as CSSProperties}
+			gap="0"
 			gridTemplateColumns={{
 				base: 'minmax(0, 1fr)',
 				lg: inboxCollapsed ? '2.5rem minmax(0, 1fr)' : 'var(--inbox-width) 0.5rem minmax(0, 1fr)',
