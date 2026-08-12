@@ -366,8 +366,8 @@ function defaultPiModels(): AvailablePiModel[] {
 }
 
 function defaultClaudeModels(): AvailablePiModel[] {
-	// CLI aliases resolve to the latest model in each tier (fable → Claude Fable 5,
-	// opus → Opus 4.8, sonnet → Sonnet 5, haiku → Haiku 4.5).
+	// CLI aliases resolve to the latest model in each tier, so keep aliases here
+	// instead of pinning release-specific model IDs that quickly become stale.
 	return ['fable', 'opus', 'sonnet', 'haiku'].map((model) => ({
 		id: model,
 		label: `${model} (latest)`,
@@ -388,12 +388,14 @@ function listAvailableModelsForCodex(): AvailablePiModel[] {
 }
 
 function defaultCodexModels(): AvailablePiModel[] {
-	return ['gpt-5.5', 'gpt-5.4', 'gpt-5.4-mini', 'gpt-5.3-codex', 'gpt-5.2'].map((model) => ({
-		id: model,
-		label: model,
-		provider: 'codex',
-		model,
-	}))
+	return ['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna', 'gpt-5.5', 'gpt-5.4', 'gpt-5.4-mini'].map(
+		(model) => ({
+			id: model,
+			label: model,
+			provider: 'codex',
+			model,
+		}),
+	)
 }
 
 function readCodexModelsCache(): AvailablePiModel[] {
@@ -431,7 +433,7 @@ function readCodexModelsCache(): AvailablePiModel[] {
 function getDefaultModelForAgent(agent: CodeAgent) {
 	if (agent === 'claude') return 'opus'
 	if (agent === 'opencode') return defaultOpencodeModels()[0]?.id ?? 'opencode/default'
-	if (agent === 'codex') return defaultCodexModels()[0]?.id ?? 'gpt-5.3-codex'
+	if (agent === 'codex') return defaultCodexModels()[0]?.id ?? 'gpt-5.6-sol'
 	return getDefaultPiModel()
 }
 
