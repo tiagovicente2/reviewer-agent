@@ -216,7 +216,7 @@ async function listAvailableModelsForPi(): Promise<AvailablePiModel[]> {
 	])
 
 	for (const search of searches) {
-		const models = parseProviderModels(await listPiModelsBySearch(search))
+		const models = parsePiModels(await listPiModelsBySearch(search))
 		if (models.length > 0) return models
 	}
 
@@ -282,11 +282,13 @@ async function checkAgentReady(agent: CodeAgent): Promise<{ ready: boolean; mess
 
 async function listPiModelsBySearch(search: string) {
 	const args = search ? ['--list-models', search] : ['--list-models']
-	const { stdout, stderr, exitCode } = await runCommand('pi', args, {
+	const { stdout, exitCode } = await runCommand('pi', args, {
 		env: { ...process.env, PI_SKIP_VERSION_CHECK: '1' },
 		timeoutMs: 8000,
 	})
-	return exitCode === 0 ? `${stdout}\n${stderr}` : ''
+	// Environment managers such as mise may emit diagnostics on stderr even when
+	// the command succeeds. Only stdout contains the model table.
+	return exitCode === 0 ? stdout : ''
 }
 
 export function getReviewLanguage(value?: unknown): ReviewLanguage {
@@ -332,11 +334,29 @@ function readLegacyInstructions() {
 }
 
 async function listOpencodeModels() {
-	const { stdout, stderr, exitCode } = await runCommand('opencode', ['models'], {
+	const { stdout, exitCode } = await runCommand('opencode', ['models'], {
 		env: { ...process.env },
 		timeoutMs: 8000,
 	})
-	return exitCode === 0 ? `${stdout}\n${stderr}` : ''
+	return exitCode === 0 ? stdout : ''
+}
+
+function parsePiModels(output: string): AvailablePiModel[] {
+	return (
+		output
+			.split('\n')
+			.map((line) => line.trim().split(/\s+/))
+			// Pi's table has provider, model, context, max-out, thinking, and images.
+			// Requiring the complete row prevents shell/environment diagnostics from
+			// being interpreted as provider/model pairs.
+			.filter((columns) => columns.length >= 6 && columns[0] !== 'provider')
+			.map(([provider = '', model = '']) => ({
+				id: `${provider}/${model}`,
+				label: `${provider}/${model}`,
+				provider,
+				model,
+			}))
+	)
 }
 
 function parseProviderModels(output: string): AvailablePiModel[] {
