@@ -30,6 +30,8 @@ export type ReviewInlineComment = {
 	body: string
 	author?: string
 	createdAt?: string
+	disabled?: boolean
+	onChangeBody?: (body: string) => void
 }
 
 export type GeneratedReview = {

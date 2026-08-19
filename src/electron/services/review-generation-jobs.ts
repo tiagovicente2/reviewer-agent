@@ -1,7 +1,7 @@
 import {
+	type GenerateReviewParams,
 	getReviewGenerationJobId,
 	getReviewGenerationPullRequestKey,
-	type GenerateReviewParams,
 	type ReviewGenerationJob,
 } from '@/shared/review'
 import { formatInitialVisibleReviewOutput } from './agent-json-stream'
@@ -151,7 +151,10 @@ function cleanupFinishedJobs() {
 	if (finishedJobs.length <= MAX_STORED_JOBS) return
 
 	for (const [jobId] of finishedJobs
-		.sort(([, a], [, b]) => Date.parse(a.finishedAt ?? a.startedAt) - Date.parse(b.finishedAt ?? b.startedAt))
+		.sort(
+			([, a], [, b]) =>
+				Date.parse(a.finishedAt ?? a.startedAt) - Date.parse(b.finishedAt ?? b.startedAt),
+		)
 		.slice(0, finishedJobs.length - MAX_STORED_JOBS)) {
 		jobs.delete(jobId)
 	}

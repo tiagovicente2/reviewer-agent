@@ -1,7 +1,7 @@
 import type { FileDiffMetadata } from '@pierre/diffs'
 import { describe, expect, it } from 'vitest'
 import { parsePatch } from '../diff-viewer/diffDisplayUtils'
-import { getFocusedFileDiff } from './findingDiffPreviewUtils'
+import { buildSuggestionFileDiff, getFocusedFileDiff } from './findingDiffPreviewUtils'
 
 function getFileDiff(patch: string) {
 	const fileDiff = parsePatch(patch).files[0]
@@ -137,5 +137,56 @@ rename to src/new.ts
 		const focusedDiff = getFocusedFileDiff(getFileDiff(addedFilePatch), fixture.lineNumber)
 
 		expect(getLines(focusedDiff?.additionLines ?? [])).toEqual(fixture.expectedLines)
+	})
+
+	it('focuses a multi-line range with context padding on both sides', () => {
+		const focusedDiff = getFocusedFileDiff(getFileDiff(mixedPatch), 9, 11)
+
+		expect(focusedDiff).not.toBeNull()
+		expect(getLines(focusedDiff?.additionLines ?? [])).toEqual([
+			'before',
+			'new first',
+			'new second',
+			'new third',
+			'after one',
+			'after two',
+			'after three',
+		])
+	})
+})
+
+describe('buildSuggestionFileDiff', () => {
+	it('builds a split patch diff from original lines and fix suggestion', () => {
+		const fileDiff = getFileDiff(mixedPatch)
+		const suggestionDiff = getFocusedFileDiff(fileDiff, 9, 11)
+		expect(suggestionDiff).not.toBeNull()
+
+		const result = buildSuggestionFileDiff(fileDiff, {
+			filePath: 'src/example.ts',
+			fixSuggestion: 'replacement one\nreplacement two',
+			lineEnd: 10,
+			lineStart: 9,
+		})
+
+		expect(result).not.toBeNull()
+		expect(getLines(result?.deletionLines ?? [])).toEqual(['new first', 'new second'])
+		expect(getLines(result?.additionLines ?? [])).toEqual(['replacement one', 'replacement two'])
+	})
+
+	it('parses raw patch format suggestions directly', () => {
+		const rawPatch = `diff --git a/src/example.ts b/src/example.ts
+--- a/src/example.ts
++++ b/src/example.ts
+@@ -1,2 +1,2 @@
+-old
++new`
+		const result = buildSuggestionFileDiff(null, {
+			filePath: 'src/example.ts',
+			fixSuggestion: rawPatch,
+		})
+
+		expect(result).not.toBeNull()
+		expect(getLines(result?.deletionLines ?? [])).toEqual(['old'])
+		expect(getLines(result?.additionLines ?? [])).toEqual(['new'])
 	})
 })

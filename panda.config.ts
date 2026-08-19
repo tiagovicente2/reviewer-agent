@@ -85,10 +85,11 @@ export default defineConfig({
 					green: green,
 
 					review: {
-						blue: { value: { _light: '#0969da', _dark: '#0969da' } },
-						commentBg: { value: { _light: '#fff8c5', _dark: '#fff8c5' } },
-						commentBorder: { value: { _light: '#d4a72c', _dark: '#d4a72c' } },
+						blue: { value: { _light: '#0969da', _dark: '#58a6ff' } },
+						commentBg: { value: { _light: '#fff8c5', _dark: '#161b22' } },
+						commentBorder: { value: { _light: '#d4a72c', _dark: '#30363d' } },
 						commentTagBg: { value: { _light: '#00a2c7', _dark: '#00a2c7' } },
+						commentTextareaBg: { value: { _light: '#ffffff', _dark: '#0d1117' } },
 						diffAdditionBg: {
 							value: { _light: 'rgba(0, 127, 255, 0.18)', _dark: 'rgba(0, 127, 255, 0.18)' },
 						},

@@ -205,11 +205,12 @@ function buildSystemPrompt(instructionId?: string) {
   {"type":"progress","message":"Reading PR metadata and changed files..."}
   {"type":"thought","message":"The PR changes payment flow UI, so I will focus on state transitions, fallbacks, and submission behavior."}
   {"type":"check","target":"src/example.ts","message":"Checking state handling for stale values..."}
-  {"type":"finding","finding":{"id":"finding-1","severity":"medium","title":"Missing state sync","filePath":"src/example.ts","lineStart":42,"lineEnd":42,"codeSnippet":null,"body":"The local state can get stale when props change.","suggestedCommentBody":"This local state can get stale when props change. Could we sync it or derive it from props?","fixSuggestion":null,"confidence":0.82}}
-  {"type":"inline_comment","comment":{"path":"src/example.ts","line":42,"side":"RIGHT","body":"This local state can get stale when props change. Could we sync it or derive it from props?"}}
+  {"type":"finding","finding":{"id":"finding-1","severity":"medium","title":"Missing state sync","filePath":"src/example.ts","lineStart":15,"lineEnd":27,"codeSnippet":null,"body":"The local state can get stale when props change.","suggestedCommentBody":"This local state can get stale when props change. Could we sync it or derive it from props?","fixSuggestion":null,"confidence":0.82}}
+  {"type":"inline_comment","comment":{"path":"src/example.ts","line":27,"side":"RIGHT","body":"This local state can get stale when props change. Could we sync it or derive it from props?"}}
   {"type":"summary","summary":"The PR is mostly safe, but one state synchronization issue needs attention.","publishableBody":"Found one state synchronization issue worth addressing before merge.","verdictRecommendation":"request_changes","severity":"medium"}
 - Emit progress only for real checks you are performing from the supplied metadata and diff. Thought events must be short visible progress summaries, not hidden chain-of-thought. Do not claim you opened files, ran commands, or used tools you did not actually run (running \`pxdocs\` is fine when permitted — report it truthfully as a progress event).
 - Emit each finding as soon as it is ready. Do not repeat all findings in one large final object.
+- For each finding, set lineStart and lineEnd to cover the full multi-line range of affected code in the updated file (RIGHT side) — e.g. the entire function call, hook usage, JSX block, statement, or condition (e.g. lineStart: 15, lineEnd: 27). Most findings affect a multi-line block rather than a single line. lineEnd must be greater than or equal to lineStart.
 - Do not generate unified diff patches during this first pass. Set fixSuggestion to null. Patch generation happens later on demand.
 - The last line must be exactly {"type":"done"}. Do not emit a final review object unless you cannot follow the event protocol.`
 
@@ -310,6 +311,7 @@ ${JSON.stringify(
 )}
 
 Set fixSuggestion to null for every finding. Do not generate unified diff patches in this first pass.
+Set lineStart and lineEnd to the 1-based line number range in the updated file (RIGHT side) covering the full affected code range (e.g. lineStart: 15, lineEnd: 27). Most findings highlight multiple lines rather than a single line.
 
 Write suggestedCommentBody and inlineComments.body as natural GitHub review comments in ${getReviewLanguage() === 'portuguese' ? 'Portuguese (Brazil)' : 'English'}. When writing in Portuguese, preserve technical names and code terms in English, for example say "Esse useEffect..." instead of translating it. Do not use before/after labels like "You did this" or "After review". Prefer direct wording such as "This fallback will also handle future origin types, which can route them to the wrong page. Could we make the postpaid case explicit and return null by default?"
 

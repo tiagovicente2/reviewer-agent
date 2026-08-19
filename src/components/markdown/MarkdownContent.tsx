@@ -16,7 +16,7 @@ const markdownContentClassName = css({
 	lineHeight: '1.7',
 	textStyle: 'sm',
 	'& > :where(h1, h2, h3, h4, p, ul, ol, blockquote)': {
-		maxWidth: '72ch',
+		maxWidth: 'none',
 	},
 	'& h1, & h2, & h3, & h4': {
 		color: 'fg.default',
@@ -73,31 +73,31 @@ const markdownContentClassName = css({
 })
 
 const commentMarkdownContentClassName = css({
-	color: 'black',
+	color: 'fg.default',
 	'& > :where(h1, h2, h3, h4, p, ul, ol, blockquote)': {
 		maxWidth: 'none',
 	},
 	'& h1, & h2, & h3, & h4': {
-		color: 'black',
+		color: 'fg.default',
 	},
-	'& a': { color: '#005cc5' },
+	'& a': { color: 'cyan.11' },
 	'& code': {
-		backgroundColor: 'rgba(27, 31, 35, 0.12)',
-		color: 'black',
+		backgroundColor: 'gray.3',
+		color: 'fg.default',
 	},
 	'& pre': {
-		backgroundColor: 'rgba(27, 31, 35, 0.08)',
+		backgroundColor: 'gray.2',
 	},
 	'& blockquote': {
-		borderLeftColor: 'rgba(27, 31, 35, 0.35)',
-		color: 'rgba(0, 0, 0, 0.78)',
+		borderLeftColor: 'cyan.8',
+		color: 'fg.muted',
 	},
-	'& th, & td': { borderColor: 'rgba(27, 31, 35, 0.22)' },
+	'& th, & td': { borderColor: 'border.default' },
 	'& details': {
-		backgroundColor: 'rgba(27, 31, 35, 0.06)',
-		borderColor: 'rgba(27, 31, 35, 0.22)',
+		backgroundColor: 'gray.2',
+		borderColor: 'border.default',
 	},
-	'& summary': { color: 'black' },
+	'& summary': { color: 'fg.default' },
 })
 
 function isGitHubImageSrc(src?: string) {

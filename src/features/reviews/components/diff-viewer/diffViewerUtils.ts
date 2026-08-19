@@ -6,6 +6,8 @@ export type DiffAnnotation = {
 		author?: string
 		body: string
 		createdAt?: string
+		disabled?: boolean
+		onChangeBody?: (body: string) => void
 	}>
 }
 
@@ -40,6 +42,8 @@ export function getLineAnnotations(
 			author: comment.author,
 			body: comment.body,
 			createdAt: comment.createdAt,
+			disabled: comment.disabled,
+			onChangeBody: comment.onChangeBody,
 		}
 
 		if (existing) {

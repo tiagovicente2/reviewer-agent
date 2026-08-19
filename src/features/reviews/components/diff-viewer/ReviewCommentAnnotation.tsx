@@ -2,7 +2,7 @@ import type { DiffLineAnnotation } from '@pierre/diffs/direct/types.js'
 import { useState } from 'react'
 import { Box, HStack, Stack } from 'styled-system/jsx'
 import { MarkdownContent } from '@/components/markdown/MarkdownContent'
-import { Badge } from '@/components/ui'
+import { Badge, Textarea } from '@/components/ui'
 import type { DiffAnnotation } from './diffViewerUtils'
 
 export function ReviewCommentAnnotation(annotation: DiffLineAnnotation<DiffAnnotation>) {
@@ -25,18 +25,20 @@ export function ReviewCommentAnnotation(annotation: DiffLineAnnotation<DiffAnnot
 			>
 				<HStack justify="space-between" gap="3">
 					<HStack gap="2" minW="0">
-						<Badge colorPalette="cyan" size="sm" bg="review.commentTagBg" color="review.commentBg">
+						<Badge colorPalette="cyan" size="sm">
 							Review comment
 						</Badge>
-						<Box color="black" fontWeight="medium" textStyle="sm" truncate>
+						<Box color="fg.default" fontWeight="medium" textStyle="sm" truncate>
 							@{comments[0]?.author ?? 'reviewer-agent'}
 						</Box>
 					</HStack>
 					{hasThread ? (
 						<Box
 							as="button"
-							color="black"
+							color="fg.muted"
+							cursor="pointer"
 							fontWeight="medium"
+							_hover={{ color: 'fg.default' }}
 							onClick={() => setExpanded((current) => !current)}
 							textStyle="xs"
 						>
@@ -48,13 +50,33 @@ export function ReviewCommentAnnotation(annotation: DiffLineAnnotation<DiffAnnot
 					{visibleComments.map((comment, index) => (
 						<Box key={`${comment.author ?? 'reviewer-agent'}:${comment.createdAt ?? comment.body}`}>
 							{index > 0 ? (
-								<Box color="black" fontWeight="medium" mb="1" textStyle="sm">
+								<Box color="fg.default" fontWeight="medium" mb="1" textStyle="sm">
 									@{comment.author ?? 'reviewer-agent'}
 								</Box>
 							) : null}
-							<Box color="black" textStyle="sm" wordBreak="break-word">
-								<MarkdownContent tone="comment">{comment.body}</MarkdownContent>
-							</Box>
+							{comment.onChangeBody && !comment.disabled ? (
+								<Textarea
+									aria-label="Edit review comment"
+									bg="review.commentTextareaBg"
+									borderColor="review.commentBorder"
+									boxSizing="border-box"
+									color="fg.default"
+									disabled={comment.disabled}
+									display="block"
+									fontSize="sm"
+									lineHeight="1.6"
+									minH="6rem"
+									onChange={(event) => comment.onChangeBody?.(event.target.value)}
+									placeholder="Edit the comment before publishing..."
+									resize="vertical"
+									value={comment.body}
+									w="100%"
+								/>
+							) : (
+								<Box color="fg.default" textStyle="sm" wordBreak="break-word">
+									<MarkdownContent tone="comment">{comment.body}</MarkdownContent>
+								</Box>
+							)}
 						</Box>
 					))}
 				</Stack>

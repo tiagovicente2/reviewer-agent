@@ -10,12 +10,14 @@ import { ReviewCommentAnnotation } from './ReviewCommentAnnotation'
 export function DiffFileView({
 	disableFileHeader = false,
 	fileDiff,
-	inlineComments,
+	inlineComments = [],
+	selectedLines,
 	settings,
 }: {
 	disableFileHeader?: boolean
 	fileDiff: FileDiffMetadata
-	inlineComments: ReviewInlineComment[]
+	inlineComments?: ReviewInlineComment[]
+	selectedLines?: { start: number; end: number } | null
 	settings: DiffDisplaySettings
 }) {
 	const commentsByPath = groupInlineCommentsByPath(inlineComments)
@@ -29,6 +31,7 @@ export function DiffFileView({
 				disableWorkerPool
 				fileDiff={fileDiff}
 				lineAnnotations={annotations}
+				selectedLines={selectedLines}
 				options={getDiffOptions(settings, { disableFileHeader })}
 				renderAnnotation={(annotation: DiffLineAnnotation<DiffAnnotation>) => (
 					<ReviewCommentAnnotation {...annotation} />

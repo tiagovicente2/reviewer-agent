@@ -200,12 +200,25 @@ async function submitChangeRequest({
 	]
 	validatePublishableFindings(latestPullRequest, newFindings)
 
-	const comments = newFindings.map((finding) => ({
-		body: getFindingCommentBody(finding).trim(),
-		line: finding.lineStart,
-		path: finding.filePath,
-		side: 'RIGHT' as const,
-	}))
+	const comments = newFindings.map((finding) => {
+		const isMultiLine =
+			typeof finding.lineEnd === 'number' &&
+			typeof finding.lineStart === 'number' &&
+			finding.lineEnd > finding.lineStart
+		const targetLine = (isMultiLine ? finding.lineEnd : finding.lineStart) ?? 1
+		return {
+			body: getFindingCommentBody(finding).trim(),
+			line: targetLine,
+			path: finding.filePath,
+			side: 'RIGHT' as const,
+			...(isMultiLine
+				? {
+						start_line: finding.lineStart,
+						start_side: 'RIGHT' as const,
+					}
+				: {}),
+		}
+	})
 	const payload: {
 		body?: string
 		comments: typeof comments
@@ -367,7 +380,13 @@ async function publishFinding(
 	if (!body || !finding.lineStart)
 		throw new Error('Finding is missing a comment body or line number.')
 
-	return runGh([
+	const isMultiLine =
+		typeof finding.lineEnd === 'number' &&
+		typeof finding.lineStart === 'number' &&
+		finding.lineEnd > finding.lineStart
+	const targetLine = isMultiLine ? finding.lineEnd : finding.lineStart
+
+	const args = [
 		'api',
 		`repos/${params.pullRequest.repo}/pulls/${params.pullRequest.pullRequestNumber}/comments`,
 		'-f',
@@ -377,10 +396,16 @@ async function publishFinding(
 		'-f',
 		`path=${finding.filePath}`,
 		'-F',
-		`line=${finding.lineStart}`,
+		`line=${targetLine}`,
 		'-f',
 		'side=RIGHT',
-	])
+	]
+
+	if (isMultiLine) {
+		args.push('-F', `start_line=${finding.lineStart}`, '-f', 'start_side=RIGHT')
+	}
+
+	return runGh(args)
 }
 
 async function runGh(args: string[], input?: string): Promise<CommandResult> {
