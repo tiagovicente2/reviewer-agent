@@ -9,10 +9,12 @@ import {
 import { buildSuggestionFileDiff, getFocusedFileDiff } from './findingDiffPreviewUtils'
 
 export function FindingDiffPreview({
+	colorMode,
 	diff,
 	finding,
 	inlineComments,
 }: {
+	colorMode?: 'dark' | 'light'
 	diff: string
 	finding: ReviewFinding
 	inlineComments?: ReviewInlineComment[]
@@ -23,7 +25,13 @@ export function FindingDiffPreview({
 	if (hasFixSuggestion) {
 		const suggestionFileDiff = buildSuggestionFileDiff(fileDiff, finding)
 		if (suggestionFileDiff) {
-			return <DiffFileView fileDiff={suggestionFileDiff} settings={reviewDiffDisplaySettings} />
+			return (
+				<DiffFileView
+					colorMode={colorMode}
+					fileDiff={suggestionFileDiff}
+					settings={reviewDiffDisplaySettings}
+				/>
+			)
 		}
 	}
 
@@ -47,6 +55,7 @@ export function FindingDiffPreview({
 
 	return (
 		<DiffFileView
+			colorMode={colorMode}
 			fileDiff={focusedFileDiff}
 			inlineComments={inlineComments}
 			selectedLines={selectedLines}

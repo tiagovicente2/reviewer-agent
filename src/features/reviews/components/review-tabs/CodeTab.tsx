@@ -149,6 +149,7 @@ export function CodeTab({
 			>
 				{diff ? (
 					<DiffViewer
+						colorMode={colorMode}
 						inlineComments={inlineComments}
 						onSelectFile={setSelectedFilePath}
 						patch={diff}

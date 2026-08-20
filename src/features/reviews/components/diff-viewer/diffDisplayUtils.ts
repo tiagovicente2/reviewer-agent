@@ -57,6 +57,7 @@ export function findPatchFile(patch: string, filePath: string) {
 export function getDiffOptions(
 	settings: DiffDisplaySettings,
 	overrides: Pick<FileDiffOptions<DiffAnnotation>, 'disableFileHeader'> = {},
+	colorMode: 'dark' | 'light' = 'dark',
 ): FileDiffOptions<DiffAnnotation> {
 	return {
 		collapsedContextThreshold: 8,
@@ -68,7 +69,7 @@ export function getDiffOptions(
 		lineDiffType: settings.lineDiffType,
 		overflow: settings.overflow,
 		theme: { dark: 'pierre-dark', light: 'pierre-light' },
-		themeType: 'dark',
+		themeType: colorMode,
 		...overrides,
 	}
 }

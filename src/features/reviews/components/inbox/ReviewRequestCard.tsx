@@ -1,6 +1,5 @@
 import { css, cx } from 'styled-system/css'
 import { Box, HStack, Stack } from 'styled-system/jsx'
-import { formatDate } from '@/app/utils'
 import { Badge } from '@/components/ui'
 import type { GitHubReviewRequest } from '@/shared/github'
 
@@ -59,8 +58,6 @@ export function ReviewRequestCard({
 					</Box>
 					<Box aria-hidden="true">•</Box>
 					<Box>@{review.author}</Box>
-					<Box aria-hidden="true">•</Box>
-					<Box>Updated {formatDate(review.updatedAt)}</Box>
 					<Box aria-hidden="true">•</Box>
 					{review.isDraft ? (
 						<Badge colorPalette="gray" size="sm">

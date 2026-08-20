@@ -8,6 +8,7 @@ import { type DiffDisplaySettings, parsePatch } from './diffDisplayUtils'
 import { getFileDiffKey, getScrollableParent } from './diffViewerUtils'
 
 type DiffViewerProps = {
+	colorMode?: 'dark' | 'light'
 	inlineComments?: ReviewInlineComment[]
 	onSelectFile?: (path: string) => void
 	patch: string
@@ -18,6 +19,7 @@ type DiffViewerProps = {
 const EMPTY_INLINE_COMMENTS: ReviewInlineComment[] = []
 
 export const DiffViewer = memo(function DiffViewer({
+	colorMode,
 	inlineComments = EMPTY_INLINE_COMMENTS,
 	onSelectFile,
 	patch,
@@ -112,6 +114,7 @@ export const DiffViewer = memo(function DiffViewer({
 						/>
 						{expanded ? (
 							<DiffFileView
+								colorMode={colorMode}
 								disableFileHeader
 								fileDiff={fileDiff}
 								inlineComments={inlineComments}
