@@ -17,11 +17,11 @@ export function SummaryTab({
 
 	return (
 		<Grid
-			gridTemplateColumns={{ base: 'minmax(0, 1fr)', xl: 'minmax(0, 1fr) 14rem' }}
-			gap="2"
+			gridTemplateColumns={{ base: 'minmax(0, 1fr)', lg: 'minmax(0, 1fr) 15rem' }}
+			gap="3"
 			h="100%"
 			minH="0"
-			overflow={{ base: 'auto', xl: 'hidden' }}
+			overflow={{ base: 'auto', lg: 'hidden' }}
 		>
 			<Card.Root h="100%" minH="0" overflow="hidden" variant="outline">
 				<Card.Header flexShrink="0">

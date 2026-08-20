@@ -85,15 +85,13 @@ export function MainReviewScreen({
 		<Grid
 			style={{ '--inbox-width': `${inboxWidth}px` } as CSSProperties}
 			gap="0"
-			gridTemplateColumns={{
-				base: 'minmax(0, 1fr)',
-				lg: inboxCollapsed ? '2.5rem minmax(0, 1fr)' : 'var(--inbox-width) 0.5rem minmax(0, 1fr)',
-			}}
+			gridTemplateColumns={
+				inboxCollapsed ? '2.5rem minmax(0, 1fr)' : 'var(--inbox-width) 0.5rem minmax(0, 1fr)'
+			}
 			h="100%"
 			minH="0"
 			minW="0"
-			overflow={{ base: 'auto', lg: 'hidden' }}
-			overflowX="hidden"
+			overflow="hidden"
 		>
 			<ReviewInbox
 				canReviewPrQuery={canReviewPrQuery}

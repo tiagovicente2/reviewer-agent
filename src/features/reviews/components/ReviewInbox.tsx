@@ -61,13 +61,13 @@ export function ReviewInbox({
 
 	return (
 		<Box
-			borderRightWidth={collapsed ? { base: '0', lg: '1px' } : '0'}
+			borderRightWidth={collapsed ? '1px' : '0'}
 			bg="gray.2"
-			h={collapsed ? { base: '2.5rem', lg: '100%' } : { base: 'auto', lg: '100%' }}
+			h="100%"
 			id="review-inbox-pane"
 			minH="0"
-			overflowY={collapsed ? 'hidden' : { base: 'visible', lg: 'auto' }}
-			p={collapsed ? '0' : '5'}
+			overflowY={collapsed ? 'hidden' : 'auto'}
+			p={collapsed ? '0' : '4'}
 		>
 			<Stack display={collapsed ? 'none' : 'flex'} gap="5" id="review-inbox-content">
 				<ReviewInboxHeader

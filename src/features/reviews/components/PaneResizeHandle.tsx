@@ -25,7 +25,7 @@ type PointerResize = {
 const resizeHandleClassName = css({
 	alignSelf: 'stretch',
 	cursor: 'col-resize',
-	display: { base: 'none', lg: 'block' },
+	display: 'block',
 	minH: '8',
 	outline: 'none',
 	position: 'relative',

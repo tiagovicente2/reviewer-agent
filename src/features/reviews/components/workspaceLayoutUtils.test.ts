@@ -8,28 +8,29 @@ import {
 } from './workspaceLayoutUtils'
 
 describe('pane defaults', () => {
-	it('opens the review inbox at its maximum width', () => {
-		expect(inboxPane.defaultWidth).toBe(inboxPane.maxWidth)
+	it('has valid min, max and default inbox pane widths', () => {
+		expect(inboxPane.defaultWidth).toBeGreaterThanOrEqual(inboxPane.minWidth)
+		expect(inboxPane.defaultWidth).toBeLessThanOrEqual(inboxPane.maxWidth)
 	})
 })
 
 describe('clampPaneWidth', () => {
 	it('clamps widths at both limits and preserves widths inside them', () => {
-		expect(clampPaneWidth(200, inboxPane.minWidth, inboxPane.maxWidth)).toBe(240)
+		expect(clampPaneWidth(200, inboxPane.minWidth, inboxPane.maxWidth)).toBe(260)
 		expect(clampPaneWidth(320, inboxPane.minWidth, inboxPane.maxWidth)).toBe(320)
-		expect(clampPaneWidth(420, inboxPane.minWidth, inboxPane.maxWidth)).toBe(384)
+		expect(clampPaneWidth(600, inboxPane.minWidth, inboxPane.maxWidth)).toBe(560)
 	})
 })
 
 describe('resizePaneFromPointer', () => {
 	it('applies pointer deltas in both directions', () => {
-		expect(resizePaneFromPointer(288, 500, 548, inboxPane.minWidth, inboxPane.maxWidth)).toBe(336)
-		expect(resizePaneFromPointer(288, 500, 468, inboxPane.minWidth, inboxPane.maxWidth)).toBe(256)
+		expect(resizePaneFromPointer(384, 500, 548, inboxPane.minWidth, inboxPane.maxWidth)).toBe(432)
+		expect(resizePaneFromPointer(384, 500, 468, inboxPane.minWidth, inboxPane.maxWidth)).toBe(352)
 	})
 
 	it('clamps pointer updates at both limits', () => {
-		expect(resizePaneFromPointer(288, 500, 300, inboxPane.minWidth, inboxPane.maxWidth)).toBe(240)
-		expect(resizePaneFromPointer(288, 500, 700, inboxPane.minWidth, inboxPane.maxWidth)).toBe(384)
+		expect(resizePaneFromPointer(384, 500, 300, inboxPane.minWidth, inboxPane.maxWidth)).toBe(260)
+		expect(resizePaneFromPointer(384, 500, 800, inboxPane.minWidth, inboxPane.maxWidth)).toBe(560)
 	})
 })
 

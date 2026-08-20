@@ -179,7 +179,7 @@ export function CacheModal({ onClose }: { onClose: () => void }) {
 											onClick={() => setConfirmingClear(true)}
 											variant="outline"
 										>
-											Clear cache…
+											Clear cache
 										</Button>
 									</HStack>
 								)}

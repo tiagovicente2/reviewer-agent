@@ -55,7 +55,7 @@ export function ReviewDetailHeader({
 					</Box>
 				</Stack>
 
-				<HStack gap="2">
+				<HStack flexShrink="0" gap="2">
 					{instructions.length > 1 ? (
 						<Select
 							disabled={generationState === 'loading'}

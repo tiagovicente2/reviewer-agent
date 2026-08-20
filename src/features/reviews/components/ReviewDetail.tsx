@@ -143,7 +143,7 @@ export function ReviewDetail({
 		<Box
 			display="grid"
 			gridTemplateRows="auto minmax(0, 1fr)"
-			h={{ base: 'auto', lg: '100%' }}
+			h="100%"
 			minH="0"
 			minW="0"
 			overflow="hidden"

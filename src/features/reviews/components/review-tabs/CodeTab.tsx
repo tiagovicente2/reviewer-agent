@@ -51,11 +51,10 @@ export function CodeTab({
 	return (
 		<Grid
 			style={{ '--files-width': `${filesWidth}px` } as CSSProperties}
-			gridTemplateColumns={{
-				base: 'minmax(0, 1fr)',
-				lg: filesCollapsed ? '2.5rem minmax(0, 1fr)' : 'var(--files-width) 0.5rem minmax(0, 1fr)',
-			}}
-			gap={{ base: '3', lg: '0' }}
+			gridTemplateColumns={
+				filesCollapsed ? '2.5rem minmax(0, 1fr)' : 'var(--files-width) 0.5rem minmax(0, 1fr)'
+			}
+			gap="0"
 			h="100%"
 			minH="0"
 			minW="0"
@@ -66,7 +65,6 @@ export function CodeTab({
 				display={filesCollapsed ? 'none' : 'flex'}
 				h="100%"
 				id="changed-files-pane"
-				maxH={{ base: '24rem', lg: '100%' }}
 				minH="0"
 				overflow="hidden"
 				variant="outline"
@@ -105,9 +103,9 @@ export function CodeTab({
 			<Box
 				alignItems="center"
 				bg="gray.2"
-				borderRightWidth={{ base: '0', lg: '1px' }}
+				borderRightWidth="1px"
 				display={filesCollapsed ? 'flex' : 'none'}
-				h={{ base: '2.5rem', lg: '100%' }}
+				h="100%"
 				justifyContent="center"
 				minH="0"
 			>
@@ -123,9 +121,6 @@ export function CodeTab({
 					w="full"
 				>
 					<ChevronRightIcon />
-					<Box as="span" display={{ base: 'inline', lg: 'none' }}>
-						Show changed files
-					</Box>
 				</Button>
 			</Box>
 
@@ -139,14 +134,7 @@ export function CodeTab({
 				/>
 			)}
 
-			<Box
-				h="100%"
-				maxH={{ base: '70vh', lg: '100%' }}
-				maxW="100%"
-				minH="0"
-				minW="0"
-				overflow="auto"
-			>
+			<Box h="100%" maxW="100%" minH="0" minW="0" overflow="auto">
 				{diff ? (
 					<DiffViewer
 						colorMode={colorMode}
