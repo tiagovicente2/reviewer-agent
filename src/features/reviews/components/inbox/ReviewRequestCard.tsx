@@ -39,26 +39,21 @@ export function ReviewRequestCard({
 			onClick={() => onSelect(review.id)}
 			type="button"
 		>
-			<Stack gap="2" px="4" py="3">
-				<HStack alignItems="flex-start" justify="space-between" gap="4" w="100%">
-					<HStack alignItems="flex-start" gap="2" minW="0" flex="1">
-						<PullRequestIcon isDraft={review.isDraft} />
-						<Box fontWeight="medium" lineHeight="1.4" minW="0">
-							{review.title}
-						</Box>
-					</HStack>
-					{review.isDraft ? (
-						<Badge colorPalette="gray" flexShrink="0">
-							draft
-						</Badge>
-					) : (
-						<HStack color="fg.muted" flexShrink="0" gap="1.5" textStyle="xs">
-							<Box bg="yellow.9" borderRadius="full" h="2" w="2" />
-							<Box display={{ base: 'none', xl: 'block' }}>Awaiting review</Box>
-						</HStack>
-					)}
+			<Stack gap="1.5" px="4" py="3">
+				<HStack alignItems="flex-start" gap="2" minW="0" w="100%">
+					<PullRequestIcon isDraft={review.isDraft} />
+					<Box fontWeight="medium" lineHeight="1.4" minW="0" flex="1">
+						{review.title}
+					</Box>
 				</HStack>
-				<HStack color="fg.muted" gap="1" pl="6" textStyle="xs" flexWrap="wrap">
+				<HStack
+					alignItems="center"
+					color="fg.muted"
+					flexWrap="wrap"
+					gap="1.5"
+					pl="6"
+					textStyle="xs"
+				>
 					<Box color="fg.default">
 						{review.repo}#{review.pullRequestNumber}
 					</Box>
@@ -66,6 +61,17 @@ export function ReviewRequestCard({
 					<Box>@{review.author}</Box>
 					<Box aria-hidden="true">•</Box>
 					<Box>Updated {formatDate(review.updatedAt)}</Box>
+					<Box aria-hidden="true">•</Box>
+					{review.isDraft ? (
+						<Badge colorPalette="gray" size="sm">
+							draft
+						</Badge>
+					) : (
+						<HStack alignItems="center" color="fg.muted" gap="1.5">
+							<Box bg="yellow.9" borderRadius="full" flexShrink="0" h="2" w="2" />
+							<Box>Awaiting review</Box>
+						</HStack>
+					)}
 				</HStack>
 			</Stack>
 		</button>

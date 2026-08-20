@@ -37,7 +37,13 @@ import {
 	listAvailablePiModels,
 	saveAppSettings,
 } from './services/settings'
-import { getUpdateStatus, installUpdate } from './services/update'
+import {
+	getUpdateStatus,
+	installUpdate,
+	restartApp,
+	setUpdateStatusNotifier,
+	startBackgroundUpdateCheck,
+} from './services/update'
 import {
 	closeWindow,
 	minimizeWindow,
@@ -70,6 +76,7 @@ const handlers: Handlers = {
 	getCacheStats,
 	clearAppCache,
 	installUpdate,
+	restartApp,
 	getGitHubAuthStatus,
 	startGitHubLogin,
 	listGitHubReviewRequests,
@@ -149,8 +156,10 @@ async function createWindow() {
 }
 
 app.whenReady().then(async () => {
+	setUpdateStatusNotifier((status) => sendToRenderers('updateStatusChanged', { status }))
 	configureApplicationMenu()
 	await createWindow()
+	startBackgroundUpdateCheck()
 	nativeTheme.on('updated', () =>
 		sendToRenderers('systemColorModeChanged', { colorMode: getSystemColorMode() }),
 	)

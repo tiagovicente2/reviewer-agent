@@ -55,7 +55,7 @@ export function ReviewTabActions({
 				title={approveReason || undefined}
 				variant={primaryAction === 'approve' ? undefined : 'outline'}
 			>
-				Approve…
+				Approve
 			</Button>
 			<Button
 				disabled={requestChangesDisabled}
@@ -65,7 +65,7 @@ export function ReviewTabActions({
 				title={requestChangesReason || undefined}
 				variant={primaryAction === 'request_changes' ? undefined : 'outline'}
 			>
-				Request changes…
+				Request changes
 			</Button>
 		</HStack>
 	)

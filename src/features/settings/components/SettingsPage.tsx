@@ -6,7 +6,8 @@ import { useToast } from '@/app/toast'
 import type { AsyncState } from '@/app/types'
 import { getErrorMessage } from '@/app/utils'
 import { StatusCard } from '@/components/common'
-import { Button } from '@/components/ui'
+import { Button, Spinner } from '@/components/ui'
+import { RestartIcon } from '@/features/reviews/components/inbox/InboxIcons'
 import type { AgentAvailability, AppSettings, AvailablePiModel } from '@/shared/settings'
 import type { UpdateStatus } from '@/shared/update'
 import { hasUnsavedSettings } from '../settingsDirtyState'
@@ -114,6 +115,13 @@ export function SettingsPage({
 
 	useEffect(() => {
 		appRpc.request.getUpdateStatus().then(setUpdateStatus).catch(Object)
+		const handleStatusChanged = ({ status }: { status: UpdateStatus }) => {
+			setUpdateStatus(status)
+		}
+		appRpc.addMessageListener('updateStatusChanged', handleStatusChanged)
+		return () => {
+			appRpc.removeMessageListener('updateStatusChanged', handleStatusChanged)
+		}
 	}, [])
 
 	const isDirty = hasUnsavedSettings(settings, persistedSettings)
@@ -146,6 +154,18 @@ export function SettingsPage({
 		}
 	}
 
+	if (state === 'loading' && !settings) {
+		return (
+			<Box p="6">
+				<StatusCard title="Loading settings" body="Reading your saved preferences..." />
+			</Box>
+		)
+	}
+
+	const isDownloading = updateStatus?.stage === 'downloading'
+	const isInstalling = updateStatus?.stage === 'installing'
+	const isReady = updateStatus?.stage === 'ready'
+
 	return (
 		<Box boxSizing="border-box" h="100%" minH="0" overflow="hidden" px="8" py="6">
 			<Stack gap="4" h="100%" minH="0" mx="auto" w="100%">
@@ -154,12 +174,12 @@ export function SettingsPage({
 					flexDirection={{ base: 'column', md: 'row' }}
 					justify="space-between"
 				>
-					<Box>
-						<Box as="h1" fontWeight="bold" textStyle="3xl">
+					<Box minW="0">
+						<Box as="h1" fontWeight="bold" letterSpacing="-0.04em" textStyle="3xl">
 							Settings
 						</Box>
 						<Box color="fg.muted" textStyle="sm">
-							Configure local review generation.
+							Configure reviewer model, language preferences, instructions, and local cache.
 						</Box>
 						{settings ? (
 							<Box
@@ -179,12 +199,27 @@ export function SettingsPage({
 							<CacheIcon />
 						</IconButton>
 						<Box position="relative">
-							<IconButton ariaLabel="Check for updates" onClick={() => setIsUpdateModalOpen(true)}>
-								<UpdateIcon />
+							<IconButton
+								ariaLabel={
+									isDownloading || isInstalling
+										? 'Update in progress'
+										: isReady
+											? 'Update ready. Click to restart'
+											: 'Check for updates'
+								}
+								onClick={() => setIsUpdateModalOpen(true)}
+							>
+								{isDownloading || isInstalling ? (
+									<Spinner size="xs" color="cyan.11" />
+								) : isReady ? (
+									<RestartIcon size={20} />
+								) : (
+									<UpdateIcon />
+								)}
 							</IconButton>
-							{updateStatus?.available && (
+							{(updateStatus?.available || isReady) && (
 								<Box
-									bg="cyan.9"
+									bg={isReady ? 'green.9' : 'cyan.9'}
 									borderRadius="full"
 									h="2.5"
 									position="absolute"

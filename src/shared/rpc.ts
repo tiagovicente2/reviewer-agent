@@ -72,6 +72,10 @@ export type AppRPCSchema = {
 				params: undefined
 				response: UpdateResult
 			}
+			restartApp: {
+				params: undefined
+				response: { ok: true }
+			}
 			getGitHubAuthStatus: {
 				params: undefined
 				response: GitHubAuthStatus
@@ -167,6 +171,7 @@ export type AppRPCSchema = {
 		requests: Record<never, never>
 		messages: {
 			systemColorModeChanged: { colorMode: 'dark' | 'light' }
+			updateStatusChanged: { status: UpdateStatus }
 		}
 	}
 }

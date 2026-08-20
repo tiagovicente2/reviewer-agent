@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { Box, Stack } from 'styled-system/jsx'
 import type { AsyncState } from '@/app/types'
 import { Button } from '@/components/ui'
+import { UpdateModal } from '@/features/settings/components/UpdateModal'
 import type { GitHubReviewRequest } from '@/shared/github'
 import type { UpdateStatus } from '@/shared/update'
 import { ChevronRightIcon } from './inbox/InboxIcons'
@@ -55,6 +57,8 @@ export function ReviewInbox({
 	updateStatus: UpdateStatus | null
 	username?: string
 }) {
+	const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false)
+
 	return (
 		<Box
 			borderRightWidth={collapsed ? { base: '0', lg: '1px' } : '0'}
@@ -69,11 +73,14 @@ export function ReviewInbox({
 				<ReviewInboxHeader
 					onCollapse={onCollapse}
 					onOpenSettings={onOpenSettings}
+					onOpenUpdateModal={() => setIsUpdateModalOpen(true)}
 					onRefresh={onRefresh}
 					reviewsState={reviewsState}
+					updateStatus={updateStatus}
 					username={username}
 				/>
 				<UpdateHint status={updateStatus} />
+				{isUpdateModalOpen && <UpdateModal onClose={() => setIsUpdateModalOpen(false)} />}
 				<ReviewSearchBar
 					canReviewPrQuery={canReviewPrQuery}
 					onClearSearch={onClearSearch}

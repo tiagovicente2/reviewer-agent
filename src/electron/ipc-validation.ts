@@ -28,6 +28,7 @@ const validators: Partial<Record<MainRequestName, Validator>> = {
 	getCacheStats: (params) => assertUndefined(params, 'getCacheStats'),
 	clearAppCache: (params) => assertUndefined(params, 'clearAppCache'),
 	installUpdate: (params) => assertUndefined(params, 'installUpdate'),
+	restartApp: (params) => assertUndefined(params, 'restartApp'),
 	getGitHubAuthStatus: (params) => assertUndefined(params, 'getGitHubAuthStatus'),
 	startGitHubLogin: (params) => assertUndefined(params, 'startGitHubLogin'),
 	listGitHubReviewRequests: (params) => assertUndefined(params, 'listGitHubReviewRequests'),

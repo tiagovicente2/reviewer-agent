@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { appRpc } from '@/app/rpc'
-import type { UpdateStatus } from '@/shared/update'
+import type { UpdateResult, UpdateStatus } from '@/shared/update'
 import type { AsyncState } from '../types'
 
 export function useUpdateStatus() {
@@ -10,16 +10,36 @@ export function useUpdateStatus() {
 	const refreshUpdateStatus = useCallback(async () => {
 		setUpdateState('loading')
 		try {
-			setUpdateStatus(await appRpc.request.getUpdateStatus())
+			const status = await appRpc.request.getUpdateStatus()
+			setUpdateStatus(status)
 			setUpdateState('idle')
+			return status
 		} catch {
 			setUpdateState('error')
+			return null
 		}
+	}, [])
+
+	const install = useCallback(async (): Promise<UpdateResult> => {
+		return appRpc.request.installUpdate()
+	}, [])
+
+	const restart = useCallback(async () => {
+		return appRpc.request.restartApp()
 	}, [])
 
 	useEffect(() => {
 		void refreshUpdateStatus()
+
+		const handleStatusChanged = ({ status }: { status: UpdateStatus }) => {
+			setUpdateStatus(status)
+		}
+
+		appRpc.addMessageListener('updateStatusChanged', handleStatusChanged)
+		return () => {
+			appRpc.removeMessageListener('updateStatusChanged', handleStatusChanged)
+		}
 	}, [refreshUpdateStatus])
 
-	return { refreshUpdateStatus, updateState, updateStatus }
+	return { install, refreshUpdateStatus, restart, updateState, updateStatus }
 }

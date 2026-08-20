@@ -29,80 +29,205 @@ type LatestRelease = {
 	version: string
 }
 
+let updateStatusNotifier: ((status: UpdateStatus) => void) | null = null
+
+export function setUpdateStatusNotifier(notifier: ((status: UpdateStatus) => void) | null) {
+	updateStatusNotifier = notifier
+}
+
+let currentStatus: UpdateStatus = {
+	currentVersion: app.getVersion(),
+	available: false,
+	checking: false,
+	stage: 'idle',
+}
+
+function updateStatus(patch: Partial<UpdateStatus>): UpdateStatus {
+	currentStatus = { ...currentStatus, ...patch }
+	updateStatusNotifier?.(currentStatus)
+	return currentStatus
+}
+
 export async function getUpdateStatus(): Promise<UpdateStatus> {
+	if (
+		currentStatus.stage === 'downloading' ||
+		currentStatus.stage === 'installing' ||
+		currentStatus.stage === 'ready'
+	) {
+		return currentStatus
+	}
+	return checkForUpdates(false)
+}
+
+export async function checkForUpdates(autoInstall = true): Promise<UpdateStatus> {
+	if (
+		currentStatus.stage === 'downloading' ||
+		currentStatus.stage === 'installing' ||
+		currentStatus.stage === 'ready'
+	) {
+		return currentStatus
+	}
+
 	const currentVersion = app.getVersion()
+	updateStatus({
+		currentVersion,
+		checking: true,
+		stage: 'checking',
+		error: undefined,
+	})
 
 	try {
 		const release = await getLatestRelease()
+		const available = compareVersions(release.version, currentVersion) > 0
 
-		return {
+		updateStatus({
 			currentVersion,
 			latestVersion: release.version,
 			latestUrl: release.htmlUrl,
-			available: compareVersions(release.version, currentVersion) > 0,
+			available,
 			checking: false,
+			stage: available ? 'available' : 'idle',
+		})
+
+		if (available && autoInstall) {
+			void installUpdate()
 		}
+
+		return currentStatus
 	} catch (error) {
-		return {
+		const errorMessage = error instanceof Error ? error.message : 'Could not check for updates.'
+		return updateStatus({
 			currentVersion,
 			available: false,
 			checking: false,
-			error: error instanceof Error ? error.message : 'Could not check for updates.',
-		}
+			stage: 'error',
+			error: errorMessage,
+		})
 	}
 }
 
+let activeInstallPromise: Promise<UpdateResult> | null = null
+
 export async function installUpdate(): Promise<UpdateResult> {
+	if (activeInstallPromise) {
+		return activeInstallPromise
+	}
+	if (currentStatus.stage === 'ready') {
+		return { ok: true, message: 'Update is already downloaded and ready to restart.' }
+	}
+
+	activeInstallPromise = executeInstallUpdate()
+	try {
+		return await activeInstallPromise
+	} finally {
+		activeInstallPromise = null
+	}
+}
+
+async function executeInstallUpdate(): Promise<UpdateResult> {
 	let temporaryDirectory: string | undefined
 	try {
 		const release = await getLatestRelease()
 		if (compareVersions(release.version, app.getVersion()) <= 0) {
+			updateStatus({ available: false, stage: 'idle' })
 			return { ok: false, message: 'No update is available.' }
 		}
 
 		const artifactName = getUpdateArtifactName(process.platform, process.arch)
 		if (!artifactName) {
-			return {
-				ok: false,
-				message: `Auto-update is not supported on ${process.platform}/${process.arch}.`,
-			}
+			const message = `Auto-update is not supported on ${process.platform}/${process.arch}.`
+			updateStatus({ stage: 'error', error: message })
+			return { ok: false, message }
 		}
 		if (!release.assetNames.has(artifactName) || !release.assetNames.has(CHECKSUM_ASSET_NAME)) {
-			return { ok: false, message: 'The release is missing a signed-off archive or checksum file.' }
+			const message = 'The release is missing a signed-off archive or checksum file.'
+			updateStatus({ stage: 'error', error: message })
+			return { ok: false, message }
 		}
+
+		updateStatus({
+			stage: 'downloading',
+			progress: 0,
+			statusMessage: 'Downloading update…',
+			available: true,
+			latestVersion: release.version,
+			latestUrl: release.htmlUrl,
+			error: undefined,
+		})
 
 		const checksumManifest = await downloadText(
 			getReleaseAssetUrl(release.tagName, CHECKSUM_ASSET_NAME),
 		)
 		const expectedChecksum = getExpectedChecksum(checksumManifest, artifactName)
 		if (!expectedChecksum) {
-			return { ok: false, message: `The checksum file does not include ${artifactName}.` }
+			const message = `The checksum file does not include ${artifactName}.`
+			updateStatus({ stage: 'error', error: message })
+			return { ok: false, message }
 		}
 
 		temporaryDirectory = await mkdtemp(join(tmpdir(), 'reviewer-agent-update-'))
 		const artifactPath = join(temporaryDirectory, artifactName)
+
 		const actualChecksum = await downloadAndHash(
 			getReleaseAssetUrl(release.tagName, artifactName),
 			artifactPath,
+			(percent) => {
+				updateStatus({
+					stage: 'downloading',
+					progress: percent,
+					statusMessage: `Downloading update (${percent}%)…`,
+				})
+			},
 		)
+
 		if (actualChecksum !== expectedChecksum) {
-			return { ok: false, message: `Checksum verification failed for ${artifactName}.` }
+			const message = `Checksum verification failed for ${artifactName}.`
+			updateStatus({ stage: 'error', error: message })
+			return { ok: false, message }
 		}
+
+		updateStatus({
+			stage: 'installing',
+			progress: 100,
+			statusMessage: 'Installing update in the background…',
+		})
 
 		const command = getUpdateCommand(artifactPath)
 		const result = await runUpdateInstaller(command)
-		if (!result.ok) return result
+		if (!result.ok) {
+			updateStatus({ stage: 'error', error: result.message })
+			return result
+		}
 
-		restartAppAfterUpdate()
-		return { ok: true, message: 'Update installed. Restarting the app now.' }
+		updateStatus({
+			stage: 'ready',
+			available: true,
+			progress: 100,
+			statusMessage: 'Update installed. Ready to restart.',
+		})
+
+		return { ok: true, message: 'Update installed. Ready to restart.' }
 	} catch (error) {
+		const message = error instanceof Error ? error.message : 'Could not install the update.'
+		updateStatus({ stage: 'error', error: message })
 		return {
 			ok: false,
-			message: error instanceof Error ? error.message : 'Could not install the update.',
+			message,
 		}
 	} finally {
 		if (temporaryDirectory) await rm(temporaryDirectory, { force: true, recursive: true })
 	}
+}
+
+export function restartApp(): { ok: true } {
+	restartAppAfterUpdate()
+	return { ok: true }
+}
+
+export function startBackgroundUpdateCheck() {
+	setTimeout(() => {
+		void checkForUpdates(true)
+	}, 1500)
 }
 
 async function runUpdateInstaller(command: {
@@ -123,7 +248,7 @@ async function runUpdateInstaller(command: {
 
 		child.once('close', (exitCode) => {
 			if (exitCode === 0) {
-				resolve({ ok: true, message: 'Update installed. Restarting the app now.' })
+				resolve({ ok: true, message: 'Update installed. Ready to restart.' })
 				return
 			}
 			resolve({ ok: false, message: `Updater exited with code ${exitCode ?? 'unknown'}.` })
@@ -218,16 +343,30 @@ async function downloadText(url: string) {
 	return response.text()
 }
 
-async function downloadAndHash(url: string, destination: string) {
+async function downloadAndHash(
+	url: string,
+	destination: string,
+	onProgress?: (percent: number, downloaded: number, total?: number) => void,
+) {
 	const response = await fetch(url)
 	if (!response.ok || !response.body) {
 		throw new Error(`Could not download update: GitHub returned ${response.status}.`)
 	}
 
+	const contentLength = response.headers.get('content-length')
+	const total = contentLength ? parseInt(contentLength, 10) : undefined
+	let downloaded = 0
+
 	const hash = createHash('sha256')
 	const hashingStream = new Transform({
 		transform(chunk: Buffer, _encoding: BufferEncoding, callback: TransformCallback) {
 			hash.update(chunk)
+			downloaded += chunk.length
+			if (onProgress) {
+				const percent =
+					total && total > 0 ? Math.min(100, Math.round((downloaded / total) * 100)) : 0
+				onProgress(percent, downloaded, total)
+			}
 			callback(null, chunk)
 		},
 	})

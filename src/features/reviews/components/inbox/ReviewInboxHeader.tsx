@@ -1,21 +1,30 @@
 import { Box, HStack, Stack } from 'styled-system/jsx'
 import type { AsyncState } from '@/app/types'
-import { Button } from '@/components/ui'
-import { ChevronLeftIcon, RefreshIcon, SettingsIcon } from './InboxIcons'
+import { Button, Spinner } from '@/components/ui'
+import type { UpdateStatus } from '@/shared/update'
+import { ChevronLeftIcon, RefreshIcon, RestartIcon, SettingsIcon } from './InboxIcons'
 
 export function ReviewInboxHeader({
 	onCollapse,
 	onOpenSettings,
+	onOpenUpdateModal,
 	onRefresh,
 	reviewsState,
+	updateStatus,
 	username,
 }: {
 	onCollapse: () => void
 	onOpenSettings: () => void
+	onOpenUpdateModal?: () => void
 	onRefresh: () => void
 	reviewsState: AsyncState
+	updateStatus?: UpdateStatus | null
 	username?: string
 }) {
+	const isDownloading = updateStatus?.stage === 'downloading'
+	const isInstalling = updateStatus?.stage === 'installing'
+	const isReady = updateStatus?.stage === 'ready'
+
 	return (
 		<Stack gap="3">
 			<HStack alignItems="flex-start" gap="3" justify="space-between">
@@ -28,6 +37,23 @@ export function ReviewInboxHeader({
 					</Box>
 				</Box>
 				<HStack flexShrink="0" gap="1">
+					{isDownloading || isInstalling ? (
+						<HeaderIconButton
+							ariaLabel={`Installing update${updateStatus?.progress !== undefined ? ` (${updateStatus.progress}%)` : ''}`}
+							onClick={onOpenUpdateModal}
+						>
+							<Spinner size="xs" color="cyan.11" />
+						</HeaderIconButton>
+					) : isReady ? (
+						<HeaderIconButton
+							ariaLabel="Update ready. Restart application"
+							onClick={onOpenUpdateModal}
+						>
+							<Box color="cyan.11">
+								<RestartIcon />
+							</Box>
+						</HeaderIconButton>
+					) : null}
 					<HeaderIconButton ariaLabel="Settings" onClick={onOpenSettings}>
 						<SettingsIcon />
 					</HeaderIconButton>
@@ -65,7 +91,7 @@ function HeaderIconButton({
 	ariaLabel: string
 	children: React.ReactNode
 	loading?: boolean
-	onClick: () => void
+	onClick?: () => void
 }) {
 	return (
 		<Button
