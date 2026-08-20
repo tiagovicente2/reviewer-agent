@@ -56,7 +56,7 @@ export function ReviewerInstructionsCard({
 
 	return (
 		<Tabs.Root
-			className={css({ h: { base: 'auto', xl: '100%' }, minH: '0' })}
+			className={css({ h: '100%', minH: '26rem' })}
 			lazyMount={false}
 			onValueChange={({ value }) => onChangeMode(value as InstructionsMode)}
 			unmountOnExit={false}
@@ -65,8 +65,8 @@ export function ReviewerInstructionsCard({
 			<Card.Root
 				display="grid"
 				gridTemplateRows="auto minmax(0, 1fr)"
-				h={{ base: 'auto', xl: '100%' }}
-				minH="0"
+				h="100%"
+				minH="26rem"
 				minW="0"
 				overflow="hidden"
 			>
@@ -120,7 +120,7 @@ export function ReviewerInstructionsCard({
 				</Card.Header>
 				<Card.Body minH="0" overflow="hidden">
 					<Tabs.Content asChild value="raw">
-						<Box h={{ base: '24rem', xl: '100%' }} minH="0">
+						<Box h="100%" minH="18rem">
 							<label className={visuallyHidden()} htmlFor="instruction-content">
 								Reviewer instructions markdown
 							</label>
@@ -129,7 +129,7 @@ export function ReviewerInstructionsCard({
 								boxSizing="border-box"
 								display="block"
 								h="100%"
-								minH="0"
+								minH="18rem"
 								overflowY="auto"
 								resize="none"
 								placeholder="Custom markdown instructions for the reviewer agent."
@@ -140,14 +140,7 @@ export function ReviewerInstructionsCard({
 						</Box>
 					</Tabs.Content>
 					<Tabs.Content asChild value="preview">
-						<Box
-							bg="gray.2"
-							borderRadius="l2"
-							h={{ base: '24rem', xl: '100%' }}
-							minH="0"
-							overflowY="auto"
-							p="4"
-						>
+						<Box bg="gray.2" borderRadius="l2" h="100%" minH="18rem" overflowY="auto" p="4">
 							<MarkdownContent>{selected?.content || '_No instructions yet._'}</MarkdownContent>
 						</Box>
 					</Tabs.Content>

@@ -13,7 +13,7 @@ export function AgentStatusCard({
 	onRefresh: () => void
 }) {
 	return (
-		<Card.Root flex="1" minH="0" overflow="hidden" variant="outline">
+		<Card.Root flexShrink="0" minH="0" overflow="hidden" variant="outline">
 			<Card.Header>
 				<HStack justify="space-between" gap="3">
 					<Box minW="0">
@@ -35,7 +35,7 @@ export function AgentStatusCard({
 					</Button>
 				</HStack>
 			</Card.Header>
-			<Card.Body minH="0" overflowY="auto">
+			<Card.Body minH="0">
 				<Stack gap="3">
 					{agents.map((agent) => (
 						<Box key={agent.agent} bg="gray.2" borderRadius="l2" p="3">
